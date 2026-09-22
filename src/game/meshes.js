@@ -370,3 +370,54 @@ export function createPickup(type, softMap) {
 }
 
 export const boltGeometry = geo('bolt', () => new THREE.BoxGeometry(0.34, 0.34, 3.4));
+
+/** Fat rocket. Local −Z is the nose, matching the player ship. */
+export function createMissile() {
+  const root = new THREE.Group();
+  const hull = new THREE.MeshBasicMaterial({ color: 0xfff4d2, fog: false, toneMapped: false });
+  const hot = new THREE.MeshBasicMaterial({ color: 0xff4d12, fog: false, toneMapped: false });
+  const finMat = new THREE.MeshBasicMaterial({ color: 0xffb020, fog: false, toneMapped: false });
+  const flameMat = new THREE.SpriteMaterial({
+    color: 0xff6a1a,
+    transparent: true,
+    opacity: 0.95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fog: false,
+    toneMapped: false,
+  });
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.95, 7.6, 12), hull);
+  body.rotation.x = -Math.PI / 2;
+  root.add(body);
+
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.74, 2.4, 12), hot);
+  nose.rotation.x = -Math.PI / 2;
+  nose.position.z = -4.8;
+  root.add(nose);
+
+  for (let i = 0; i < 4; i += 1) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.7, 1.5), finMat);
+    const angle = (i / 4) * Math.PI * 2;
+    blade.position.set(Math.cos(angle) * 1.25, Math.sin(angle) * 1.25, 3.15);
+    root.add(blade);
+  }
+
+  const flame = new THREE.Sprite(flameMat);
+  flame.position.z = 4.8;
+  flame.scale.set(5.2, 8.4, 1);
+  root.add(flame);
+
+  const halo = new THREE.Sprite(flameMat.clone());
+  halo.material.color.setHex(0xffe08a);
+  halo.position.z = -5.1;
+  halo.scale.setScalar(3.6);
+  root.add(halo);
+
+  root.scale.setScalar(2.8);
+  root.frustumCulled = false;
+  root.traverse((obj) => {
+    obj.frustumCulled = false;
+  });
+  return root;
+}

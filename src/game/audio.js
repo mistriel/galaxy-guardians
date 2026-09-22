@@ -97,6 +97,17 @@ export class Sfx {
     this.blip({ freq: 70, dur: 0.32, type: 'sawtooth', vol: 0.12, slide: -40 });
   }
 
+  missile() {
+    this.noise(0.16, 0.4, 420);
+    this.blip({ freq: 160, dur: 0.2, type: 'sawtooth', vol: 0.1, slide: 240 });
+  }
+
+  missileBoom() {
+    this.noise(0.72, 0.8, 340);
+    this.blip({ freq: 48, dur: 0.55, type: 'sawtooth', vol: 0.16, slide: -24 });
+    this.blip({ freq: 120, dur: 0.28, type: 'square', vol: 0.08, slide: -80 });
+  }
+
   pop() {
     this.blip({ freq: 220, dur: 0.06, type: 'square', vol: 0.06, slide: 280 });
   }
