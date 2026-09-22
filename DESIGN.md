@@ -83,21 +83,21 @@ Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4
 
 Two factions fill the sector. Blues are triangles and fight with שומרת: 32 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the five-color freighter at scale 2.1.
 
-Waves arrive as squads of eight, spread across the forward sector, and each wave is larger than the last. The first wave is 50 red circles. Later waves climb toward the pool caps (nib 56, glint 36, howler 18, slab 8, vorak 2) so a second wave can still spawn. Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage respects the player's invulnerability window.
+Waves arrive as squads of eight. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is 50 red circles. Later waves climb toward the pool caps (nib 56, glint 36, howler 18, slab 8, vorak 2) so a second wave can still spawn. Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
 
-| Id | Hebrew | HP | Speed | Score | Behavior |
+| Id | Hebrew | HP | Loiter | Score | Behavior |
 | --- | --- | --- | --- | --- | --- |
-| Glint | גלינט | 30 | 34 | 120 | Red circle. Straight lane. Contact 10. |
-| Nib | ניב | 12 | 44 | 50 | Small red circle. Straight lane. Contact 7. Dies in one shot. |
-| Howler | מיילל | 54 | 22 | 280 | Larger red-orange circle. Straight lane, fires while passing. Shots deal 9. Contact 12. |
-| Slab | לוח | 140 | 13 | 700 | Heavy dark-red circle. Shots deal 16. Contact 18. |
-| Judge Vorak | הדיין ווראק | 420 | 10 | 1800 | Biggest red circle. See below. |
+| Glint | גלינט | 30 | 14 | 120 | Red circle. Orbits a band about 20 ahead of its anchor. Contact 10. |
+| Nib | ניב | 12 | 14 | 50 | Small red circle. Tighter band, about 14. Contact 7. Dies in one shot. |
+| Howler | מיילל | 54 | 11 | 280 | Larger red-orange circle. Band about 26. Fires if the player is inside range. Shots deal 9. Contact 12. |
+| Slab | לוח | 140 | 8 | 700 | Heavy dark-red circle. Wide band about 34. Shots deal 16. Contact 18. |
+| Judge Vorak | הדיין ווראק | 420 | 6 | 1800 | Biggest red circle. Slow ring. See below. |
 
 Drop chances: Glint 22%, Nib 16%, Howler 42%, Slab 70%, Judge Vorak 100%.
 
 ### Judge Vorak
 
-The largest red circle (collision radius 6.2), still on the red team. It keeps about 54 units away.
+The largest red circle (collision radius 6.2), still on the red team. It loiters on a slow ring around its squad anchor (band about 30) and shoots from there. It does not chase שומרת.
 
 Attacks alternate after a 0.72s windup:
 

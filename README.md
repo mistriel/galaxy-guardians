@@ -74,7 +74,7 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Lasers | Space, left click, or the red ירי button. Small bright tracers |
 | Giant missile | Gold טיל ענק button or `Q` |
 | Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin dart, then an energy mushroom |
-| Factions | Blues are triangles (your army). Reds are circles (enemy swarms). The menu says כחולים: משולשים · אדומים: עיגולים |
+| Factions | Blues are triangles (your army). Reds are circles that loiter on rings in their sector so you can shoot them. The menu says כחולים: משולשים · אדומים: עיגולים |
 | Phone | Left stick moves (up turbo, down brake, sideways strafe). Right stick aims |
 | Hangar | מספנה spends נקודות on נץ, עוגן, מניפה, and מחט. שומרת and the thick laser stay free |
 | Ground battles | קרבות קרקע, then a world. Artillery, armor and gun-cars, infantry, then משמיד — a turquoise tank with every gun on it. נסיגה pulls back |
