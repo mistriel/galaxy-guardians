@@ -98,6 +98,27 @@ export const ENEMIES = {
     shotScale: 1.8,
     color: 0x8b5cf6,
   },
+  vorak: {
+    hp: 420,
+    speed: 10,
+    radius: 6.2,
+    score: 1800,
+    contact: 28,
+    drop: 1,
+    ai: 'maul',
+    wobble: 0,
+    prefer: 54,
+    range: 96,
+    fireEvery: 2.35,
+    windup: 0.72,
+    shotSpeed: 34,
+    shotDamage: 24,
+    shotScale: 3.2,
+    arcSpeed: 56,
+    arcDamage: 12,
+    arcScale: 1.55,
+    color: 0xc45132,
+  },
 };
 
 export const TOWERS = {
@@ -130,8 +151,8 @@ export const WAVES = [
   { nib: 7, glint: 3 },
   { nib: 6, glint: 3, howler: 2 },
   { nib: 8, glint: 2, howler: 3, slab: 1 },
-  { nib: 10, glint: 4, howler: 3, slab: 1 },
-  { nib: 12, glint: 4, howler: 4, slab: 2 },
+  { nib: 10, glint: 4, howler: 3, slab: 1, vorak: 1 },
+  { nib: 12, glint: 4, howler: 4, slab: 2, vorak: 1 },
 ];
 
 export function waveSpec(n) {
@@ -142,6 +163,7 @@ export function waveSpec(n) {
     glint: Math.min(10, 4 + Math.floor(extra * 0.6)),
     howler: Math.min(8, 4 + Math.floor(extra * 0.45)),
     slab: Math.min(5, 2 + Math.floor(extra * 0.35)),
+    vorak: 1,
   };
 }
 
@@ -155,6 +177,7 @@ export const POOLS = {
   nib: 16,
   howler: 8,
   slab: 6,
+  vorak: 2,
   playerBolts: 72,
   enemyBolts: 48,
   pickups: 14,

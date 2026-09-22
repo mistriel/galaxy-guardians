@@ -78,6 +78,15 @@ export class Sfx {
     this.blip({ freq: 210, dur: 0.07, type: 'sawtooth', vol: 0.05, slide: -80 });
   }
 
+  maulWind() {
+    this.blip({ freq: 92, dur: 0.2, type: 'sawtooth', vol: 0.06, slide: 50 });
+  }
+
+  maul() {
+    this.noise(0.18, 0.55, 220);
+    this.blip({ freq: 64, dur: 0.22, type: 'square', vol: 0.11, slide: -28 });
+  }
+
   explode() {
     this.noise(0.22, 0.42, 780);
     this.blip({ freq: 130, dur: 0.16, type: 'sawtooth', vol: 0.08, slide: -70 });

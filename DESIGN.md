@@ -61,8 +61,20 @@ Waves spawn outside the camera, staggered about 0.38s apart, 125–170 units fro
 | Nib | ניב | 12 | 44 | 50 | Tiny swarm body. Nearly straight chase. Contact 7. Dies in one shot. |
 | Howler | מיילל | 54 | 22 | 280 | Keeps about 38 units away, strafes, and fires. Shots deal 9. Contact 12. |
 | Slab | לוח | 140 | 13 | 700 | Slow armored cruiser. Heavy shots deal 16 and are easier to see. Contact 18. |
+| Judge Vorak | הדיין ווראק | 420 | 10 | 1800 | Elite escort. See below. |
 
-Drop chances: Glint 22%, Nib 16%, Howler 42%, Slab 70%.
+Drop chances: Glint 22%, Nib 16%, Howler 42%, Slab 70%, Judge Vorak 100%.
+
+### Judge Vorak
+
+An original capital escort, not a fighter. The hull is a long slate-green battering ship with bone armor plates, a raised citadel, and a forward spar that ends in a blunt energy maul. It is much larger than a Slab (collision radius 6.2) and keeps about 54 units away.
+
+Attacks alternate after a 0.72s windup, while the maul lifts and slams:
+
+1. **Maul bolt** — one slow amber shot (34 u/s, damage 24, large silhouette).
+2. **Arc** — three faster shots in a wide fan (56 u/s, damage 12 each).
+
+The next swing waits 2.35s. Contact damage is 28. A kill is a full explosion and always drops a powerup. The Hebrew name **הדיין ווראק** appears on the wave banner and again as a toast when the escort arrives. The radar draws it as a larger amber blip.
 
 ## Towers
 
@@ -107,10 +119,10 @@ Displayed score is `round(base × combo)`.
 | 2 | 7 Nib, 3 Glint |
 | 3 | 6 Nib, 3 Glint, 2 Howler |
 | 4 | 8 Nib, 2 Glint, 3 Howler, 1 Slab |
-| 5 | 10 Nib, 4 Glint, 3 Howler, 1 Slab |
-| 6 | 12 Nib, 4 Glint, 4 Howler, 2 Slab |
+| 5 | 10 Nib, 4 Glint, 3 Howler, 1 Slab, 1 Judge Vorak |
+| 6 | 12 Nib, 4 Glint, 4 Howler, 2 Slab, 1 Judge Vorak |
 
-After wave 6 the counts climb but stay capped (Nib 16, Glint 10, Howler 8, Slab 5) so the pools can hold them. The next wave begins 2 seconds after the last enemy of the current wave dies. The first enemy of a wave arrives about 0.85s after the banner.
+After wave 6 the counts climb but stay capped (Nib 16, Glint 10, Howler 8, Slab 5, Judge Vorak 1) so the pools can hold them. The next wave begins 2 seconds after the last enemy of the current wave dies. The first enemy of a wave arrives about 0.85s after the banner.
 
 ## Game flow
 

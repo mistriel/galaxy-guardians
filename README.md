@@ -1,6 +1,6 @@
 # שומרי הגלקסיה — Galaxy Guardians Arcade
 
-An original 3D browser arcade game. You pilot **עפרוני־אבק** (Dustlark), a lopsided cargo tug, through a starfield full of enemy ships and destructible structures.
+An original 3D browser arcade game. You pilot **עפרוני־אבק** (Dustlark), a lopsided cargo tug, through a starfield full of enemy ships and destructible structures. From wave 5 an elite escort joins the fight: **הדיין ווראק** (Judge Vorak), a heavy armored ship with a hammer-like energy maul.
 
 This game is not affiliated with Marvel, Disney, or any other rights holder. The ship, enemies, towers, and insignia are original.
 

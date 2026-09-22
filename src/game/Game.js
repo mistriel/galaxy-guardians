@@ -94,6 +94,10 @@ export class Game {
     this.v1 = new THREE.Vector3();
     this.v2 = new THREE.Vector3();
     this.v3 = new THREE.Vector3();
+    this.boltOrigin = new THREE.Vector3();
+    this.boltDir = new THREE.Vector3();
+    this.boltUp = new THREE.Vector3();
+    this.boltFwd = new THREE.Vector3();
     this.nose = new THREE.Vector3();
     this.rightV = new THREE.Vector3();
     this.upV = new THREE.Vector3();
@@ -243,6 +247,8 @@ export class Game {
           vel: new THREE.Vector3(),
           fireCd: 0,
           ramCd: 0,
+          windup: 0,
+          swing: 0,
           strafe: Math.random() < 0.5 ? 1 : -1,
           strafeT: 1,
           phase: Math.random() * 10,
@@ -628,9 +634,14 @@ export class Game {
     enemy.vel.set(0, 0, 0);
     enemy.fireCd = 0.35 + Math.random() * 0.5;
     enemy.ramCd = 0.4;
+    enemy.windup = 0;
+    enemy.swing = 0;
     enemy.flash = 0;
+    if (enemy.mesh.userData.maul) enemy.mesh.userData.maul.rotation.x = 0.2;
+    if (enemy.mesh.userData.maulCore) enemy.mesh.userData.maulCore.scale.setScalar(1);
     restoreMaterials(enemy.mesh.userData.mats);
     if (enemy.mesh.userData.bar) enemy.mesh.userData.bar.group.visible = false;
+    if (type === 'vorak') this.showToast(T.vorak);
   }
 
   spawnAnchor() {
@@ -679,19 +690,41 @@ export class Game {
           if (enemy.strafe < 0) desired.negate();
         }
         if (dist < enemy.cfg.range) this.tryEnemyShot(enemy);
+      } else if (enemy.cfg.ai === 'maul') {
+        enemy.strafeT -= dt;
+        if (enemy.strafeT <= 0) {
+          enemy.strafeT = 1.8 + Math.random();
+          enemy.strafe *= -1;
+        }
+        if (dist > enemy.cfg.prefer + 16) {
+          desired.copy(to);
+        } else if (dist < enemy.cfg.prefer - 14) {
+          desired.negate();
+        } else {
+          desired.set(-to.z, 0, to.x);
+          if (desired.lengthSq() < 0.0001) desired.set(1, 0, 0);
+          desired.normalize();
+          if (enemy.strafe < 0) desired.negate();
+          desired.y += Math.sin(enemy.phase * 0.6) * 0.08;
+        }
+        if (desired.lengthSq() > 0.0001) desired.normalize();
+        this.updateMaul(enemy, dist, dt);
       } else {
         desired.y += Math.sin(enemy.phase) * 0.12;
         if (desired.lengthSq() > 0.0001) desired.normalize();
         if (dist < enemy.cfg.range) this.tryEnemyShot(enemy);
       }
 
-      desired.multiplyScalar(enemy.cfg.speed);
+      const speed = enemy.cfg.ai === 'maul' && enemy.windup > 0 ? enemy.cfg.speed * 0.22 : enemy.cfg.speed;
+      desired.multiplyScalar(speed);
       enemy.vel.lerp(desired, 1 - Math.exp(-2.8 * dt));
       pos.addScaledVector(enemy.vel, dt);
       if (pos.length() > WORLD.bounds - 12) pos.setLength(WORLD.bounds - 12);
       pos.y = THREE.MathUtils.clamp(pos.y, -100, 140);
 
-      if (enemy.vel.lengthSq() > 4) {
+      if (enemy.cfg.ai === 'maul') {
+        enemy.mesh.lookAt(this.player.mesh.position);
+      } else if (enemy.vel.lengthSq() > 4) {
         this.v3.copy(pos).add(enemy.vel);
         enemy.mesh.lookAt(this.v3);
       }
@@ -733,6 +766,55 @@ export class Game {
         }
       }
     }
+  }
+
+  updateMaul(enemy, dist, dt) {
+    const maul = enemy.mesh.userData.maul;
+    const core = enemy.mesh.userData.maulCore;
+    if (enemy.windup > 0) {
+      enemy.windup -= dt;
+      const t = 1 - Math.max(0, enemy.windup) / enemy.cfg.windup;
+      if (maul) maul.rotation.x = 0.7 * (1 - t) + -1.2 * t;
+      if (core) core.scale.setScalar(1 + Math.sin(t * Math.PI) * 0.85);
+      if (enemy.windup <= 0) {
+        this.fireMaul(enemy);
+        enemy.swing = (enemy.swing + 1) % 2;
+        enemy.fireCd = enemy.cfg.fireEvery;
+        if (maul) maul.rotation.x = 0.15;
+        if (core) core.scale.setScalar(1);
+      }
+      return;
+    }
+    if (maul) maul.rotation.x = 0.22 + Math.sin(enemy.phase * 1.4) * 0.08;
+    if (core) core.scale.setScalar(1);
+    if (enemy.fireCd <= 0 && dist < enemy.cfg.range) {
+      enemy.windup = enemy.cfg.windup;
+      this.sfx.maulWind();
+    }
+  }
+
+  fireMaul(enemy) {
+    const tip = enemy.mesh.userData.maulTip;
+    const origin = this.boltOrigin;
+    if (tip) tip.getWorldPosition(origin);
+    else origin.copy(enemy.mesh.position);
+    const heavy = enemy.swing % 2 === 0;
+    this.boltFwd.set(0, 0, -1).applyQuaternion(enemy.mesh.quaternion);
+    this.boltDir.copy(this.player.mesh.position).sub(origin);
+    if (this.boltDir.lengthSq() < 0.01) this.boltDir.copy(this.boltFwd);
+    else this.boltDir.normalize();
+    if (heavy) this.boltDir.lerp(this.boltFwd, 0.35).normalize();
+    this.boltUp.set(0, 1, 0).applyQuaternion(enemy.mesh.quaternion);
+    const angles = heavy ? [0] : [-0.34, 0, 0.34];
+    const speed = heavy ? enemy.cfg.shotSpeed : enemy.cfg.arcSpeed;
+    const damage = heavy ? enemy.cfg.shotDamage : enemy.cfg.arcDamage;
+    const scale = heavy ? enemy.cfg.shotScale : enemy.cfg.arcScale;
+    for (const angle of angles) {
+      const dir = this.boltDir.clone().applyAxisAngle(this.boltUp, angle);
+      this.spawnBolt('enemy', origin, dir, speed, damage, 0xffb15a, scale);
+    }
+    burstSparks(this.sparks, origin, 0xffc56a, heavy ? 14 : 8, 16, this.boltFwd);
+    this.sfx.maul();
   }
 
   tryEnemyShot(enemy) {
@@ -929,10 +1011,11 @@ export class Game {
     if (enemy.mesh.userData.bar) enemy.mesh.userData.bar.group.visible = false;
     this.kills += 1;
     this.addScore(enemy.cfg.score, pos, true);
-    const size = enemy.type === 'slab' ? 'big' : enemy.type === 'nib' ? 'small' : 'mid';
+    const size = enemy.type === 'vorak' || enemy.type === 'slab' ? 'big' : enemy.type === 'nib' ? 'small' : 'mid';
     this.fxBoom(pos, enemy.cfg.color, size);
-    this.addShake(enemy.type === 'slab' ? 0.48 : 0.16);
-    this.sfx.explode();
+    this.addShake(enemy.type === 'vorak' ? 0.85 : enemy.type === 'slab' ? 0.48 : 0.16);
+    if (enemy.type === 'vorak') this.sfx.bigBoom();
+    else this.sfx.explode();
     if (Math.random() < enemy.cfg.drop) this.spawnPickup(pos);
   }
 
@@ -1081,7 +1164,8 @@ export class Game {
       at += 0.38;
       return job;
     });
-    this.showBanner(`${T.wave} ${this.wave}`);
+    const named = types.includes('vorak') ? ` · ${T.vorak}` : '';
+    this.showBanner(`${T.wave} ${this.wave}${named}`);
     this.sfx.wave();
     if (this.wave > 1 && this.wave % 2 === 0) this.spawnBonusStructures();
   }
@@ -1261,7 +1345,8 @@ export class Game {
     }
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
-      plot(enemy.mesh.position.x, enemy.mesh.position.z, '#ff4d8d', 4);
+      const mark = enemy.type === 'vorak' ? ['#e7a15a', 9] : ['#ff4d8d', 4];
+      plot(enemy.mesh.position.x, enemy.mesh.position.z, mark[0], mark[1]);
     }
     ctx.fillStyle = '#2ee6c7';
     ctx.beginPath();

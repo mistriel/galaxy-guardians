@@ -48,4 +48,5 @@ export const T = {
   bootError: 'הדפדפן לא הצליח לפתוח גרפיקת תלת־ממד.',
   enemiesDown: 'אויבים שהושמדו',
   towersDown: 'מבנים שהתפוצצו',
+  vorak: 'הדיין ווראק',
 };
