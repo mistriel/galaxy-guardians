@@ -4,7 +4,7 @@ Original 3D arcade flight combat. The fantasy is a ragtag cargo tug punching thr
 
 ## Ground battles
 
-The site opens straight into a ground fight (יער זוהר). Space sortie stays in the code and off the first screen. **עולמות** switches fields. **קרבות קרקע** on the menu opens three fields: יער זוהר, מדבר אדום, קרח כחול. Each fight is the same easy push, staged so the units do not all appear at once:
+The menu shows שומרת and offers both יציאה לסיור and קרבות קרקע. **עולמות** switches fields. **קרבות קרקע** on the menu opens three fields: יער זוהר, מדבר אדום, קרח כחול. Each fight is the same easy push, staged so the units do not all appear at once:
 
 1. Artillery lobs light shells and softens the line.
 2. Tanks and gun-cars (קרון ירי) roll in, staggered, and break the barricades.
@@ -18,7 +18,7 @@ A and D (or the phone side buttons) slide the push. דחיפה or Space hurries 
 
 **Shomeret / שומרת**
 
-A short, blunt freighter with a deliberately lopsided silhouette:
+A long cargo freighter, scaled to 2.1 so she reads clearly without filling the frame. Still larger than a speck. Lopsided silhouette:
 
 - Cockpit blister offset to port
 - Round cargo drum bolted to starboard
@@ -26,7 +26,9 @@ A short, blunt freighter with a deliberately lopsided silhouette:
 - Uneven fins and a crooked antenna mast
 - Turquoise hull, white nose, blue port fin and cockpit, green cargo drum, red stripe and starboard fin
 
-The nose points down the mesh's local −Z axis. The whole mesh is scaled by 2.45 so Shomeret reads as a big freighter in the chase view. Nothing about the shape is taken from an existing film or comic vehicle.
+The nose points down the mesh's local −Z axis. The whole mesh is scaled by 2.1. Nothing about the shape is taken from an existing film or comic vehicle.
+
+The מספנה spends persistent נקודות (separate from the run score and the best score). שומרת and the thick לייזר are free. נץ costs 1200 and is a narrow dart at scale 1.75. עוגן costs 2200 and is a wide hauler at scale 2.35. מניפה (900) fires three thick beams. מחט (1400) fires a thin fast dart and does not resize the default laser.
 
 ## Controls
 
@@ -41,10 +43,11 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Strafe | `A` / `D` (20 u/s) |
 | Shoot | Space or left click. Thick beams. On a phone, hold the round ירי button |
 | Nuclear missile | The orange טיל גרעיני button (desktop HUD and phone), `F`, or right click. One wipe, then a 4s cooldown |
-| Steer on a phone | Large left joystick. Deadzone is wide, and the stick eases instead of jumping |
+| Phone move | Left joystick. Horizontal strafes. Up holds turbo, down brakes. Brake wins if both |
+| Phone aim | Right joystick. Touch yaw rate is 68% of the mouse rate. The stick value is not passed through the mouse deadzone |
 | Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
 | Pause | `Esc` or `P`, or the השהיה button |
-| Mute | `M` or the קול button |
+| Mute | `M`, the HUD קול button, or the same button on the menu |
 | Restart | משימה חדשה, Enter, or `R` on the game-over / pause panel |
 
 Full-stick yaw rate is 1.75 rad/s. Pitch follows the cursor and eases back to level when the cursor is centered, so the nose cannot get stuck off the horizon. Banking is cosmetic and follows yaw rate. There is a small deadzone at the center of the mouse. Mouse steering arms only after the cursor has visited that center, so leaving the start button does not yank the ship.
@@ -73,7 +76,7 @@ Primary fire is a thick beam. The nuclear missile is the power-fantasy button, l
 
 ## Enemies
 
-Four allied escorts (עוזרים) fly with Shomeret. They share one scale, 6.8, so each escort is clearly larger than the freighter. A friendly carrier (נושאת מטוסים) keeps launching them. An enemy carrier (נושאת האויב) is a giant triangle that launches more triangle fighters at the start of each wave. Destroyed ships throw a wide ring into the void.
+Eight allied escorts (עוזרים) fly with Shomeret. They share one scale, 6.8, so each escort is clearly larger than the freighter. A friendly carrier (נושאת מטוסים) keeps launching them. An enemy carrier (נושאת האויב) is a giant triangle that launches more triangle fighters at the start of each wave. Destroyed ships throw a wide ring into the void.
 
 Every enemy ship is a three-sided wedge. The point faces the direction of flight, so the silhouette stays a triangle. שומרת is still the blunt freighter. Waves arrive as squads of six, about 100–120 units ahead, so the sector fills with fleets instead of a handful of loners. Contact damage respects the player's invulnerability window.
 

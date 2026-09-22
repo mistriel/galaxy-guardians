@@ -270,7 +270,24 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.05; color: v
 .help h2 { margin: 0 0 6px; font-size: 1rem; }
 .help ul { margin: 0; padding: 0 1.1rem 0 0; color: var(--ink); }
 .help li { margin: 3px 0; }
-.menu-actions { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.menu-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+#hangar { margin-top: 12px; }
+#hangar h2 { margin: 0 0 4px; font-size: 1.05rem; }
+#meta-points { margin: 0 0 8px; color: var(--amber); font-weight: 800; }
+.picks { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.pick {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: rgba(8, 16, 32, 0.55);
+  color: var(--ink);
+  font-weight: 800;
+}
+.pick.on {
+  border-color: var(--teal);
+  background: rgba(46, 230, 199, 0.22);
+}
 
 #overlay {
   position: absolute;
@@ -350,14 +367,38 @@ body.touch #crosshair span:nth-child(4) {
 }
 
 #touch { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
-#stick {
+.joy {
   position: absolute;
-  left: max(8px, env(safe-area-inset-left));
-  bottom: max(8px, env(safe-area-inset-bottom));
-  width: 210px;
-  height: 210px;
+  width: 168px;
+  height: 168px;
   pointer-events: auto;
   touch-action: none;
+}
+#move-stick {
+  left: max(8px, env(safe-area-inset-left));
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
+#aim-stick {
+  right: max(8px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
+#aim-stick .stick-base { border-color: rgba(255, 210, 122, 0.75); }
+#aim-stick .stick-knob {
+  background: rgba(255, 210, 122, 0.95);
+  box-shadow: 0 0 16px rgba(255, 210, 122, 0.45);
+}
+.joy::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #e8fff8;
+  pointer-events: none;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
 }
 .stick-base, .stick-knob {
   position: absolute;
@@ -381,10 +422,10 @@ body.touch #crosshair span:nth-child(4) {
 }
 #fire-btn {
   position: absolute;
-  right: max(18px, env(safe-area-inset-right));
-  bottom: max(28px, env(safe-area-inset-bottom));
-  width: 118px;
-  height: 118px;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(184px, calc(env(safe-area-inset-bottom) + 176px));
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   border: 3px solid rgba(255, 210, 122, 0.85);
   background: rgba(226, 49, 58, 0.88);
@@ -396,13 +437,13 @@ body.touch #crosshair span:nth-child(4) {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 body.touch #radar {
-  bottom: 228px;
+  bottom: 340px;
   width: 92px;
   height: 92px;
 }
 body.touch #flight-row {
-  bottom: 168px;
-  max-width: calc(100% - 280px);
+  bottom: 292px;
+  max-width: calc(100% - 220px);
 }
 #nuke-btn, #missile-btn {
   border: 3px solid rgba(255, 236, 190, 0.95);
@@ -423,10 +464,10 @@ body.touch #flight-row {
 #nuke-btn.cooling, #missile-btn.cooling { filter: grayscale(0.35) brightness(0.72); }
 #missile-btn {
   position: absolute;
-  right: max(34px, calc(env(safe-area-inset-right) + 20px));
-  bottom: max(162px, calc(env(safe-area-inset-bottom) + 156px));
-  width: 108px;
-  height: 108px;
+  right: max(128px, calc(env(safe-area-inset-right) + 116px));
+  bottom: max(196px, calc(env(safe-area-inset-bottom) + 188px));
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
   font-size: 0.92rem;
   line-height: 1.05;
@@ -453,15 +494,15 @@ body.touch #flight-row {
 }
 #boost-touch {
   position: absolute;
-  right: max(28px, calc(env(safe-area-inset-right) + 14px));
-  bottom: max(286px, calc(env(safe-area-inset-bottom) + 280px));
+  right: max(22px, calc(env(safe-area-inset-right) + 8px));
+  bottom: max(292px, calc(env(safe-area-inset-bottom) + 284px));
   min-width: 118px;
   height: 64px;
   border-radius: 999px;
   font-size: 1.15rem;
   padding: 6px 12px;
 }
-#stick, #fire-btn, #missile-btn, #nuke-btn, #boost-btn, #boost-touch {
+.joy, #fire-btn, #missile-btn, #nuke-btn, #boost-btn, #boost-touch {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -469,24 +510,24 @@ body.touch #flight-row {
 #fire-btn:active, #missile-btn:active { transform: scale(0.96); }
 
 @media (max-height: 500px) {
-  #stick { width: 150px; height: 150px; }
+  .joy { width: 128px; height: 128px; }
   .stick-base { width: 100px; height: 100px; }
   .stick-knob { width: 54px; height: 54px; }
-  #fire-btn { width: 92px; height: 92px; font-size: 1.3rem; bottom: max(12px, env(safe-area-inset-bottom)); }
+  #fire-btn { width: 72px; height: 72px; font-size: 1.05rem; bottom: max(140px, env(safe-area-inset-bottom)); }
   #missile-btn {
-    width: 70px;
-    height: 70px;
-    font-size: 1.05rem;
-    bottom: max(112px, calc(env(safe-area-inset-bottom) + 108px));
+    width: 64px;
+    height: 64px;
+    font-size: 0.75rem;
+    bottom: max(146px, calc(env(safe-area-inset-bottom) + 138px));
   }
   #boost-touch {
     min-width: 92px;
-    height: 48px;
-    font-size: 0.95rem;
-    bottom: max(190px, calc(env(safe-area-inset-bottom) + 184px));
+    height: 44px;
+    font-size: 0.9rem;
+    bottom: max(220px, calc(env(safe-area-inset-bottom) + 212px));
   }
-  body.touch #radar { bottom: 166px; width: 64px; height: 64px; }
-  body.touch #flight-row { bottom: 112px; max-width: calc(100% - 250px); }
+  body.touch #radar { bottom: 250px; width: 64px; height: 64px; }
+  body.touch #flight-row { bottom: 210px; max-width: calc(100% - 180px); }
 }
 
 #ground-menu-btn {

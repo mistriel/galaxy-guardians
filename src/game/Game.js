@@ -11,7 +11,9 @@ import {
   PLAYER,
   POOLS,
   POWER,
+  SHIPS,
   TOWERS,
+  WEAPONS,
   WAVE_BONUS,
   WORLD,
   waveSpec,
@@ -24,6 +26,8 @@ import {
   createAlly,
   createCarrier,
   createMissile,
+  createNetzShip,
+  createOgenShip,
   createPlayerShip,
   createEnemy,
   createPickup,
@@ -44,6 +48,11 @@ import {
 } from './fx.js';
 
 const BEST_KEY = 'galaxy-guardians-best';
+const META_KEY = 'galaxy-guardians-meta';
+
+function blankStick() {
+  return { id: null, originX: 0, originY: 0, x: 0, y: 0, tx: 0, ty: 0, px: 0, py: 0 };
+}
 const PICKUP_TEXT = {
   rapid: T.pickupRapid,
   spread: T.pickupSpread,
@@ -76,7 +85,11 @@ export class Game {
     this.coarse = window.matchMedia('(pointer: coarse)').matches
       || ((navigator.maxTouchPoints || 0) > 0 && narrow);
     document.body.classList.toggle('touch', this.coarse);
-    this.stick = { id: null, originX: 0, originY: 0, x: 0, y: 0, tx: 0, ty: 0, px: 0, py: 0 };
+    this.move = blankStick();
+    this.aim = blankStick();
+    this.stickBoost = false;
+    this.stickBrake = false;
+    this.meta = this.readMeta();
     this.firePointer = null;
     this.boostPointer = null;
     this.boostHeld = false;
@@ -160,6 +173,11 @@ export class Game {
       flight: document.querySelector('#flight'),
       pauseBtn: document.querySelector('#pause-btn'),
       muteBtn: document.querySelector('#mute-btn'),
+      menuMute: document.querySelector('#menu-mute'),
+      hangarTitle: document.querySelector('#hangar-title'),
+      metaPoints: document.querySelector('#meta-points'),
+      shipPicks: document.querySelector('#ship-picks'),
+      weaponPicks: document.querySelector('#weapon-picks'),
       startBtn: document.querySelector('#start-btn'),
       resumeBtn: document.querySelector('#resume-btn'),
       restartBtn: document.querySelector('#restart-btn'),
@@ -176,9 +194,8 @@ export class Game {
       controlsTitle: document.querySelector('#controls-title'),
       controls: document.querySelector('#controls'),
       touch: document.querySelector('#touch'),
-      stick: document.querySelector('#stick'),
-      stickBase: document.querySelector('.stick-base'),
-      stickKnob: document.querySelector('.stick-knob'),
+      moveStick: document.querySelector('#move-stick'),
+      aimStick: document.querySelector('#aim-stick'),
       fireBtn: document.querySelector('#fire-btn'),
       missileBtn: document.querySelector('#missile-btn'),
       nukeBtn: document.querySelector('#nuke-btn'),
@@ -261,11 +278,19 @@ export class Game {
     this.sparks = createSparks(this.scene, this.soft, POOLS.sparks);
     this.rings = createRings(this.scene, POOLS.rings);
 
-    this.player = {
-      mesh: createPlayerShip(this.soft),
+    this.shipMeshes = {
+      shomeret: createPlayerShip(this.soft),
+      netz: createNetzShip(this.soft),
+      ogen: createOgenShip(this.soft),
     };
-    this.player.mesh.scale.setScalar(PLAYER.visualScale);
-    this.scene.add(this.player.mesh);
+    for (const [id, mesh] of Object.entries(this.shipMeshes)) {
+      mesh.visible = false;
+      mesh.scale.setScalar(SHIPS[id].scale);
+      this.scene.add(mesh);
+    }
+    this.player = { mesh: this.shipMeshes[this.meta.ship] || this.shipMeshes.shomeret };
+    this.player.mesh.visible = true;
+    this.player.mesh.scale.setScalar(this.shipScale());
     this.bubble = new THREE.Mesh(
       new THREE.SphereGeometry(2.35, 24, 18),
       new THREE.MeshBasicMaterial({
@@ -337,7 +362,6 @@ export class Game {
     }
 
     this.ground = new GroundBattle(this.sfx);
-    this.startGround('forest');
     this.syncVisibility();
     this.syncHud();
     this.updateMenuBest();
@@ -350,8 +374,9 @@ export class Game {
     dom.bootError.textContent = T.bootError;
     dom.title.textContent = T.title;
     dom.subtitle.textContent = T.subtitle;
-    dom.shipName.textContent = T.ship;
-    dom.hudShip.textContent = T.ship;
+    const shipLabel = T.shipNames[this.meta.ship] || T.ship;
+    dom.shipName.textContent = shipLabel;
+    dom.hudShip.textContent = shipLabel;
     dom.tagline.textContent = T.tagline;
     dom.sector.textContent = T.sector;
     dom.goal.textContent = T.goal;
@@ -376,7 +401,10 @@ export class Game {
     dom.nukeBtn.textContent = T.missile;
     dom.boostBtn.textContent = T.boost;
     dom.boostTouch.textContent = T.boost;
-    dom.muteBtn.textContent = T.sound;
+    this.syncMuteLabel();
+    if (dom.moveStick) dom.moveStick.dataset.label = T.moveStick;
+    if (dom.aimStick) dom.aimStick.dataset.label = T.aimStick;
+    this.paintHangar();
     dom.resumeBtn.textContent = T.resume;
     dom.restartBtn.textContent = T.restart;
     dom.menuBtn.textContent = T.menu;
@@ -414,6 +442,7 @@ export class Game {
     dom.startBtn.addEventListener('click', () => this.startMission());
     dom.pauseBtn.addEventListener('click', () => this.togglePause());
     dom.muteBtn.addEventListener('click', () => this.toggleMute());
+    dom.menuMute.addEventListener('click', () => this.toggleMute());
     dom.resumeBtn.addEventListener('click', () => this.togglePause());
     dom.restartBtn.addEventListener('click', () => this.startMission());
     dom.menuBtn.addEventListener('click', () => this.showMenu());
@@ -486,10 +515,8 @@ export class Game {
     });
     window.addEventListener('pointerup', (event) => this.onGlobalPointerUp(event));
     window.addEventListener('pointercancel', (event) => this.onGlobalPointerUp(event));
-    dom.stick.addEventListener('pointerdown', (event) => this.onStickDown(event));
-    dom.stick.addEventListener('pointermove', (event) => this.onStickMove(event));
-    dom.stick.addEventListener('pointerup', (event) => this.onStickUp(event));
-    dom.stick.addEventListener('pointercancel', (event) => this.onStickUp(event));
+    this.bindJoy(this.move, dom.moveStick);
+    this.bindJoy(this.aim, dom.aimStick);
     dom.fireBtn.addEventListener('pointerdown', (event) => this.onFireDown(event));
     dom.fireBtn.addEventListener('pointerup', (event) => this.onFireUp(event));
     dom.fireBtn.addEventListener('pointercancel', (event) => this.onFireUp(event));
@@ -504,7 +531,8 @@ export class Game {
   }
 
   onGlobalPointerUp(event) {
-    if (this.stick.id === event.pointerId) this.releaseStick(false);
+    if (this.move.id === event.pointerId) this.releaseJoy(this.move, false);
+    if (this.aim.id === event.pointerId) this.releaseJoy(this.aim, false);
     if (this.firePointer === event.pointerId) {
       this.releaseFire();
       return;
@@ -513,47 +541,56 @@ export class Game {
     if (!this.coarse && this.firePointer == null) this.pointer.fire = false;
   }
 
-  onStickDown(event) {
+  bindJoy(stick, root) {
+    stick.root = root;
+    stick.base = root.querySelector('.stick-base');
+    stick.knob = root.querySelector('.stick-knob');
+    root.addEventListener('pointerdown', (event) => this.onJoyDown(stick, event));
+    root.addEventListener('pointermove', (event) => this.onJoyMove(stick, event));
+    root.addEventListener('pointerup', (event) => this.onJoyUp(stick, event));
+    root.addEventListener('pointercancel', (event) => this.onJoyUp(stick, event));
+  }
+
+  onJoyDown(stick, event) {
     if (this.state !== 'play') return;
     event.preventDefault();
     event.stopPropagation();
-    const stick = this.dom.stick;
-    try { stick.setPointerCapture(event.pointerId); } catch (err) { /* already released */ }
-    const rect = stick.getBoundingClientRect();
+    try { stick.root.setPointerCapture(event.pointerId); } catch (err) { /* already released */ }
+    const rect = stick.root.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const shiftX = THREE.MathUtils.clamp(event.clientX - cx, -28, 28);
     const shiftY = THREE.MathUtils.clamp(event.clientY - cy, -28, 28);
-    this.stick.id = event.pointerId;
-    this.stick.originX = cx + shiftX;
-    this.stick.originY = cy + shiftY;
-    this.dom.stickBase.style.transform = `translate(calc(-50% + ${shiftX}px), calc(-50% + ${shiftY}px))`;
-    this.applyStick(event.clientX, event.clientY);
+    stick.id = event.pointerId;
+    stick.originX = cx + shiftX;
+    stick.originY = cy + shiftY;
+    stick.base.style.transform = `translate(calc(-50% + ${shiftX}px), calc(-50% + ${shiftY}px))`;
+    this.applyJoy(stick, event.clientX, event.clientY);
   }
 
-  onStickMove(event) {
-    if (this.stick.id !== event.pointerId) return;
+  onJoyMove(stick, event) {
+    if (stick.id !== event.pointerId) return;
     event.preventDefault();
-    this.applyStick(event.clientX, event.clientY);
+    this.applyJoy(stick, event.clientX, event.clientY);
   }
 
-  onStickUp(event) {
-    if (this.stick.id !== event.pointerId) return;
-    this.releaseStick(false);
+  onJoyUp(stick, event) {
+    if (stick.id !== event.pointerId) return;
+    this.releaseJoy(stick, false);
   }
 
-  applyStick(clientX, clientY) {
+  applyJoy(stick, clientX, clientY) {
     const maxThrow = 64;
     const dead = 0.3;
-    let dx = clientX - this.stick.originX;
-    let dy = clientY - this.stick.originY;
+    let dx = clientX - stick.originX;
+    let dy = clientY - stick.originY;
     const dist = Math.hypot(dx, dy);
     if (dist > maxThrow) {
       dx = (dx / dist) * maxThrow;
       dy = (dy / dist) * maxThrow;
     }
-    this.stick.px = dx;
-    this.stick.py = dy;
+    stick.px = dx;
+    stick.py = dy;
     let nx = dx / maxThrow;
     let ny = dy / maxThrow;
     const mag = Math.hypot(nx, ny);
@@ -565,23 +602,30 @@ export class Game {
       nx *= scaled / mag;
       ny *= scaled / mag;
     }
-    this.stick.tx = nx;
-    this.stick.ty = ny;
-    this.dom.stickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    stick.tx = nx;
+    stick.ty = ny;
+    stick.knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  }
+
+  releaseJoy(stick, snap) {
+    stick.id = null;
+    stick.tx = 0;
+    stick.ty = 0;
+    if (stick.base) stick.base.style.transform = 'translate(-50%, -50%)';
+    if (snap) {
+      stick.x = 0;
+      stick.y = 0;
+      stick.px = 0;
+      stick.py = 0;
+      if (stick.knob) stick.knob.style.transform = 'translate(-50%, -50%)';
+    }
   }
 
   releaseStick(snap) {
-    this.stick.id = null;
-    this.stick.tx = 0;
-    this.stick.ty = 0;
-    this.dom.stickBase.style.transform = 'translate(-50%, -50%)';
-    if (snap) {
-      this.stick.x = 0;
-      this.stick.y = 0;
-      this.stick.px = 0;
-      this.stick.py = 0;
-      this.dom.stickKnob.style.transform = 'translate(-50%, -50%)';
-    }
+    this.releaseJoy(this.move, snap);
+    this.releaseJoy(this.aim, snap);
+    this.stickBoost = false;
+    this.stickBrake = false;
   }
 
   onFireDown(event) {
@@ -631,18 +675,25 @@ export class Game {
   }
 
   smoothStick(dt) {
+    this.easeJoy(this.move, dt);
+    this.easeJoy(this.aim, dt);
+  }
+
+  easeJoy(stick, dt) {
     const follow = 1 - Math.exp(-14 * dt);
-    this.stick.x += (this.stick.tx - this.stick.x) * follow;
-    this.stick.y += (this.stick.ty - this.stick.y) * follow;
-    if (this.stick.id == null) {
+    stick.x += (stick.tx - stick.x) * follow;
+    stick.y += (stick.ty - stick.y) * follow;
+    if (stick.id == null) {
       const back = 1 - Math.exp(-18 * dt);
-      this.stick.px += -this.stick.px * back;
-      this.stick.py += -this.stick.py * back;
-      if (Math.hypot(this.stick.x, this.stick.y) < 0.01) {
-        this.stick.x = 0;
-        this.stick.y = 0;
+      stick.px += -stick.px * back;
+      stick.py += -stick.py * back;
+      if (Math.hypot(stick.x, stick.y) < 0.01) {
+        stick.x = 0;
+        stick.y = 0;
       }
-      this.dom.stickKnob.style.transform = `translate(calc(-50% + ${this.stick.px}px), calc(-50% + ${this.stick.py}px))`;
+      if (stick.knob) {
+        stick.knob.style.transform = `translate(calc(-50% + ${stick.px}px), calc(-50% + ${stick.py}px))`;
+      }
     }
   }
 
@@ -827,7 +878,7 @@ export class Game {
     const missile = this.missiles.find((item) => !item.alive);
     if (!missile) return;
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
-    const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 8 * PLAYER.visualScale);
+    const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 8 * this.shipScale());
     missile.alive = true;
     missile.life = MISSILE.life;
     missile.pos.copy(origin);
@@ -930,7 +981,7 @@ export class Game {
         left: this.groundLeft || this.keys.has('KeyA') || this.keys.has('ArrowLeft'),
         right: this.groundRight || this.keys.has('KeyD') || this.keys.has('ArrowRight'),
         push: this.groundPush || this.keys.has('Space'),
-        stick: this.coarse ? this.stick.x : 0,
+        stick: this.coarse ? this.move.x : 0,
       });
       this.render();
       return;
@@ -1000,8 +1051,8 @@ export class Game {
     let turn = PLAYER.turn;
     if (this.coarse) {
       this.smoothStick(dt);
-      nx = this.stick.x;
-      ny = this.stick.y;
+      nx = this.aim.x;
+      ny = this.aim.y;
       this.aimNudge();
       const stickMag = Math.min(1, Math.hypot(nx, ny));
       const gain = 0.62 * (1 - Math.min(1, stickMag * 1.15));
@@ -1009,6 +1060,8 @@ export class Game {
       ny = THREE.MathUtils.clamp(ny + this.nudgeY * gain, -1, 1);
       axis = touchAxis;
       turn = PLAYER.turn * 0.68;
+      this.stickBoost = this.move.y < -0.28;
+      this.stickBrake = this.move.y > 0.28;
     } else if (this.pointer.ready && this.pointer.armed) {
       nx = this.pointer.x;
       ny = this.pointer.y;
@@ -1031,10 +1084,11 @@ export class Game {
     this.applyAttitude();
 
     this.boosting = this.boostHeld
+      || this.stickBoost
       || this.keys.has('KeyW')
       || this.keys.has('ShiftLeft')
       || this.keys.has('ShiftRight');
-    this.braking = this.keys.has('KeyS');
+    this.braking = this.keys.has('KeyS') || this.stickBrake;
     let targetSpeed = PLAYER.cruise;
     if (this.boosting) targetSpeed = PLAYER.boost;
     if (this.braking) targetSpeed = PLAYER.brake;
@@ -1046,6 +1100,7 @@ export class Game {
     let strafe = 0;
     if (this.keys.has('KeyA')) strafe -= PLAYER.strafe;
     if (this.keys.has('KeyD')) strafe += PLAYER.strafe;
+    if (this.coarse) strafe += this.move.x * PLAYER.strafe;
     this.player.mesh.position.addScaledVector(this.nose, this.speed * dt);
     this.player.mesh.position.addScaledVector(this.rightV, strafe * dt);
 
@@ -1079,7 +1134,7 @@ export class Game {
     if (muzzleFlash && muzzleFlash.visible) {
       muzzleFlash.userData.life -= dt;
       const life = Math.max(0, muzzleFlash.userData.life);
-      muzzleFlash.scale.setScalar(8 * (0.4 + life / 0.1));
+      muzzleFlash.scale.setScalar(this.weaponSpec().muzzle * (life / 0.1));
       muzzleFlash.material.opacity = 0.95 * (life / 0.1);
       if (life <= 0) muzzleFlash.visible = false;
     }
@@ -1101,20 +1156,21 @@ export class Game {
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     const rapid = this.time < this.rapidUntil;
     const spread = this.time < this.spreadUntil;
-    this.fireCd = rapid ? PLAYER.rapidDelay : PLAYER.fireDelay;
-    const angles = spread ? [-0.14, 0, 0.14] : [0];
+    const weapon = this.weaponSpec();
+    this.fireCd = rapid ? PLAYER.rapidDelay : weapon.delay;
+    const angles = spread ? [-0.14, 0, 0.14] : weapon.angles;
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
     for (const angle of angles) {
       const dir = this.v1.copy(this.nose).applyAxisAngle(this.upV, angle).normalize();
-      const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.2 * PLAYER.visualScale);
-      this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1);
-      burstSparks(this.sparks, origin, 0xe8fff8, 28, 32, dir, 3.4);
+      const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.2 * this.shipScale());
+      this.spawnBolt('player', origin, dir, weapon.speed, weapon.damage, weapon.color, 1, weapon);
+      burstSparks(this.sparks, origin, weapon.color, weapon.sparks, weapon.sparkSpeed, dir, weapon.sparkScale);
       const muzzleFlash = this.player.mesh.userData.muzzleFlash;
       if (muzzleFlash) {
         muzzleFlash.visible = true;
         muzzleFlash.userData.life = 0.1;
         muzzleFlash.material.opacity = 0.95;
-        muzzleFlash.scale.setScalar(8);
+        muzzleFlash.scale.setScalar(weapon.muzzle);
       }
     }
     this.sfx.shoot();
@@ -1432,7 +1488,9 @@ export class Game {
       this.v3.copy(bolt.pos).add(bolt.vel);
       bolt.mesh.lookAt(this.v3);
       if (bolt.team === 'player') {
-        bolt.mesh.scale.set(PLAYER.boltGirth, PLAYER.boltGirth, PLAYER.boltStretch);
+        const girth = bolt.girth || PLAYER.boltGirth;
+        const stretch = bolt.stretch || PLAYER.boltStretch;
+        bolt.mesh.scale.set(girth, girth, stretch);
       }
     }
 
@@ -1509,7 +1567,7 @@ export class Game {
     }
   }
 
-  spawnBolt(team, origin, dir, speed, damage, color, scale) {
+  spawnBolt(team, origin, dir, speed, damage, color, scale, profile) {
     const pool = team === 'player' ? this.playerBolts : this.enemyBolts;
     const bolt = pool.find((item) => !item.alive);
     if (!bolt) return null;
@@ -1518,16 +1576,21 @@ export class Game {
     bolt.pos.copy(origin);
     bolt.vel.copy(dir).multiplyScalar(speed);
     if (team === 'player') bolt.vel.addScaledVector(this.nose, this.speed * 0.3);
-    bolt.life = team === 'player' ? PLAYER.bulletLife : 2.5;
+    bolt.life = team === 'player' ? (profile?.life || PLAYER.bulletLife) : 2.5;
     bolt.damage = damage;
-    bolt.radius = team === 'player' ? PLAYER.bulletRadius : PLAYER.bulletRadius * (scale || 1) * 0.45;
+    bolt.radius = team === 'player'
+      ? (profile?.radius || PLAYER.bulletRadius)
+      : PLAYER.bulletRadius * (scale || 1) * 0.45;
+    bolt.girth = team === 'player' ? (profile?.girth || PLAYER.boltGirth) : 1;
+    bolt.stretch = team === 'player' ? (profile?.stretch || PLAYER.boltStretch) : 1;
     bolt.mesh.visible = true;
-    if (team === 'player') bolt.mesh.scale.set(PLAYER.boltGirth, PLAYER.boltGirth, PLAYER.boltStretch);
+    if (team === 'player') bolt.mesh.scale.set(bolt.girth, bolt.girth, bolt.stretch);
     else bolt.mesh.scale.setScalar(scale || 1);
     bolt.mesh.material.color.setHex(color);
     if (bolt.glow) {
       bolt.glow.material.color.setHex(color);
-      bolt.glow.scale.set(team === 'player' ? 0.85 : 2.4, team === 'player' ? 0.85 : 2.4, 1);
+      const glow = team === 'player' ? (bolt.girth > 3 ? 0.85 : 0.32) : 2.4;
+      bolt.glow.scale.set(glow, glow, 1);
     }
     bolt.mesh.position.copy(origin);
     return bolt;
@@ -1755,6 +1818,8 @@ export class Game {
     }
     const gained = Math.round(base * mult);
     this.score += gained;
+    this.meta.points += gained;
+    this.saveMeta();
     if (worldPos) this.popup(`+${gained.toLocaleString('he-IL')}`, worldPos);
   }
 
@@ -2027,7 +2092,7 @@ export class Game {
   launchVolley() {
     const carrier = this.carriers.enemy;
     if (!carrier.alive) return;
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 8; i += 1) {
       const pos = carrier.mesh.position.clone();
       pos.addScaledVector(this.rightV, (i - 2) * 10);
       pos.addScaledVector(this.nose, 18);
@@ -2088,10 +2153,14 @@ export class Game {
       this.fillAllies(false);
     }
     const slots = [
-      [22, 8, 20],
-      [-22, 8, 20],
-      [30, 1, 8],
-      [-30, 1, 8],
+      [16, 6, 18],
+      [-16, 6, 18],
+      [26, 2, 8],
+      [-26, 2, 8],
+      [10, 11, 28],
+      [-10, 11, 28],
+      [34, 4, 22],
+      [-34, 4, 22],
     ];
     for (const ally of this.allies) {
       if (!ally.alive) continue;
@@ -2298,7 +2367,10 @@ export class Game {
     const parts = [];
     if (rapidLeft > 0) parts.push(`${T.weaponRapid} ${Math.ceil(rapidLeft)}`);
     if (spreadLeft > 0) parts.push(`${T.weaponSpread} ${Math.ceil(spreadLeft)}`);
-    if (!parts.length) parts.push(`${T.weapon}: ${T.weaponNormal}`);
+    if (!parts.length) {
+      const name = T.weaponNames[this.meta.weapon] || T.weaponNormal;
+      parts.push(`${T.weapon}: ${name}`);
+    }
     parts.push(this.missileCd > 0 ? `${T.missile} ${Math.ceil(this.missileCd)}` : T.missileReady);
     if (this.allies) {
       const ready = this.allies.filter((ally) => ally.alive).length;
@@ -2325,7 +2397,7 @@ export class Game {
     const ground = this.state === 'ground';
     const picking = this.state === 'ground-pick';
     const spaceHud = playing || this.state === 'paused' || this.state === 'dead';
-    this.dom.menu.hidden = true;
+    this.dom.menu.hidden = this.state !== 'menu';
     this.dom.hud.hidden = !spaceHud;
     this.dom.radar.hidden = !spaceHud;
     document.querySelector('#flight-row').hidden = !spaceHud;
@@ -2420,9 +2492,143 @@ export class Game {
 
   toggleMute() {
     this.sfx.unlock();
-    const muted = this.sfx.toggle();
-    this.dom.muteBtn.textContent = muted ? T.mute : T.sound;
+    this.sfx.toggle();
+    this.syncMuteLabel();
     this.sfx.ui();
+  }
+
+  syncMuteLabel() {
+    const label = this.sfx.muted ? T.mute : T.sound;
+    this.dom.muteBtn.textContent = label;
+    if (this.dom.menuMute) this.dom.menuMute.textContent = label;
+  }
+
+  shipScale() {
+    return SHIPS[this.meta.ship]?.scale || PLAYER.visualScale;
+  }
+
+  weaponSpec() {
+    return WEAPONS[this.meta.weapon] || WEAPONS.laser;
+  }
+
+  readMeta() {
+    const fresh = {
+      points: 0,
+      ship: 'shomeret',
+      weapon: 'laser',
+      ownedShips: ['shomeret'],
+      ownedWeapons: ['laser'],
+    };
+    try {
+      const raw = JSON.parse(localStorage.getItem(META_KEY) || 'null');
+      if (!raw || typeof raw !== 'object') return fresh;
+      const ownedShips = Array.isArray(raw.ownedShips)
+        ? raw.ownedShips.filter((id) => SHIPS[id])
+        : ['shomeret'];
+      const ownedWeapons = Array.isArray(raw.ownedWeapons)
+        ? raw.ownedWeapons.filter((id) => WEAPONS[id])
+        : ['laser'];
+      if (!ownedShips.includes('shomeret')) ownedShips.unshift('shomeret');
+      if (!ownedWeapons.includes('laser')) ownedWeapons.unshift('laser');
+      return {
+        points: Math.max(0, Number(raw.points) || 0),
+        ship: SHIPS[raw.ship] ? raw.ship : 'shomeret',
+        weapon: WEAPONS[raw.weapon] ? raw.weapon : 'laser',
+        ownedShips,
+        ownedWeapons,
+      };
+    } catch (err) {
+      return fresh;
+    }
+  }
+
+  saveMeta() {
+    try {
+      localStorage.setItem(META_KEY, JSON.stringify(this.meta));
+    } catch (err) {
+      /* private mode */
+    }
+  }
+
+  paintHangar() {
+    const { dom } = this;
+    if (!dom.hangarTitle) return;
+    dom.hangarTitle.textContent = T.hangar;
+    dom.metaPoints.textContent = `${T.points} ${Math.floor(this.meta.points).toLocaleString('he-IL')}`;
+    dom.shipPicks.replaceChildren();
+    for (const spec of Object.values(SHIPS)) dom.shipPicks.appendChild(this.pickButton('ship', spec));
+    dom.weaponPicks.replaceChildren();
+    for (const spec of Object.values(WEAPONS)) dom.weaponPicks.appendChild(this.pickButton('weapon', spec));
+  }
+
+  pickButton(kind, spec) {
+    const owned = kind === 'ship'
+      ? this.meta.ownedShips.includes(spec.id)
+      : this.meta.ownedWeapons.includes(spec.id);
+    const selected = kind === 'ship' ? this.meta.ship === spec.id : this.meta.weapon === spec.id;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = selected ? 'pick on' : 'pick';
+    const name = kind === 'ship' ? T.shipNames[spec.id] : T.weaponNames[spec.id];
+    let suffix = ` · ${spec.cost.toLocaleString('he-IL')}`;
+    if (selected) suffix = ` · ${T.equipped}`;
+    else if (owned) suffix = ` · ${T.owned}`;
+    button.textContent = `${name}${suffix}`;
+    button.addEventListener('click', () => {
+      this.sfx.unlock();
+      this.sfx.ui();
+      if (kind === 'ship') this.chooseShip(spec.id);
+      else this.chooseWeapon(spec.id);
+    });
+    return button;
+  }
+
+  chooseShip(id) {
+    if (!SHIPS[id]) return;
+    if (!this.meta.ownedShips.includes(id)) {
+      if (this.meta.points < SHIPS[id].cost) return;
+      this.meta.points -= SHIPS[id].cost;
+      this.meta.ownedShips.push(id);
+    }
+    this.meta.ship = id;
+    this.saveMeta();
+    this.equipShip(id);
+    this.paintHangar();
+  }
+
+  chooseWeapon(id) {
+    if (!WEAPONS[id]) return;
+    if (!this.meta.ownedWeapons.includes(id)) {
+      if (this.meta.points < WEAPONS[id].cost) return;
+      this.meta.points -= WEAPONS[id].cost;
+      this.meta.ownedWeapons.push(id);
+    }
+    this.meta.weapon = id;
+    this.saveMeta();
+    this.paintHangar();
+    this.syncHud();
+  }
+
+  equipShip(id) {
+    const next = this.shipMeshes[id];
+    if (!next) return;
+    const prev = this.player.mesh;
+    if (prev && prev !== next) {
+      next.position.copy(prev.position);
+      next.rotation.copy(prev.rotation);
+      next.rotation.order = prev.rotation.order;
+      prev.visible = false;
+      if (this.bubble && this.bubble.parent === prev) {
+        prev.remove(this.bubble);
+        next.add(this.bubble);
+      }
+    }
+    next.visible = true;
+    next.scale.setScalar(SHIPS[id].scale);
+    this.player.mesh = next;
+    const name = T.shipNames[id] || T.ship;
+    this.dom.shipName.textContent = name;
+    this.dom.hudShip.textContent = name;
   }
 
   startMission() {
@@ -2547,6 +2753,7 @@ export class Game {
     this.dom.menuBest.textContent = this.best > 0
       ? `${T.best} ${Math.floor(this.best).toLocaleString('he-IL')}`
       : '';
+    this.paintHangar();
   }
 
   resize() {

@@ -12,7 +12,7 @@ export const PLAYER = {
   shieldRegen: 16,
   shieldDelay: 2.5,
   invuln: 0.7,
-  visualScale: 2.45,
+  visualScale: 2.1,
   radius: 4.6,
   cruise: 24,
   boost: 240,
@@ -27,6 +27,72 @@ export const PLAYER = {
   bulletRadius: 2.1,
   boltGirth: 8,
   boltStretch: 4.2,
+};
+
+/** Hangar catalog. Shomeret and the thick laser are free. */
+export const SHIPS = {
+  shomeret: { id: 'shomeret', cost: 0, scale: 2.1 },
+  netz: { id: 'netz', cost: 1200, scale: 1.75 },
+  ogen: { id: 'ogen', cost: 2200, scale: 2.35 },
+};
+
+/**
+ * Equipped weapon profile. The default laser keeps the thick beam
+ * (girth 8, stretch 4.2, muzzle 8). Other weapons store their own scale
+ * on each bolt so they do not resize the laser.
+ */
+export const WEAPONS = {
+  laser: {
+    id: 'laser',
+    cost: 0,
+    girth: 8,
+    stretch: 4.2,
+    muzzle: 8,
+    sparks: 28,
+    sparkSpeed: 32,
+    sparkScale: 3.4,
+    delay: 0.15,
+    speed: 145,
+    damage: 36,
+    life: 1.15,
+    radius: 2.1,
+    angles: [0],
+    color: 0xe8fff8,
+  },
+  fan: {
+    id: 'fan',
+    cost: 900,
+    girth: 8,
+    stretch: 4.2,
+    muzzle: 8,
+    sparks: 16,
+    sparkSpeed: 28,
+    sparkScale: 2.8,
+    delay: 0.18,
+    speed: 140,
+    damage: 26,
+    life: 1.05,
+    radius: 1.9,
+    angles: [-0.16, 0, 0.16],
+    color: 0xe8fff8,
+  },
+  needle: {
+    id: 'needle',
+    cost: 1400,
+    girth: 1.15,
+    stretch: 7.4,
+    muzzle: 2.4,
+    sparks: 8,
+    sparkSpeed: 42,
+    sparkScale: 1.1,
+    delay: 0.09,
+    speed: 220,
+    damage: 22,
+    life: 1.55,
+    radius: 1.05,
+    angles: [0],
+    color: 0xb9dcff,
+  },
 };
 
 /**
@@ -45,7 +111,7 @@ export const MISSILE = {
 
 /** Friendly escorts. One shared scale, clearly larger than Shomeret. */
 export const ALLY = {
-  count: 4,
+  count: 8,
   hp: 220,
   speed: 70,
   radius: 6.4,
@@ -187,22 +253,22 @@ export const TOWERS = {
 };
 
 export const WAVES = [
-  { glint: 12, nib: 12 },
-  { nib: 16, glint: 10, howler: 6 },
-  { nib: 18, glint: 12, howler: 8, slab: 3 },
-  { nib: 18, glint: 12, howler: 8, slab: 4, vorak: 1 },
-  { nib: 20, glint: 14, howler: 10, slab: 4, vorak: 2 },
-  { nib: 22, glint: 14, howler: 10, slab: 5, vorak: 2 },
+  { glint: 16, nib: 20 },
+  { nib: 22, glint: 14, howler: 8 },
+  { nib: 24, glint: 16, howler: 10, slab: 4 },
+  { nib: 26, glint: 16, howler: 10, slab: 5, vorak: 1 },
+  { nib: 28, glint: 18, howler: 12, slab: 6, vorak: 2 },
+  { nib: 30, glint: 18, howler: 12, slab: 6, vorak: 2 },
 ];
 
 export function waveSpec(n) {
   if (n <= WAVES.length) return WAVES[n - 1];
   const extra = n - WAVES.length;
   return {
-    nib: Math.min(28, 22 + extra * 2),
-    glint: Math.min(18, 14 + extra),
-    howler: Math.min(12, 10 + Math.floor(extra * 0.5)),
-    slab: Math.min(6, 5 + Math.floor(extra * 0.4)),
+    nib: Math.min(36, 30 + extra * 2),
+    glint: Math.min(24, 18 + extra),
+    howler: Math.min(16, 12 + Math.floor(extra * 0.5)),
+    slab: Math.min(8, 6 + Math.floor(extra * 0.4)),
     vorak: 2,
   };
 }
@@ -213,10 +279,10 @@ export const COMBO_STEP = 0.25;
 export const COMBO_MAX = 4;
 
 export const POOLS = {
-  glint: 18,
-  nib: 28,
-  howler: 12,
-  slab: 6,
+  glint: 26,
+  nib: 40,
+  howler: 16,
+  slab: 8,
   vorak: 2,
   playerBolts: 72,
   enemyBolts: 72,
