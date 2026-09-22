@@ -12,7 +12,7 @@ A short, blunt freighter with a deliberately lopsided silhouette:
 - Round cargo drum bolted to starboard
 - One oversized rear engine and one stub engine
 - Uneven fins and a crooked antenna mast
-- Teal hull, cream panels, magenta stripe, rust patches
+- Turquoise hull, white nose, blue port fin and cockpit, green cargo drum, red stripe and starboard fin
 
 The nose points down the mesh's local −Z axis. Nothing about the shape is taken from an existing film or comic vehicle.
 

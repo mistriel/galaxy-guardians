@@ -97,20 +97,21 @@ export function createPlayerShip(softMap) {
   const root = new THREE.Group();
   root.name = 'playerShip';
 
-  const hull = makeStandard(0x148f86, { emissive: 0x083833, emissiveIntensity: 0.45, roughness: 0.4 });
-  const cream = makeStandard(0xf3e2c4, { emissive: 0x3a2c18, emissiveIntensity: 0.15, roughness: 0.62 });
-  const magenta = makeStandard(0xe23d8c, { emissive: 0x6a1040, emissiveIntensity: 0.55 });
-  const rust = makeStandard(0xc4622d, { emissive: 0x3a1c0c, emissiveIntensity: 0.2, roughness: 0.78, metalness: 0.2 });
+  const turquoise = makeStandard(0x1ad4c8, { emissive: 0x084240, emissiveIntensity: 0.42, roughness: 0.38 });
+  const white = makeStandard(0xffffff, { emissive: 0xc5ccd2, emissiveIntensity: 0.55, roughness: 0.32 });
+  const blue = makeStandard(0x2f6dff, { emissive: 0x10215f, emissiveIntensity: 0.38, roughness: 0.4 });
+  const green = makeStandard(0x2fce55, { emissive: 0x0d3d1a, emissiveIntensity: 0.38, roughness: 0.42 });
+  const red = makeStandard(0xe4313a, { emissive: 0x5a1218, emissiveIntensity: 0.36, roughness: 0.4 });
   const dark = makeStandard(0x1b2430, { emissive: 0x05070c, metalness: 0.7, roughness: 0.35 });
-  const glass = makeStandard(0x9ee7ff, {
-    emissive: 0x1a6a88,
-    emissiveIntensity: 0.8,
+  const glass = makeStandard(0xb9dcff, {
+    emissive: 0x1a4ea8,
+    emissiveIntensity: 0.75,
     metalness: 0.85,
     roughness: 0.12,
   });
 
-  addMesh(root, box(1.7, 0.72, 2.7), hull, 0.05, 0, 0.05);
-  addMesh(root, box(1.15, 0.5, 0.7), cream, 0.02, -0.02, -1.55);
+  addMesh(root, box(1.7, 0.72, 2.7), turquoise, 0.05, 0, 0.05);
+  addMesh(root, box(1.15, 0.5, 0.7), white, 0.02, -0.02, -1.55);
 
   const cockpit = addMesh(
     root,
@@ -122,24 +123,29 @@ export function createPlayerShip(softMap) {
   );
   cockpit.scale.set(1.15, 0.72, 1.45);
 
-  const pod = addMesh(root, cyl(0.42, 0.42, 1.35, 14), rust, 1.2, -0.02, 0.15);
+  const pod = addMesh(root, cyl(0.42, 0.42, 1.35, 14), green, 1.2, -0.02, 0.15);
   pod.rotation.z = Math.PI / 2;
-  addMesh(root, box(0.95, 0.1, 0.16), magenta, 1.2, 0.28, 0.15);
-  addMesh(root, box(0.12, 0.16, 1.2), cream, 1.2, -0.05, 0.15);
+  addMesh(root, box(0.95, 0.1, 0.16), red, 1.2, 0.28, 0.15);
+  addMesh(root, box(0.12, 0.16, 1.2), white, 1.2, -0.05, 0.15);
 
-  const finL = addMesh(root, box(1.45, 0.08, 0.62), cream, -1.25, 0.08, 0.7);
+  const finL = addMesh(root, box(1.45, 0.08, 0.62), blue, -1.25, 0.08, 0.7);
   finL.rotation.z = 0.28;
   finL.rotation.y = 0.15;
-  const finR = addMesh(root, box(0.62, 0.08, 0.95), magenta, 0.85, 0.22, 0.95);
+  const finR = addMesh(root, box(0.62, 0.08, 0.95), red, 0.85, 0.22, 0.95);
   finR.rotation.z = -0.55;
 
-  addMesh(root, box(0.12, 0.74, 2.15), magenta, 0.32, 0, 0.05);
-  addMesh(root, box(0.55, 0.05, 0.7), rust, 0.05, 0.4, 0.35);
+  addMesh(root, box(0.12, 0.74, 2.15), red, 0.32, 0, 0.05);
+  addMesh(root, box(0.55, 0.05, 0.7), green, 0.05, 0.4, 0.35);
+  addMesh(root, box(0.72, 0.06, 1.15), white, -0.22, 0.4, -0.2);
 
   const bigEngine = addMesh(root, cyl(0.34, 0.42, 0.85, 14), dark, 0.46, -0.05, 1.55);
   bigEngine.rotation.x = Math.PI / 2;
+  const bigRing = addMesh(root, cyl(0.46, 0.46, 0.12, 14), blue, 0.46, -0.05, 1.12);
+  bigRing.rotation.x = Math.PI / 2;
   const smallEngine = addMesh(root, cyl(0.18, 0.24, 0.5, 12), dark, -0.5, 0.05, 1.35);
   smallEngine.rotation.x = Math.PI / 2;
+  const smallRing = addMesh(root, cyl(0.28, 0.28, 0.1, 12), green, -0.5, 0.05, 1.1);
+  smallRing.rotation.x = Math.PI / 2;
 
   const glowMat = (color, opacity) => new THREE.SpriteMaterial({
     map: softMap,
@@ -150,24 +156,24 @@ export function createPlayerShip(softMap) {
     depthWrite: false,
     fog: false,
   });
-  const bigGlow = new THREE.Sprite(glowMat(0xff8a3a, 0.95));
+  const bigGlow = new THREE.Sprite(glowMat(0x7af6ee, 0.95));
   bigGlow.position.set(0.46, -0.05, 2.02);
   bigGlow.scale.set(1.35, 1.35, 1);
   root.add(bigGlow);
-  const smallGlow = new THREE.Sprite(glowMat(0xffd27a, 0.9));
+  const smallGlow = new THREE.Sprite(glowMat(0x8dffb0, 0.9));
   smallGlow.position.set(-0.5, 0.05, 1.66);
   smallGlow.scale.set(0.62, 0.62, 1);
   root.add(smallGlow);
 
-  const mast = addMesh(root, cyl(0.035, 0.035, 0.85, 6), cream, 0.42, 0.78, 0.25);
+  const mast = addMesh(root, cyl(0.035, 0.035, 0.85, 6), white, 0.42, 0.78, 0.25);
   mast.rotation.z = -0.4;
-  const dish = addMesh(root, geo('dish', () => new THREE.ConeGeometry(0.16, 0.14, 8)), magenta, 0.58, 1.12, 0.22);
+  const dish = addMesh(root, geo('dish', () => new THREE.ConeGeometry(0.16, 0.14, 8)), red, 0.58, 1.12, 0.22);
   dish.rotation.z = 0.5;
 
-  const chin = addMesh(root, box(0.4, 0.16, 0.55), dark, -0.15, -0.38, -1.2);
+  const chin = addMesh(root, box(0.4, 0.16, 0.55), blue, -0.15, -0.38, -1.2);
   chin.rotation.x = 0.2;
 
-  const light = new THREE.PointLight(0xff7a3a, 1.6, 9, 2);
+  const light = new THREE.PointLight(0x3ee0d4, 1.6, 9, 2);
   light.position.set(0.2, 0, 1.8);
   root.add(light);
 
