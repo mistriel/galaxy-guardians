@@ -125,7 +125,7 @@ export function createRings(scene, count) {
   return rings;
 }
 
-export function burstSparks(sprites, position, color, count, speed, bias) {
+export function burstSparks(sprites, position, color, count, speed, bias, sizeScale = 1) {
   let spawned = 0;
   for (const sprite of sprites) {
     if (sprite.visible) continue;
@@ -138,7 +138,7 @@ export function burstSparks(sprites, position, color, count, speed, bias) {
     sprite.visible = true;
     sprite.material.color.setHex(color);
     sprite.material.opacity = 1;
-    const size = 0.45 + Math.random() * 0.9;
+    const size = (0.45 + Math.random() * 0.9) * sizeScale;
     sprite.scale.setScalar(size);
     sprite.userData.vel = vel;
     sprite.userData.life = 0.28 + Math.random() * 0.35;

@@ -585,6 +585,14 @@ export class Game {
       this.playerFlash -= dt;
       if (this.playerFlash <= 0) restoreMaterials(this.player.mesh.userData.mats);
     }
+    const muzzleFlash = this.player.mesh.userData.muzzleFlash;
+    if (muzzleFlash && muzzleFlash.visible) {
+      muzzleFlash.userData.life -= dt;
+      const life = Math.max(0, muzzleFlash.userData.life);
+      muzzleFlash.scale.setScalar(8 * (0.4 + life / 0.1));
+      muzzleFlash.material.opacity = 0.95 * (life / 0.1);
+      if (life <= 0) muzzleFlash.visible = false;
+    }
 
     if (this.speed > PLAYER.cruise * 0.85) {
       const glows = this.player.mesh.userData.glows;
@@ -608,8 +616,15 @@ export class Game {
     for (const angle of angles) {
       const dir = this.v1.copy(this.nose).applyAxisAngle(this.upV, angle).normalize();
       const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.2 * PLAYER.visualScale);
-      this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1.7);
-      burstSparks(this.sparks, origin, 0xe8fff8, 16, 22, dir);
+      this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1);
+      burstSparks(this.sparks, origin, 0xe8fff8, 28, 32, dir, 3.4);
+      const muzzleFlash = this.player.mesh.userData.muzzleFlash;
+      if (muzzleFlash) {
+        muzzleFlash.visible = true;
+        muzzleFlash.userData.life = 0.1;
+        muzzleFlash.material.opacity = 0.95;
+        muzzleFlash.scale.setScalar(8);
+      }
     }
     this.sfx.shoot();
   }
@@ -898,6 +913,9 @@ export class Game {
       bolt.mesh.position.copy(bolt.pos);
       this.v3.copy(bolt.pos).add(bolt.vel);
       bolt.mesh.lookAt(this.v3);
+      if (bolt.team === 'player') {
+        bolt.mesh.scale.set(PLAYER.boltGirth, PLAYER.boltGirth, PLAYER.boltStretch);
+      }
     }
 
     for (const bolt of this.playerBolts) {
@@ -945,11 +963,15 @@ export class Game {
     if (team === 'player') bolt.vel.addScaledVector(this.nose, this.speed * 0.3);
     bolt.life = team === 'player' ? PLAYER.bulletLife : 2.5;
     bolt.damage = damage;
-    bolt.radius = PLAYER.bulletRadius * (scale || 1) * 0.8;
+    bolt.radius = team === 'player' ? PLAYER.bulletRadius : PLAYER.bulletRadius * (scale || 1) * 0.45;
     bolt.mesh.visible = true;
-    bolt.mesh.scale.setScalar(scale || 1);
+    if (team === 'player') bolt.mesh.scale.set(PLAYER.boltGirth, PLAYER.boltGirth, PLAYER.boltStretch);
+    else bolt.mesh.scale.setScalar(scale || 1);
     bolt.mesh.material.color.setHex(color);
-    if (bolt.glow) bolt.glow.material.color.setHex(color);
+    if (bolt.glow) {
+      bolt.glow.material.color.setHex(color);
+      bolt.glow.scale.set(team === 'player' ? 0.85 : 2.4, team === 'player' ? 0.85 : 2.4, 1);
+    }
     bolt.mesh.position.copy(origin);
     return bolt;
   }

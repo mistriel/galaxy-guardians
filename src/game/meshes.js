@@ -165,6 +165,13 @@ export function createPlayerShip(softMap) {
   smallGlow.scale.set(0.62, 0.62, 1);
   root.add(smallGlow);
 
+  const muzzleFlash = new THREE.Sprite(glowMat(0xe8fff8, 0.95));
+  muzzleFlash.position.set(0, 0.05, -2.05);
+  muzzleFlash.scale.setScalar(0.001);
+  muzzleFlash.visible = false;
+  root.add(muzzleFlash);
+  root.userData.muzzleFlash = muzzleFlash;
+
   const mast = addMesh(root, cyl(0.035, 0.035, 0.85, 6), white, 0.42, 0.78, 0.25);
   mast.rotation.z = -0.4;
   const dish = addMesh(root, geo('dish', () => new THREE.ConeGeometry(0.16, 0.14, 8)), red, 0.58, 1.12, 0.22);
