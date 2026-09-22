@@ -88,10 +88,9 @@ function addMesh(parent, geometry, material, x, y, z) {
 }
 
 /**
- * Shomeret (playerShip) — original chunky freighter.
- * Blunt nose, cockpit blister offset to port, a cargo drum bolted to
- * starboard, one oversized engine and one stub engine, uneven fins.
- * The nose points down local -Z. Game.js scales the whole mesh by PLAYER.visualScale.
+ * Shomeret (playerShip) — original cargo freighter.
+ * Long deck, blunt white nose, wide blue shoulders, green crates to
+ * starboard, red spine. Nose is local −Z. Game.js scales by PLAYER.visualScale.
  */
 export function createPlayerShip(softMap) {
   const root = new THREE.Group();
@@ -110,41 +109,38 @@ export function createPlayerShip(softMap) {
     roughness: 0.12,
   });
 
-  addMesh(root, box(1.7, 0.72, 2.7), turquoise, 0.05, 0, 0.05);
-  addMesh(root, box(1.15, 0.5, 0.7), white, 0.02, -0.02, -1.55);
+  addMesh(root, box(1.15, 0.38, 4.4), turquoise, 0, 0, 0.15);
+  addMesh(root, box(0.72, 0.28, 1.15), white, 0, 0.02, -2.35);
+  addMesh(root, box(0.42, 0.18, 0.55), white, 0, 0.02, -3.05);
+  addMesh(root, box(0.14, 0.1, 3.5), red, 0, 0.26, 0.05);
+
+  const wingL = addMesh(root, box(1.55, 0.08, 1.35), blue, -1.25, 0.02, 0.35);
+  wingL.rotation.y = 0.22;
+  const wingR = addMesh(root, box(1.15, 0.08, 1.05), blue, 1.15, 0.06, 0.85);
+  wingR.rotation.y = -0.18;
+  wingR.rotation.z = -0.12;
+
+  addMesh(root, box(0.7, 0.42, 0.85), green, 0.72, 0.38, 0.15);
+  addMesh(root, box(0.48, 0.28, 0.55), green, 0.78, 0.7, 0.55);
+  addMesh(root, box(0.55, 0.08, 0.9), red, 0.72, 0.62, 0.15);
 
   const cockpit = addMesh(
     root,
-    geo('cockpit', () => new THREE.SphereGeometry(0.38, 18, 14)),
+    geo('cockpit', () => new THREE.SphereGeometry(0.32, 16, 12)),
     glass,
-    -0.48,
-    0.4,
-    -0.55,
+    -0.38,
+    0.32,
+    -1.15,
   );
-  cockpit.scale.set(1.15, 0.72, 1.45);
+  cockpit.scale.set(1.05, 0.62, 1.35);
 
-  const pod = addMesh(root, cyl(0.42, 0.42, 1.35, 14), green, 1.2, -0.02, 0.15);
-  pod.rotation.z = Math.PI / 2;
-  addMesh(root, box(0.95, 0.1, 0.16), red, 1.2, 0.28, 0.15);
-  addMesh(root, box(0.12, 0.16, 1.2), white, 1.2, -0.05, 0.15);
-
-  const finL = addMesh(root, box(1.45, 0.08, 0.62), blue, -1.25, 0.08, 0.7);
-  finL.rotation.z = 0.28;
-  finL.rotation.y = 0.15;
-  const finR = addMesh(root, box(0.62, 0.08, 0.95), red, 0.85, 0.22, 0.95);
-  finR.rotation.z = -0.55;
-
-  addMesh(root, box(0.12, 0.74, 2.15), red, 0.32, 0, 0.05);
-  addMesh(root, box(0.55, 0.05, 0.7), green, 0.05, 0.4, 0.35);
-  addMesh(root, box(0.72, 0.06, 1.15), white, -0.22, 0.4, -0.2);
-
-  const bigEngine = addMesh(root, cyl(0.34, 0.42, 0.85, 14), dark, 0.46, -0.05, 1.55);
+  const bigEngine = addMesh(root, cyl(0.28, 0.36, 0.9, 14), dark, 0.38, 0, 2.15);
   bigEngine.rotation.x = Math.PI / 2;
-  const bigRing = addMesh(root, cyl(0.46, 0.46, 0.12, 14), blue, 0.46, -0.05, 1.12);
+  const bigRing = addMesh(root, cyl(0.4, 0.4, 0.1, 14), blue, 0.38, 0, 1.72);
   bigRing.rotation.x = Math.PI / 2;
-  const smallEngine = addMesh(root, cyl(0.18, 0.24, 0.5, 12), dark, -0.5, 0.05, 1.35);
+  const smallEngine = addMesh(root, cyl(0.16, 0.22, 0.55, 12), dark, -0.42, 0.04, 1.95);
   smallEngine.rotation.x = Math.PI / 2;
-  const smallRing = addMesh(root, cyl(0.28, 0.28, 0.1, 12), green, -0.5, 0.05, 1.1);
+  const smallRing = addMesh(root, cyl(0.26, 0.26, 0.08, 12), green, -0.42, 0.04, 1.68);
   smallRing.rotation.x = Math.PI / 2;
 
   const glowMat = (color, opacity) => new THREE.SpriteMaterial({
@@ -157,35 +153,159 @@ export function createPlayerShip(softMap) {
     fog: false,
   });
   const bigGlow = new THREE.Sprite(glowMat(0x7af6ee, 0.95));
-  bigGlow.position.set(0.46, -0.05, 2.02);
-  bigGlow.scale.set(1.35, 1.35, 1);
+  bigGlow.position.set(0.38, 0, 2.65);
+  bigGlow.scale.set(1.05, 1.05, 1);
   root.add(bigGlow);
   const smallGlow = new THREE.Sprite(glowMat(0x8dffb0, 0.9));
-  smallGlow.position.set(-0.5, 0.05, 1.66);
-  smallGlow.scale.set(0.62, 0.62, 1);
+  smallGlow.position.set(-0.42, 0.04, 2.28);
+  smallGlow.scale.set(0.55, 0.55, 1);
   root.add(smallGlow);
 
   const muzzleFlash = new THREE.Sprite(glowMat(0xe8fff8, 0.95));
-  muzzleFlash.position.set(0, 0.05, -2.05);
+  muzzleFlash.position.set(0, 0.04, -3.35);
   muzzleFlash.scale.setScalar(0.001);
   muzzleFlash.visible = false;
   root.add(muzzleFlash);
   root.userData.muzzleFlash = muzzleFlash;
 
-  const mast = addMesh(root, cyl(0.035, 0.035, 0.85, 6), white, 0.42, 0.78, 0.25);
-  mast.rotation.z = -0.4;
-  const dish = addMesh(root, geo('dish', () => new THREE.ConeGeometry(0.16, 0.14, 8)), red, 0.58, 1.12, 0.22);
-  dish.rotation.z = 0.5;
+  const mast = addMesh(root, cyl(0.03, 0.03, 0.7, 6), white, -0.15, 0.62, 0.4);
+  mast.rotation.z = 0.25;
+  const dish = addMesh(root, geo('dish', () => new THREE.ConeGeometry(0.14, 0.12, 8)), red, -0.28, 0.95, 0.35);
+  dish.rotation.z = -0.4;
+  addMesh(root, box(0.32, 0.1, 0.4), blue, 0.05, -0.22, -2.2);
 
-  const chin = addMesh(root, box(0.4, 0.16, 0.55), blue, -0.15, -0.38, -1.2);
-  chin.rotation.x = 0.2;
-
-  const light = new THREE.PointLight(0x3ee0d4, 1.6, 9, 2);
-  light.position.set(0.2, 0, 1.8);
+  const light = new THREE.PointLight(0x3ee0d4, 1.4, 8, 2);
+  light.position.set(0.2, 0, 2.2);
   root.add(light);
 
   root.userData.glows = [bigGlow, smallGlow];
   root.userData.engineLight = light;
+  root.userData.mats = captureMaterials(root);
+  return root;
+}
+
+function shipPaints() {
+  return {
+    turquoise: makeStandard(0x1ad4c8, { emissive: 0x084240, emissiveIntensity: 0.42, roughness: 0.38 }),
+    white: makeStandard(0xffffff, { emissive: 0xc5ccd2, emissiveIntensity: 0.55, roughness: 0.32 }),
+    blue: makeStandard(0x2f6dff, { emissive: 0x10215f, emissiveIntensity: 0.38, roughness: 0.4 }),
+    green: makeStandard(0x2fce55, { emissive: 0x0d3d1a, emissiveIntensity: 0.38, roughness: 0.42 }),
+    red: makeStandard(0xe4313a, { emissive: 0x5a1218, emissiveIntensity: 0.36, roughness: 0.4 }),
+    dark: makeStandard(0x1b2430, { emissive: 0x05070c, metalness: 0.7, roughness: 0.35 }),
+    glass: makeStandard(0xb9dcff, {
+      emissive: 0x1a4ea8,
+      emissiveIntensity: 0.75,
+      metalness: 0.85,
+      roughness: 0.12,
+    }),
+  };
+}
+
+function addThruster(root, softMap, paints, x, y, z, radius, glowColor, glowScale) {
+  const engine = addMesh(root, cyl(radius, radius * 1.25, 0.7, 12), paints.dark, x, y, z);
+  engine.rotation.x = Math.PI / 2;
+  const ring = addMesh(root, cyl(radius * 1.35, radius * 1.35, 0.08, 12), paints.blue, x, y, z - 0.38);
+  ring.rotation.x = Math.PI / 2;
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: softMap,
+    color: glowColor,
+    transparent: true,
+    opacity: 0.95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fog: false,
+  }));
+  glow.position.set(x, y, z + 0.48);
+  glow.scale.setScalar(glowScale);
+  root.add(glow);
+  return glow;
+}
+
+/**
+ * Netz (נץ) — a narrow dart. Swept wings, a needle nose, one tall tail.
+ * Same five paints as Shomeret, a different silhouette. Nose is local −Z.
+ */
+export function createNetzShip(softMap) {
+  const root = new THREE.Group();
+  root.name = 'netz';
+  const paints = shipPaints();
+  addMesh(root, box(0.42, 0.22, 3.6), paints.turquoise, 0, 0, 0.1);
+  addMesh(root, box(0.16, 0.12, 1.4), paints.white, 0, 0.02, -2.35);
+  addMesh(root, box(0.08, 0.08, 0.55), paints.white, 0, 0.02, -3.15);
+  addMesh(root, box(0.06, 0.08, 2.8), paints.red, 0, 0.16, -0.1);
+  const wingL = addMesh(root, box(1.7, 0.05, 0.72), paints.blue, -1.05, 0, 0.55);
+  wingL.rotation.y = 0.55;
+  wingL.rotation.z = 0.08;
+  const wingR = addMesh(root, box(1.15, 0.05, 0.55), paints.green, 0.85, 0.02, 0.15);
+  wingR.rotation.y = -0.62;
+  const tail = addMesh(root, box(0.08, 0.7, 0.42), paints.red, 0, 0.42, 1.55);
+  tail.rotation.x = -0.2;
+  const cockpit = addMesh(root, geo('netz-pit', () => new THREE.SphereGeometry(0.2, 14, 10)), paints.glass, 0, 0.18, -0.85);
+  cockpit.scale.set(0.7, 0.5, 1.4);
+  const bigGlow = addThruster(root, softMap, paints, 0, 0, 1.85, 0.16, 0x7af6ee, 0.7);
+  const smallGlow = addThruster(root, softMap, paints, 0.28, -0.02, 1.45, 0.08, 0x8dffb0, 0.32);
+  const muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: softMap,
+    color: 0xe8fff8,
+    transparent: true,
+    opacity: 0.95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fog: false,
+  }));
+  muzzleFlash.position.set(0, 0.02, -3.4);
+  muzzleFlash.scale.setScalar(0.001);
+  muzzleFlash.visible = false;
+  root.add(muzzleFlash);
+  const light = new THREE.PointLight(0x3ee0d4, 1.1, 7, 2);
+  light.position.set(0, 0, 1.9);
+  root.add(light);
+  root.userData.glows = [bigGlow, smallGlow];
+  root.userData.engineLight = light;
+  root.userData.muzzleFlash = muzzleFlash;
+  root.userData.mats = captureMaterials(root);
+  return root;
+}
+
+/**
+ * Ogen (עוגן) — a wide flat hauler. Short hull, side pontoons, a bridge tower.
+ * Nose is local −Z. Heavier than Shomeret, still an original freighter.
+ */
+export function createOgenShip(softMap) {
+  const root = new THREE.Group();
+  root.name = 'ogen';
+  const paints = shipPaints();
+  addMesh(root, box(2.5, 0.28, 2.15), paints.turquoise, 0, 0, 0.15);
+  addMesh(root, box(1.1, 0.22, 0.7), paints.white, 0, 0.04, -1.25);
+  addMesh(root, box(2.2, 0.08, 0.16), paints.red, 0, 0.2, -0.15);
+  addMesh(root, box(0.16, 0.08, 1.8), paints.red, 0, 0.2, 0.1);
+  addMesh(root, box(0.55, 0.4, 1.5), paints.green, -1.35, 0.05, 0.2);
+  addMesh(root, box(0.55, 0.4, 1.5), paints.green, 1.35, 0.05, 0.35);
+  addMesh(root, box(0.7, 0.45, 0.7), paints.blue, 0, 0.42, 0.15);
+  const glass = addMesh(root, box(0.46, 0.18, 0.4), paints.glass, 0, 0.7, -0.05);
+  glass.rotation.x = -0.15;
+  const bigGlow = addThruster(root, softMap, paints, 0, -0.02, 1.25, 0.22, 0x7af6ee, 0.85);
+  const smallGlow = addThruster(root, softMap, paints, -0.7, -0.02, 1.15, 0.14, 0xff8a8a, 0.5);
+  addThruster(root, softMap, paints, 0.7, -0.02, 1.2, 0.14, 0x8dffb0, 0.5);
+  const muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: softMap,
+    color: 0xe8fff8,
+    transparent: true,
+    opacity: 0.95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fog: false,
+  }));
+  muzzleFlash.position.set(0, 0.08, -1.7);
+  muzzleFlash.scale.setScalar(0.001);
+  muzzleFlash.visible = false;
+  root.add(muzzleFlash);
+  const light = new THREE.PointLight(0x3ee0d4, 1.3, 8, 2);
+  light.position.set(0, 0.1, 1.2);
+  root.add(light);
+  root.userData.glows = [bigGlow, smallGlow];
+  root.userData.engineLight = light;
+  root.userData.muzzleFlash = muzzleFlash;
   root.userData.mats = captureMaterials(root);
   return root;
 }
