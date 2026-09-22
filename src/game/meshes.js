@@ -564,3 +564,43 @@ export function createMissile() {
   });
   return root;
 }
+
+/** Fat gold missile. Local −Z is the nose. Game scales it by GIANT.visualScale. */
+export function createGiantMissile() {
+  const root = new THREE.Group();
+  const hull = new THREE.MeshBasicMaterial({ color: 0xffe7a3, fog: false, toneMapped: false });
+  const hot = new THREE.MeshBasicMaterial({ color: 0xff5a12, fog: false, toneMapped: false });
+  const finMat = new THREE.MeshBasicMaterial({ color: 0xfff6d2, fog: false, toneMapped: false });
+  const bodyLen = 7.2;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.78, bodyLen, 10), hull);
+  body.rotation.x = Math.PI / 2;
+  root.add(body);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.62, 2.4, 10), hot);
+  nose.rotation.x = -Math.PI / 2;
+  nose.position.z = -(bodyLen / 2 + 1.05);
+  root.add(nose);
+  for (let i = 0; i < 4; i += 1) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.35, 1.5), finMat);
+    const angle = (i / 4) * Math.PI * 2;
+    blade.position.set(Math.cos(angle) * 1.05, Math.sin(angle) * 1.05, bodyLen / 2 - 0.8);
+    blade.rotation.z = angle;
+    root.add(blade);
+  }
+  const flame = new THREE.Sprite(new THREE.SpriteMaterial({
+    color: 0xffc14a,
+    transparent: true,
+    opacity: 0.95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fog: false,
+    toneMapped: false,
+  }));
+  flame.position.z = bodyLen / 2 + 1.1;
+  flame.scale.set(2.2, 3.4, 1);
+  root.add(flame);
+  root.frustumCulled = false;
+  root.traverse((obj) => {
+    obj.frustumCulled = false;
+  });
+  return root;
+}

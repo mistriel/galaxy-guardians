@@ -28,7 +28,7 @@ A long cargo freighter, scaled to 2.1 so she reads clearly without filling the f
 
 The nose points down the mesh's local −Z axis. The whole mesh is scaled by 2.1. Nothing about the shape is taken from an existing film or comic vehicle.
 
-The מספנה spends persistent נקודות (separate from the run score and the best score). שומרת and the thick לייזר are free. נץ costs 1200 and is a narrow dart at scale 1.75. עוגן costs 2200 and is a wide hauler at scale 2.35. מניפה (900) fires three thick beams. מחט (1400) fires a thin fast dart and does not resize the default laser.
+The מספנה spends persistent נקודות (separate from the run score and the best score). שומרת and the movie לייזר are free. נץ costs 1200 and is a narrow dart at scale 1.75. עוגן costs 2200 and is a wide hauler at scale 2.35. מניפה (900) fires three small tracers. מחט (1400) fires a thinner faster dart.
 
 ## Controls
 
@@ -41,8 +41,9 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
-| Shoot | Space or left click. Thick beams. On a phone, hold the round ירי button |
-| Nuclear missile | The orange טיל גרעיני button (desktop HUD and phone), `F`, or right click. One wipe, then a 4s cooldown |
+| Shoot | Space, left click, or the red ירי button. Small cinematic tracers |
+| Giant missile | Gold טיל ענק button or `Q`. Fat body, scale 3.4, blooms after 1.7s (about 270 units). Blast 150. Cooldown 3s. Does not touch allies |
+| Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin dart, 6.4s flight, then an energy mushroom. Cooldown 4s |
 | Phone move | Left joystick. Horizontal strafes. Up holds turbo, down brakes. Brake wins if both |
 | Phone aim | Right joystick. Touch yaw rate is 68% of the mouse rate. The stick value is not passed through the mouse deadzone |
 | Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
@@ -65,14 +66,18 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Collision radius | 4.6 |
 | Shot damage | 36 |
 | Shot hit radius | 2.1 |
-| Shot beam | 2.7 thick, about 14 long, with a large muzzle flash |
+| Shot bolt | About 0.5 thick and 20 long, bright tracer, small muzzle flash |
 | Shot speed / life | 145 u/s, 1.15s |
 | Fire interval | 0.15s (0.075s with rapid fire) |
 | Missile | Speed 250. Lifetime 6.4s, so it travels about 1600 units before it blooms. No contact fuse and no arena-edge fuse. Blast radius 1900 still clears the sector it crossed. Cooldown 4s |
 
 Shields soak damage first. A translucent bubble shows remaining shield. Holding טורבו jumps the ship to 240 and opens the view so the rush reads. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
 
-Primary fire is a thick beam. The nuclear missile is the power-fantasy button, labeled **טיל גרעיני** on the HUD and on the phone pad. It is a long thin dart: a narrow body, a nose cone, and small fins, drawn at scale 1 so it stays a needle. It does not explode when it passes a ship. It flies for 6.4 seconds (about 1600 units), then the gold and orange bloom deletes every enemy and tower inside that blast. It does not hurt Shomeret or the escorts. After firing, the button shows the remaining cooldown.
+Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4 bolt, so it reads as a bright streak rather than a slab. Damage stays 36.
+
+טיל ענק is the fat special. The mesh is a thick gold body at scale 3.4. It flies for 1.7 seconds at 160 (about 270 units) and only then blooms. Blast radius 150. It does not hurt שומרת, the blue triangles, or the friendly carrier.
+
+טילים גרעיניים stay the thin needle (body radius under 0.14, scale 1, speed 250, life 6.4s, no contact fuse). At the end of that flight the bloom is an energy mushroom: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 1900, and it still skips allies.
 
 ## Enemies
 

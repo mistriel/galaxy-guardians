@@ -7,6 +7,7 @@ import {
   COMBO_STEP,
   COMBO_WINDOW,
   ENEMIES,
+  GIANT,
   MISSILE,
   PLAYER,
   POOLS,
@@ -25,6 +26,7 @@ import {
   boltGeometry,
   createAlly,
   createCarrier,
+  createGiantMissile,
   createMissile,
   createNetzShip,
   createOgenShip,
@@ -113,6 +115,7 @@ export class Game {
     this.fireCd = 0;
     this.fireLock = 0;
     this.missileCd = 0;
+    this.giantCd = 0;
     this.chain = [];
     this.rapidUntil = 0;
     this.spreadUntil = 0;
@@ -199,6 +202,8 @@ export class Game {
       fireBtn: document.querySelector('#fire-btn'),
       missileBtn: document.querySelector('#missile-btn'),
       nukeBtn: document.querySelector('#nuke-btn'),
+      giantBtn: document.querySelector('#giant-btn'),
+      giantTouch: document.querySelector('#giant-touch'),
       boostBtn: document.querySelector('#boost-btn'),
       boostTouch: document.querySelector('#boost-touch'),
       groundMenu: document.querySelector('#ground-menu-btn'),
@@ -349,6 +354,7 @@ export class Game {
     this.playerBolts = this.makeBolts(POOLS.playerBolts);
     this.enemyBolts = this.makeBolts(POOLS.enemyBolts);
     this.missiles = this.makeMissiles();
+    this.giants = this.makeGiants();
     this.buildFleet();
 
     this.pickups = [];
@@ -399,6 +405,8 @@ export class Game {
     dom.fireBtn.textContent = T.fire;
     dom.missileBtn.textContent = T.missile;
     dom.nukeBtn.textContent = T.missile;
+    dom.giantBtn.textContent = T.giant;
+    dom.giantTouch.textContent = T.giant;
     dom.boostBtn.textContent = T.boost;
     dom.boostTouch.textContent = T.boost;
     this.syncMuteLabel();
@@ -522,6 +530,8 @@ export class Game {
     dom.fireBtn.addEventListener('pointercancel', (event) => this.onFireUp(event));
     dom.missileBtn.addEventListener('pointerdown', (event) => this.onMissileDown(event));
     dom.nukeBtn.addEventListener('pointerdown', (event) => this.onMissileDown(event));
+    dom.giantBtn.addEventListener('pointerdown', (event) => this.onGiantDown(event));
+    dom.giantTouch.addEventListener('pointerdown', (event) => this.onGiantDown(event));
     for (const button of [dom.boostBtn, dom.boostTouch]) {
       button.addEventListener('pointerdown', (event) => this.onBoostDown(event));
       button.addEventListener('pointerup', (event) => this.onBoostUp(event));
@@ -674,6 +684,13 @@ export class Game {
     this.launchMissile();
   }
 
+  onGiantDown(event) {
+    if (this.state !== 'play') return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.launchGiant();
+  }
+
   smoothStick(dt) {
     this.easeJoy(this.move, dt);
     this.easeJoy(this.aim, dt);
@@ -785,6 +802,10 @@ export class Game {
       this.launchMissile();
       return;
     }
+    if (event.code === 'KeyQ' && this.state === 'play') {
+      this.launchGiant();
+      return;
+    }
     if (event.code === 'KeyR' && (this.state === 'dead' || this.state === 'paused')) {
       this.startMission();
       return;
@@ -856,6 +877,23 @@ export class Game {
     return bolts;
   }
 
+  makeGiants() {
+    const missiles = [];
+    for (let i = 0; i < 3; i += 1) {
+      const mesh = createGiantMissile();
+      mesh.visible = false;
+      this.scene.add(mesh);
+      missiles.push({
+        mesh,
+        alive: false,
+        pos: new THREE.Vector3(),
+        vel: new THREE.Vector3(),
+        life: 0,
+      });
+    }
+    return missiles;
+  }
+
   makeMissiles() {
     const missiles = [];
     for (let i = 0; i < 3; i += 1) {
@@ -891,40 +929,72 @@ export class Game {
     burstSparks(this.sparks, origin, 0xff7a22, 6, 14, this.nose, 0.7, 0.8);
   }
 
+  launchGiant() {
+    if (this.state !== 'play' || !this.giants || this.giantCd > 0) return;
+    const missile = this.giants.find((item) => !item.alive);
+    if (!missile) return;
+    this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
+    const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 8 * this.shipScale());
+    missile.alive = true;
+    missile.life = GIANT.life;
+    missile.pos.copy(origin);
+    missile.vel.copy(this.nose).multiplyScalar(GIANT.speed);
+    missile.mesh.visible = true;
+    missile.mesh.position.copy(origin);
+    missile.mesh.scale.setScalar(GIANT.visualScale);
+    this.giantCd = GIANT.cooldown;
+    this.sfx.missile();
+    burstSparks(this.sparks, origin, 0xffc14a, 10, 18, this.nose, 1.4, 1.1);
+  }
+
   updateMissiles(dt) {
-    if (!this.missiles) return;
-    for (const missile of this.missiles) {
+    this.stepOrdnance(this.missiles, dt, MISSILE.visualScale, 0xff6a1a, (pos) => this.detonateMissile(pos));
+    this.stepOrdnance(this.giants, dt, GIANT.visualScale, 0xffc14a, (pos) => this.detonateGiant(pos));
+    this.updateChain();
+  }
+
+  stepOrdnance(list, dt, scale, trailColor, onBoom) {
+    if (!list) return;
+    for (const missile of list) {
       if (!missile.alive) continue;
       missile.life -= dt;
       missile.pos.addScaledVector(missile.vel, dt);
       missile.mesh.position.copy(missile.pos);
       this.v3.copy(missile.pos).add(missile.vel);
       missile.mesh.lookAt(this.v3);
-      missile.mesh.scale.setScalar(MISSILE.visualScale);
+      missile.mesh.scale.setScalar(scale);
       const trail = this.v1.copy(missile.vel).multiplyScalar(-1);
       if (trail.lengthSq() > 0.001) trail.normalize();
       if (Math.random() < 0.35) {
-        burstSparks(this.sparks, missile.pos, 0xff6a1a, 1, 6, trail, 0.45, 0.7);
+        burstSparks(this.sparks, missile.pos, trailColor, 1, 6, trail, 0.45, 0.7);
       }
-
-      // Lifetime only. Passing a ship, or leaving the arena, must not cut the flight short.
       if (missile.life > 0) continue;
       const pos = missile.pos.clone();
       missile.alive = false;
       missile.mesh.visible = false;
-      this.detonateMissile(pos);
+      onBoom(pos);
     }
-    this.updateChain();
   }
 
   detonateMissile(origin) {
     this.sfx.missileBoom();
     this.addShake(1.3);
-    burstSparks(this.sparks, origin, 0xff6a12, 48, 62, null, 6.5, 1.7);
-    burstSparks(this.sparks, origin, 0xfff2c4, 28, 48, null, 4.2, 1.4);
-    spawnRing(this.rings, origin, 0xff7a18, { life: 1.05, grow: 1680, scale: 4 });
-    spawnRing(this.rings, origin, 0xfff6d2, { life: 0.85, grow: 1120, scale: 3 });
-    spawnRing(this.rings, origin, 0xff3b2e, { life: 0.7, grow: 720, scale: 2 });
+    const up = this.v2.set(0, 1, 0);
+    burstSparks(this.sparks, origin, 0xfff6d2, 36, 40, up, 4.2, 1.6);
+    burstSparks(this.sparks, origin, 0xff8a22, 42, 55, null, 5.5, 1.5);
+    spawnRing(this.rings, origin, 0xfff6d2, { life: 0.9, grow: 980, scale: 2.2 });
+    spawnRing(this.rings, origin, 0xff7a18, { life: 1.15, grow: 1680, scale: 3.2 });
+    for (let i = 1; i <= 4; i += 1) {
+      const stem = origin.clone().addScaledVector(up, i * 10);
+      spawnRing(this.rings, stem, i > 2 ? 0xfff2c4 : 0xff9a3c, {
+        life: 0.75,
+        grow: 70 + i * 36,
+        scale: 1.1 + i * 0.15,
+      });
+    }
+    const cap = origin.clone().addScaledVector(up, 48);
+    spawnRing(this.rings, cap, 0xfff6d2, { life: 1.15, grow: 460, scale: 7 });
+    spawnRing(this.rings, cap, 0xff5a22, { life: 0.95, grow: 300, scale: 4.5 });
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
       if (enemy.mesh.position.distanceTo(origin) <= MISSILE.blast + enemy.cfg.radius) {
@@ -940,6 +1010,31 @@ export class Game {
     const foe = this.carriers && this.carriers.enemy;
     if (foe && foe.alive && foe.mesh.position.distanceTo(origin) <= MISSILE.blast + foe.radius) {
       this.damageCarrier(foe, MISSILE.damage);
+    }
+  }
+
+  detonateGiant(origin) {
+    this.sfx.missileBoom();
+    this.addShake(0.7);
+    burstSparks(this.sparks, origin, 0xffc14a, 28, 36, null, 3.2, 1.4);
+    burstSparks(this.sparks, origin, 0xfff6d2, 16, 28, null, 2.2, 1.2);
+    spawnRing(this.rings, origin, 0xffc14a, { life: 0.7, grow: 260, scale: 2.4 });
+    spawnRing(this.rings, origin, 0xfff6d2, { life: 0.5, grow: 160, scale: 1.6 });
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      if (enemy.mesh.position.distanceTo(origin) <= GIANT.blast + enemy.cfg.radius) {
+        this.damageEnemy(enemy, GIANT.damage, true);
+      }
+    }
+    for (const tower of this.towers) {
+      if (!tower.alive) continue;
+      if (tower.mesh.position.distanceTo(origin) <= GIANT.blast + tower.radius) {
+        this.damageTower(tower, GIANT.damage, true);
+      }
+    }
+    const foe = this.carriers && this.carriers.enemy;
+    if (foe && foe.alive && foe.mesh.position.distanceTo(origin) <= GIANT.blast + foe.radius) {
+      this.damageCarrier(foe, GIANT.damage);
     }
   }
 
@@ -1113,6 +1208,7 @@ export class Game {
 
     this.fireCd = Math.max(0, this.fireCd - dt);
     this.missileCd = Math.max(0, this.missileCd - dt);
+    this.giantCd = Math.max(0, this.giantCd - dt);
     if (this.pointer.fire || this.keys.has('Space')) this.shoot();
 
     if (this.time - this.lastHit > PLAYER.shieldDelay && this.shield < PLAYER.shield && this.invuln <= 0) {
@@ -1589,7 +1685,7 @@ export class Game {
     bolt.mesh.material.color.setHex(color);
     if (bolt.glow) {
       bolt.glow.material.color.setHex(color);
-      const glow = team === 'player' ? (bolt.girth > 3 ? 0.85 : 0.32) : 2.4;
+      const glow = team === 'player' ? 0.48 : 2.4;
       bolt.glow.scale.set(glow, glow, 1);
     }
     bolt.mesh.position.copy(origin);
@@ -1775,6 +1871,12 @@ export class Game {
     this.state = 'dead';
     if (this.missiles) {
       for (const missile of this.missiles) {
+        missile.alive = false;
+        missile.mesh.visible = false;
+      }
+    }
+    if (this.giants) {
+      for (const missile of this.giants) {
         missile.alive = false;
         missile.mesh.visible = false;
       }
@@ -2372,6 +2474,7 @@ export class Game {
       const name = T.weaponNames[this.meta.weapon] || T.weaponNormal;
       parts.push(`${T.weapon}: ${name}`);
     }
+    parts.push(this.giantCd > 0 ? `${T.giant} ${Math.ceil(this.giantCd)}` : T.giantReady);
     parts.push(this.missileCd > 0 ? `${T.missile} ${Math.ceil(this.missileCd)}` : T.missileReady);
     if (this.allies) {
       const ready = this.allies.filter((ally) => ally.alive).length;
@@ -2384,6 +2487,13 @@ export class Game {
       if (!button) continue;
       button.classList.toggle('cooling', cooling);
       button.textContent = missileLabel;
+    }
+    const giantCooling = this.giantCd > 0;
+    const giantLabel = giantCooling ? `${T.giant} ${Math.ceil(this.giantCd)}` : T.giant;
+    for (const button of [this.dom.giantBtn, this.dom.giantTouch]) {
+      if (!button) continue;
+      button.classList.toggle('cooling', giantCooling);
+      button.textContent = giantLabel;
     }
     this.dom.flight.textContent = this.boosting ? T.boost : this.braking ? T.brake : T.cruise;
     for (const button of [this.dom.boostBtn, this.dom.boostTouch]) {
@@ -2411,6 +2521,7 @@ export class Game {
     document.body.classList.toggle('touch', this.coarse);
     this.dom.touch.hidden = !(this.coarse && playing);
     this.dom.nukeBtn.hidden = !playing;
+    this.dom.giantBtn.hidden = !playing;
     this.dom.boostBtn.hidden = !playing;
   }
 
@@ -2659,6 +2770,7 @@ export class Game {
     this.fireCd = 0;
     this.fireLock = 0.45;
     this.missileCd = 0;
+    this.giantCd = 0;
     this.chain = [];
     this.rapidUntil = 0;
     this.spreadUntil = 0;
@@ -2699,6 +2811,12 @@ export class Game {
     for (const bolt of this.playerBolts.concat(this.enemyBolts)) this.killBolt(bolt);
     if (this.missiles) {
       for (const missile of this.missiles) {
+        missile.alive = false;
+        missile.mesh.visible = false;
+      }
+    }
+    if (this.giants) {
+      for (const missile of this.giants) {
         missile.alive = false;
         missile.mesh.visible = false;
       }
