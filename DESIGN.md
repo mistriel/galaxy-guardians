@@ -2,6 +2,18 @@
 
 Original 3D arcade flight combat. The fantasy is a ragtag cargo tug punching through a neon sector, not a simulation. Numbers below match `src/game/balance.js`.
 
+## Ground battles
+
+**קרבות קרקע** on the menu opens three fields: יער זוהר, מדבר אדום, קרח כחול. Each fight is the same easy push, staged so the units do not all appear at once:
+
+1. Artillery lobs light shells and softens the line.
+2. Tanks and gun-cars (קרון ירי) roll in, staggered, and break the barricades.
+3. Infantry floods through and captures the flag.
+4. A world special drops in for the climax (אורן הנוצץ, תוף המדבר, or כתר הקרח).
+5. The beat ends in ניצחון, or נסיגה if you choose to pull back.
+
+A and D (or the phone side buttons) slide the push. דחיפה or Space hurries the current step. The flight sortie is unchanged.
+
 ## Ship
 
 **Shomeret / שומרת**

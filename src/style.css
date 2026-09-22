@@ -489,6 +489,78 @@ body.touch #flight-row {
   body.touch #flight-row { bottom: 112px; max-width: calc(100% - 250px); }
 }
 
+#ground-menu-btn {
+  background: #143528;
+  color: #d8ffe8;
+  border-color: #3dffa2;
+}
+#ground-pick { pointer-events: none; }
+#ground-pick .overlay-card { pointer-events: auto; }
+.ground-card { text-align: right; }
+#ground-worlds { margin: 12px 0; }
+.world-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  margin: 8px 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(8, 16, 28, 0.8);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+.world-btn small { font-weight: 500; color: var(--muted); font-size: 0.95rem; }
+.world-btn[data-world="forest"] { border-color: #3dffa2; }
+.world-btn[data-world="desert"] { border-color: #ffb15a; }
+.world-btn[data-world="ice"] { border-color: #9ad7ff; }
+#ground-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ground-top { padding: 16px 18px 0; max-width: 520px; }
+#ground-phase {
+  margin: 4px 0;
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  font-weight: 900;
+  color: var(--amber);
+}
+#ground-note { margin: 0 0 8px; color: var(--muted); }
+#ground-hold-bar { background: linear-gradient(90deg, #c45cff, #ffd0f0); width: 100%; }
+#ground-capture-bar { background: linear-gradient(90deg, #1fbf78, #d8ffe9); width: 0%; }
+.ground-top .meter span { width: 6.2rem; }
+.ground-actions {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  pointer-events: auto;
+}
+#ground-touch { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+#ground-left, #ground-right {
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  min-width: 108px;
+  height: 64px;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 214, 0.8);
+  background: rgba(8, 16, 32, 0.78);
+  color: var(--ink);
+  font-weight: 900;
+  pointer-events: auto;
+  touch-action: none;
+}
+#ground-left { left: max(16px, env(safe-area-inset-left)); }
+#ground-right { right: max(16px, env(safe-area-inset-right)); }
+
 @media (max-width: 800px) {
   .card {
     grid-template-columns: 1fr;
