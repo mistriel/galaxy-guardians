@@ -934,7 +934,7 @@ export class Game {
     if (muzzleFlash && muzzleFlash.visible) {
       muzzleFlash.userData.life -= dt;
       const life = Math.max(0, muzzleFlash.userData.life);
-      muzzleFlash.scale.setScalar(2.1 * (0.45 + life / 0.08));
+      muzzleFlash.scale.setScalar(8 * (0.4 + life / 0.1));
       muzzleFlash.material.opacity = 0.95 * (life / 0.1);
       if (life <= 0) muzzleFlash.visible = false;
     }
@@ -962,13 +962,13 @@ export class Game {
       const dir = this.v1.copy(this.nose).applyAxisAngle(this.upV, angle).normalize();
       const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.2 * PLAYER.visualScale);
       this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1);
-      burstSparks(this.sparks, origin, 0xe8fff8, 8, 18, dir, 1.1);
+      burstSparks(this.sparks, origin, 0xe8fff8, 28, 32, dir, 3.4);
       const muzzleFlash = this.player.mesh.userData.muzzleFlash;
       if (muzzleFlash) {
         muzzleFlash.visible = true;
-        muzzleFlash.userData.life = 0.08;
-        muzzleFlash.material.opacity = 0.9;
-        muzzleFlash.scale.setScalar(2.1);
+        muzzleFlash.userData.life = 0.1;
+        muzzleFlash.material.opacity = 0.95;
+        muzzleFlash.scale.setScalar(8);
       }
     }
     this.sfx.shoot();
@@ -992,14 +992,14 @@ export class Game {
   updateQueue() {
     while (this.queue.length && this.queue[0].at <= this.time) {
       const job = this.queue.shift();
-      this.spawnEnemy(job.type);
+      this.spawnEnemy(job.type, job);
     }
   }
 
-  spawnEnemy(type) {
+  spawnEnemy(type, job = null) {
     const enemy = this.enemies.find((item) => item.type === type && !item.alive);
     if (!enemy) return;
-    const pos = this.spawnAnchor();
+    const pos = job?.pos ? job.pos : this.spawnAnchor();
     enemy.alive = true;
     enemy.hp = enemy.maxHp;
     enemy.mesh.visible = true;
@@ -1015,7 +1015,8 @@ export class Game {
     restoreMaterials(enemy.mesh.userData.mats);
     if (enemy.mesh.userData.bar) enemy.mesh.userData.bar.group.visible = false;
     if (type === 'vorak') this.showToast(T.enemyNames.vorak);
-    this.assignLane(enemy);
+    if (job?.lane) enemy.lane.copy(job.lane);
+    else this.assignLane(enemy);
   }
 
   assignLane(enemy) {
@@ -1586,16 +1587,41 @@ export class Game {
     for (const [type, count] of Object.entries(spec)) {
       for (let i = 0; i < count; i += 1) types.push(type);
     }
-    for (let i = types.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [types[i], types[j]] = [types[j], types[i]];
+    const squadSize = 6;
+    this.queue = [];
+    let at = this.time + 0.4;
+    const playerPos = this.player.mesh.position;
+    const nose = new THREE.Vector3(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.player.mesh.quaternion);
+    const lift = new THREE.Vector3(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
+    for (let i = 0; i < types.length; i += squadSize) {
+      const squad = types.slice(i, i + squadSize);
+      const sway = ((i / squadSize) % 5) - 2;
+      const dir = nose.clone()
+        .addScaledVector(right, sway * 0.42)
+        .addScaledVector(lift, (Math.random() - 0.45) * 0.22);
+      if (dir.lengthSq() < 0.04) dir.copy(nose);
+      dir.normalize();
+      const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 96 + Math.random() * 28);
+      center.y = THREE.MathUtils.clamp(center.y, -36, 64);
+      const lane = new THREE.Vector3().copy(playerPos).addScaledVector(dir, -48).sub(center);
+      if (lane.lengthSq() < 0.01) lane.set(0, 0, -1);
+      else lane.normalize();
+      const side = new THREE.Vector3(-dir.z, 0, dir.x);
+      if (side.lengthSq() < 0.01) side.set(1, 0, 0);
+      side.normalize();
+      squad.forEach((type, k) => {
+        const col = (k % 3) - 1;
+        const row = Math.floor(k / 3);
+        const pos = center.clone()
+          .addScaledVector(side, col * 11)
+          .add(new THREE.Vector3(0, (row - 0.4) * 8, 0))
+          .addScaledVector(dir, -row * 8);
+        if (pos.length() > WORLD.bounds - 24) pos.setLength(WORLD.bounds - 24);
+        this.queue.push({ type, at: at + k * 0.05, pos, lane });
+      });
+      at += 0.55;
     }
-    let at = this.time + 0.85;
-    this.queue = types.map((type) => {
-      const job = { type, at };
-      at += 0.38;
-      return job;
-    });
     const named = types.includes('vorak') ? ` · ${T.enemyNames.vorak}` : '';
     this.showBanner(`${T.wave} ${this.wave}${named}`);
     this.sfx.wave();

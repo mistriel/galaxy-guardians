@@ -25,8 +25,8 @@ export const PLAYER = {
   bulletLife: 1.15,
   bulletDamage: 36,
   bulletRadius: 2.1,
-  boltGirth: 1.35,
-  boltStretch: 5.2,
+  boltGirth: 8,
+  boltStretch: 4.2,
 };
 
 /** Secondary weapon. One shot clears the fight in front of the ship. */
@@ -162,23 +162,23 @@ export const TOWERS = {
 };
 
 export const WAVES = [
-  { glint: 4 },
-  { nib: 7, glint: 3 },
-  { nib: 6, glint: 3, howler: 2 },
-  { nib: 8, glint: 2, howler: 3, slab: 1 },
-  { nib: 10, glint: 4, howler: 3, slab: 1, vorak: 1 },
-  { nib: 12, glint: 4, howler: 4, slab: 2, vorak: 1 },
+  { glint: 12, nib: 12 },
+  { nib: 16, glint: 10, howler: 6 },
+  { nib: 18, glint: 12, howler: 8, slab: 3 },
+  { nib: 18, glint: 12, howler: 8, slab: 4, vorak: 1 },
+  { nib: 20, glint: 14, howler: 10, slab: 4, vorak: 2 },
+  { nib: 22, glint: 14, howler: 10, slab: 5, vorak: 2 },
 ];
 
 export function waveSpec(n) {
   if (n <= WAVES.length) return WAVES[n - 1];
   const extra = n - WAVES.length;
   return {
-    nib: Math.min(16, 12 + extra),
-    glint: Math.min(10, 4 + Math.floor(extra * 0.6)),
-    howler: Math.min(8, 4 + Math.floor(extra * 0.45)),
-    slab: Math.min(5, 2 + Math.floor(extra * 0.35)),
-    vorak: 1,
+    nib: Math.min(28, 22 + extra * 2),
+    glint: Math.min(18, 14 + extra),
+    howler: Math.min(12, 10 + Math.floor(extra * 0.5)),
+    slab: Math.min(6, 5 + Math.floor(extra * 0.4)),
+    vorak: 2,
   };
 }
 
@@ -188,9 +188,9 @@ export const COMBO_STEP = 0.25;
 export const COMBO_MAX = 4;
 
 export const POOLS = {
-  glint: 10,
-  nib: 16,
-  howler: 8,
+  glint: 18,
+  nib: 28,
+  howler: 12,
   slab: 6,
   vorak: 2,
   playerBolts: 72,

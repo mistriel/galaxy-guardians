@@ -190,87 +190,63 @@ export function createPlayerShip(softMap) {
   return root;
 }
 
+/** Three-sided wedge. Tip points down local −Z so the ship reads as a triangle. */
+function addWedge(parent, radius, length, material, z = 0) {
+  const mesh = addMesh(
+    parent,
+    geo(`wedge:${radius}:${length}`, () => new THREE.ConeGeometry(radius, length, 3)),
+    material,
+    0,
+    0,
+    z,
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  return mesh;
+}
+
 export function createEnemy(type) {
   const root = new THREE.Group();
   root.name = `enemy-${type}`;
 
-  if (type === 'glint') {
-    const mat = makeStandard(0xff4d8d, { emissive: 0x6a1238, emissiveIntensity: 0.5 });
-    const body = addMesh(root, geo('glint-cone', () => new THREE.ConeGeometry(0.55, 2.1, 4)), mat, 0, 0, 0);
-    body.rotation.x = -Math.PI / 2;
-    const wing = addMesh(root, box(1.5, 0.06, 0.4), makeStandard(0xffd0e4, { emissive: 0x552038, emissiveIntensity: 0.3 }), 0, 0, 0.2);
-    wing.rotation.z = 0.2;
-  } else if (type === 'nib') {
-    const mat = makeStandard(0xc084fc, { emissive: 0x4c1d95, emissiveIntensity: 0.55 });
-    const body = addMesh(root, geo('nib', () => new THREE.OctahedronGeometry(0.62, 0)), mat, 0, 0, 0);
-    body.scale.set(0.8, 0.55, 1.15);
-  } else if (type === 'howler') {
-    const mat = makeStandard(0xff5a36, { emissive: 0x6a1c0c, emissiveIntensity: 0.4 });
-    addMesh(root, box(1.5, 0.55, 2.2), mat, 0, 0, 0);
-    addMesh(root, box(2.1, 0.1, 0.7), makeStandard(0x2a1a22, { emissive: 0x1a0a10, emissiveIntensity: 0.2 }), 0, -0.05, 0.1);
-    const cannonMat = makeStandard(0x2c2428, { metalness: 0.7, roughness: 0.3 });
-    const left = addMesh(root, cyl(0.1, 0.12, 0.9, 8), cannonMat, -0.45, -0.15, -0.9);
-    const right = addMesh(root, cyl(0.1, 0.12, 0.9, 8), cannonMat, 0.45, -0.15, -0.9);
-    left.rotation.x = -Math.PI / 2;
-    right.rotation.x = -Math.PI / 2;
-    addMesh(root, geo('howler-cab', () => new THREE.SphereGeometry(0.28, 12, 10)), makeStandard(0xffe08a, { emissive: 0x8a5a10, emissiveIntensity: 0.4 }), 0, 0.32, -0.35);
-  } else if (type === 'vorak') {
-    buildVorak(root);
-  } else {
-    const mat = makeStandard(0x7c5cbf, { emissive: 0x2a1860, emissiveIntensity: 0.45 });
-    const body = addMesh(root, geo('slab', () => new THREE.DodecahedronGeometry(1.15, 0)), mat, 0, 0, 0);
-    body.scale.set(1.35, 0.85, 1.6);
-    addMesh(root, box(2.4, 0.18, 0.55), makeStandard(0xd6c7ff, { emissive: 0x3a2870, emissiveIntensity: 0.35 }), 0, 0.55, 0.1);
-    addMesh(root, box(0.7, 0.7, 0.7), makeStandard(0x3a2a55, { metalness: 0.6, roughness: 0.4 }), 0, 0.1, -1.15);
+  const kinds = {
+    nib: { color: 0xc084fc, emissive: 0x4c1d95, radius: 0.62, length: 1.95, scale: 2.35, bar: 1.15 },
+    glint: { color: 0xff4d8d, emissive: 0x6a1238, radius: 0.82, length: 2.25, scale: 2.55, bar: 1.25 },
+    howler: { color: 0xff5a36, emissive: 0x6a1c0c, radius: 1.05, length: 2.55, scale: 2.75, bar: 1.45, wing: 1.7 },
+    slab: { color: 0x7c5cbf, emissive: 0x2a1860, radius: 1.28, length: 2.9, scale: 2.65, bar: 2.15 },
+    vorak: { color: 0x4e5b54, emissive: 0x14201c, radius: 1.55, length: 3.7, scale: 3.35, bar: 2.7, bone: true },
+  };
+  const kind = kinds[type] || kinds.glint;
+  const hull = makeStandard(kind.color, { emissive: kind.emissive, emissiveIntensity: 0.55, roughness: 0.36 });
+  addWedge(root, kind.radius, kind.length, hull);
+  const edge = makeStandard(0xfff6ea, { emissive: kind.emissive, emissiveIntensity: 0.7, roughness: 0.3 });
+  const nose = addWedge(root, kind.radius * 0.38, kind.length * 0.72, edge, -kind.length * 0.22);
+  nose.scale.set(1, 0.55, 1);
+  if (kind.wing) {
+    const wing = addWedge(
+      root,
+      kind.wing,
+      kind.length * 0.42,
+      makeStandard(0xffe08a, { emissive: 0x8a5a10, emissiveIntensity: 0.45 }),
+      kind.length * 0.12,
+    );
+    wing.scale.set(1, 0.28, 1);
+  }
+  if (kind.bone) {
+    const plate = addWedge(
+      root,
+      kind.radius * 0.72,
+      kind.length * 0.55,
+      makeStandard(0xe7d8c4, { emissive: 0x3a3024, emissiveIntensity: 0.2, roughness: 0.5 }),
+      kind.length * 0.08,
+    );
+    plate.scale.set(1.15, 0.35, 1);
   }
 
-  const barY = type === 'vorak' ? 2.9 : type === 'slab' ? 2.3 : type === 'nib' ? 1.1 : 1.6;
-  root.userData.bar = attachHealthBar(root, barY);
-  if (type === 'vorak') root.userData.bar.group.scale.set(2.5, 1.7, 1);
+  root.scale.setScalar(kind.scale);
+  root.userData.bar = attachHealthBar(root, kind.bar);
+  if (type === 'vorak') root.userData.bar.group.scale.set(1.6, 1.2, 1);
   root.userData.mats = captureMaterials(root);
   return root;
-}
-
-function buildVorak(root) {
-  const hull = makeStandard(0x4e5b54, { emissive: 0x14201c, emissiveIntensity: 0.32, metalness: 0.62, roughness: 0.38 });
-  const plate = makeStandard(0xe7d8c4, { emissive: 0x3a3024, emissiveIntensity: 0.12, roughness: 0.55, metalness: 0.2 });
-  const rust = makeStandard(0xc45132, { emissive: 0x5a2010, emissiveIntensity: 0.45, metalness: 0.35, roughness: 0.42 });
-  const dark = makeStandard(0x1b2420, { metalness: 0.72, roughness: 0.3 });
-
-  addMesh(root, box(2.35, 1.05, 5.4), hull, 0, 0, 0.55);
-  addMesh(root, box(3.7, 0.38, 2.8), plate, 0, 0.48, 0.7);
-  addMesh(root, box(1.15, 0.72, 1.45), plate, 0.28, 0.95, 0.15);
-  addMesh(root, box(0.55, 0.28, 0.4), rust, 0.42, 1.38, -0.15);
-  addMesh(root, box(0.9, 0.55, 2.2), dark, 1.35, -0.15, 0.4);
-  addMesh(root, box(0.9, 0.55, 2.2), dark, -1.35, -0.15, 0.85);
-
-  const bellMat = makeStandard(0x2a221c, { emissive: 0x4a2810, emissiveIntensity: 0.4, metalness: 0.6, roughness: 0.35 });
-  const leftBell = addMesh(root, cyl(0.28, 0.42, 0.7, 10), bellMat, 0.55, 0, 3.15);
-  const rightBell = addMesh(root, cyl(0.18, 0.28, 0.5, 8), bellMat, -0.48, 0.05, 2.85);
-  leftBell.rotation.x = Math.PI / 2;
-  rightBell.rotation.x = Math.PI / 2;
-
-  const maul = new THREE.Group();
-  maul.position.set(0, 0.12, -2.15);
-  addMesh(maul, box(0.26, 0.26, 2.05), dark, 0, 0, -0.85);
-  const head = addMesh(maul, cyl(0.62, 0.62, 1.35, 12), rust, 0, 0, -1.95);
-  head.rotation.z = Math.PI / 2;
-  addMesh(maul, cyl(0.22, 0.22, 1.55, 8), plate, 0, 0, -1.95).rotation.z = Math.PI / 2;
-  const core = addMesh(
-    maul,
-    geo('vorak-core', () => new THREE.SphereGeometry(0.26, 12, 10)),
-    new THREE.MeshBasicMaterial({ color: 0xffc56a }),
-    0,
-    0,
-    -1.95,
-  );
-  const tip = new THREE.Object3D();
-  tip.position.set(0, 0, -2.15);
-  maul.add(tip);
-  root.add(maul);
-  root.userData.maul = maul;
-  root.userData.maulCore = core;
-  root.userData.maulTip = tip;
 }
 
 export function createTower(type) {

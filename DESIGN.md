@@ -27,7 +27,7 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
-| Shoot | Space or left click. Thin movie lasers. On a phone, hold the round ירי button |
+| Shoot | Space or left click. Thick beams. On a phone, hold the round ירי button |
 | Nuclear missile | The orange טיל גרעיני button (desktop HUD and phone), `F`, or right click. One wipe, then a 4s cooldown |
 | Steer on a phone | Large left joystick. Deadzone is wide, and the stick eases instead of jumping |
 | Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
@@ -50,34 +50,34 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Collision radius | 4.6 |
 | Shot damage | 36 |
 | Shot hit radius | 2.1 |
-| Shot beam | Thin movie laser, about 0.5 thick and 18 long, with a small muzzle flash |
+| Shot beam | 2.7 thick, about 14 long, with a large muzzle flash |
 | Shot speed / life | 145 u/s, 1.15s |
 | Fire interval | 0.15s (0.075s with rapid fire) |
 | Missile | Speed 210. It stays in flight for at least 0.38s so the rocket reads, then detonates by 0.72s. Blast radius 220 erases everything inside it. Cooldown 4s |
 
 Shields soak damage first. A translucent bubble shows remaining shield. Boost widens the camera field of view slightly. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
 
-Primary fire is a thin laser. The nuclear missile is the power-fantasy button, labeled **טיל גרעיני** on the HUD and on the phone pad. It is a fat glowing rocket. It stays visible for a short flight, then the blast deletes every enemy and tower inside a huge radius. Kills pop in a quick cascade so the wipe reads as about a second of explosions. It does not hurt Shomeret. After firing, the button shows the remaining cooldown.
+Primary fire is a thick beam. The nuclear missile is the power-fantasy button, labeled **טיל גרעיני** on the HUD and on the phone pad. It is a fat glowing rocket. It stays visible for a short flight, then the blast deletes every enemy and tower inside a huge radius. Kills pop in a quick cascade so the wipe reads as about a second of explosions. It does not hurt Shomeret. After firing, the button shows the remaining cooldown.
 
 ## Enemies
 
-Waves spawn outside the camera, staggered about 0.38s apart, 125–170 units from the player. Contact damage respects the player's invulnerability window.
+Every enemy ship is a three-sided wedge. The point faces the direction of flight, so the silhouette stays a triangle. שומרת is still the blunt freighter. Waves arrive as squads of six, about 100–120 units ahead, so the sector fills with fleets instead of a handful of loners. Contact damage respects the player's invulnerability window.
 
 | Id | Hebrew | HP | Speed | Score | Behavior |
 | --- | --- | --- | --- | --- | --- |
-| Glint | גלינט | 30 | 34 | 120 | Small fighter. Flies one straight lane, a flyby, never a circle. Contact 10. |
-| Nib | ניב | 12 | 44 | 50 | Small fighter. Flies one straight lane. Contact 7. Dies in one shot. |
-| Howler | מיילל | 54 | 22 | 280 | Small fighter on a straight lane. Fires while passing. Shots deal 9. Contact 12. No orbit. |
-| Slab | לוח | 140 | 13 | 700 | Slow armored cruiser. Heavy shots deal 16 and are easier to see. Contact 18. |
-| Judge Vorak | הדיין ווראק | 420 | 10 | 1800 | Elite escort. See below. |
+| Glint | גלינט | 30 | 34 | 120 | Pink triangle fighter. Straight lane, never a circle. Contact 10. |
+| Nib | ניב | 12 | 44 | 50 | Small purple triangle. Straight lane. Contact 7. Dies in one shot. |
+| Howler | מיילל | 54 | 22 | 280 | Wider orange triangle. Straight lane, fires while passing. Shots deal 9. Contact 12. |
+| Slab | לוח | 140 | 13 | 700 | Large purple triangle. Heavy shots deal 16. Contact 18. |
+| Judge Vorak | הדיין ווראק | 420 | 10 | 1800 | Biggest slate triangle. See below. |
 
 Drop chances: Glint 22%, Nib 16%, Howler 42%, Slab 70%, Judge Vorak 100%.
 
 ### Judge Vorak
 
-An original capital escort, not a fighter. The hull is a long slate-green battering ship with bone armor plates, a raised citadel, and a forward spar that ends in a blunt energy maul. It is much larger than a Slab (collision radius 6.2) and keeps about 54 units away.
+An original capital triangle, much larger than a Slab (collision radius 6.2). The hull is slate green with a bone-colored second wedge. It keeps about 54 units away.
 
-Attacks alternate after a 0.72s windup, while the maul lifts and slams:
+Attacks alternate after a 0.72s windup:
 
 1. **Maul bolt** — one slow amber shot (34 u/s, damage 24, large silhouette).
 2. **Arc** — three faster shots in a wide fan (56 u/s, damage 12 each).
@@ -123,14 +123,14 @@ Displayed score is `round(base × combo)`.
 
 | Wave | Spawns |
 | --- | --- |
-| 1 | 4 Glint |
-| 2 | 7 Nib, 3 Glint |
-| 3 | 6 Nib, 3 Glint, 2 Howler |
-| 4 | 8 Nib, 2 Glint, 3 Howler, 1 Slab |
-| 5 | 10 Nib, 4 Glint, 3 Howler, 1 Slab, 1 Judge Vorak |
-| 6 | 12 Nib, 4 Glint, 4 Howler, 2 Slab, 1 Judge Vorak |
+| 1 | 12 Glint, 12 Nib |
+| 2 | 16 Nib, 10 Glint, 6 Howler |
+| 3 | 18 Nib, 12 Glint, 8 Howler, 3 Slab |
+| 4 | 18 Nib, 12 Glint, 8 Howler, 4 Slab, 1 Judge Vorak |
+| 5 | 20 Nib, 14 Glint, 10 Howler, 4 Slab, 2 Judge Vorak |
+| 6 | 22 Nib, 14 Glint, 10 Howler, 5 Slab, 2 Judge Vorak |
 
-After wave 6 the counts climb but stay capped (Nib 16, Glint 10, Howler 8, Slab 5, Judge Vorak 1) so the pools can hold them. The next wave begins 2 seconds after the last enemy of the current wave dies. The first enemy of a wave arrives about 0.85s after the banner.
+After wave 6 the counts climb but stay capped (Nib 28, Glint 18, Howler 12, Slab 6, Judge Vorak 2) so the pools can hold them. The next wave begins 2 seconds after the last enemy of the current wave dies. Squads start arriving about 0.4s after the banner.
 
 ## Game flow
 
