@@ -210,6 +210,7 @@ export class Game {
     this.player = {
       mesh: createPlayerShip(this.soft),
     };
+    this.player.mesh.scale.setScalar(PLAYER.visualScale);
     this.scene.add(this.player.mesh);
     this.bubble = new THREE.Mesh(
       new THREE.SphereGeometry(2.35, 24, 18),
@@ -606,9 +607,9 @@ export class Game {
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
     for (const angle of angles) {
       const dir = this.v1.copy(this.nose).applyAxisAngle(this.upV, angle).normalize();
-      const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.6);
-      this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1);
-      burstSparks(this.sparks, origin, 0xe8fff8, 8, 14, dir);
+      const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.2 * PLAYER.visualScale);
+      this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1.7);
+      burstSparks(this.sparks, origin, 0xe8fff8, 16, 22, dir);
     }
     this.sfx.shoot();
   }
@@ -1011,6 +1012,7 @@ export class Game {
     enemy.hp -= amount;
     enemy.flash = 0.08;
     flashMaterials(enemy.mesh.userData.mats);
+    burstSparks(this.sparks, enemy.mesh.position, 0xfff6d8, 7, 18, null);
     if (enemy.hp <= 0) this.killEnemy(enemy);
   }
 
@@ -1036,6 +1038,7 @@ export class Game {
     tower.hp -= amount;
     tower.flash = 0.08;
     flashMaterials(tower.mesh.userData.mats);
+    burstSparks(this.sparks, tower.mesh.position, 0xfff6d8, 7, 18, null);
     if (tower.hp <= 0) this.killTower(tower);
   }
 
@@ -1222,7 +1225,7 @@ export class Game {
 
   updateCameraMenu() {
     const angle = this.time * 0.18;
-    this.camera.position.set(Math.sin(angle) * 15.5, 4.1 + Math.sin(this.time * 0.7) * 0.35, Math.cos(angle) * 15.5);
+    this.camera.position.set(Math.sin(angle) * 19, 5.2 + Math.sin(this.time * 0.7) * 0.35, Math.cos(angle) * 19);
     this.camera.lookAt(0, 0.45, 0);
     this.dampFov(52);
   }
@@ -1230,8 +1233,8 @@ export class Game {
   updateChaseCamera(dt) {
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
-    const back = 13.2 + (this.speed / PLAYER.boost) * 5.5;
-    this.camDesired.copy(this.player.mesh.position).addScaledVector(this.nose, -back).addScaledVector(this.upV, 4.5);
+    const back = 16 + (this.speed / PLAYER.boost) * 5.5;
+    this.camDesired.copy(this.player.mesh.position).addScaledVector(this.nose, -back).addScaledVector(this.upV, 5.4);
     const blend = 1 - Math.exp(-3.5 * dt);
     this.camera.position.lerp(this.camDesired, blend);
     this.look.copy(this.player.mesh.position).addScaledVector(this.nose, 34);

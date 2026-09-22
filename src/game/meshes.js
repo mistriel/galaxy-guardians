@@ -91,7 +91,7 @@ function addMesh(parent, geometry, material, x, y, z) {
  * Shomeret (playerShip) — original chunky freighter.
  * Blunt nose, cockpit blister offset to port, a cargo drum bolted to
  * starboard, one oversized engine and one stub engine, uneven fins.
- * The nose points down local -Z.
+ * The nose points down local -Z. Game.js scales the whole mesh by PLAYER.visualScale.
  */
 export function createPlayerShip(softMap) {
   const root = new THREE.Group();
