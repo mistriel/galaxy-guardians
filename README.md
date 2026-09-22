@@ -71,7 +71,8 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Steer | Mouse (crosshair stays at screen center) or arrow keys |
 | Boost / brake | `W` / `S` |
 | Strafe | `A` / `D` |
-| Shoot | Space or left click |
+| Shoot | Space or left click. On a phone, hold the round ירי button |
+| Phone steer | Large left joystick. A soft aim assist helps while the stick is near center |
 | Pause | `Esc` or `P` |
 | Mute | `M` |
 | Restart after game over | Enter, `R`, or the on-screen button |

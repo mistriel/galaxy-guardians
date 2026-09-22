@@ -52,12 +52,27 @@ function steerAxis(v) {
   return Math.sign(v) * (Math.min(1, scaled) ** 1.25);
 }
 
+function touchAxis(v) {
+  const amount = Math.abs(v);
+  // The stick already applied its own deadzone. Only crush noise here.
+  if (amount < 0.02) return 0;
+  return Math.sign(v) * (Math.min(1, amount) ** 1.35);
+}
+
 export class Game {
   constructor(canvas) {
     this.canvas = canvas;
     this.sfx = new Sfx();
     this.keys = new Set();
     this.pointer = { x: 0, y: 0, ready: false, armed: false, fire: false };
+    const narrow = window.matchMedia('(max-width: 900px)').matches;
+    this.coarse = window.matchMedia('(pointer: coarse)').matches
+      || ((navigator.maxTouchPoints || 0) > 0 && narrow);
+    document.body.classList.toggle('touch', this.coarse);
+    this.stick = { id: null, originX: 0, originY: 0, x: 0, y: 0, tx: 0, ty: 0, px: 0, py: 0 };
+    this.firePointer = null;
+    this.nudgeX = 0;
+    this.nudgeY = 0;
     this.state = 'menu';
     this.time = 0;
     this.score = 0;
@@ -101,6 +116,7 @@ export class Game {
     this.nose = new THREE.Vector3();
     this.rightV = new THREE.Vector3();
     this.upV = new THREE.Vector3();
+    this.aimAt = new THREE.Vector3();
     this.camDesired = new THREE.Vector3();
     this.look = new THREE.Vector3();
 
@@ -145,6 +161,11 @@ export class Game {
       roster: document.querySelector('#roster'),
       controlsTitle: document.querySelector('#controls-title'),
       controls: document.querySelector('#controls'),
+      touch: document.querySelector('#touch'),
+      stick: document.querySelector('#stick'),
+      stickBase: document.querySelector('.stick-base'),
+      stickKnob: document.querySelector('.stick-knob'),
+      fireBtn: document.querySelector('#fire-btn'),
     };
 
     this.fillText();
@@ -312,6 +333,7 @@ export class Game {
     dom.scoreLabel.textContent = T.score;
     dom.waveLabel.textContent = T.wave;
     dom.pauseBtn.textContent = T.pause;
+    dom.fireBtn.textContent = T.fire;
     dom.muteBtn.textContent = T.sound;
     dom.resumeBtn.textContent = T.resume;
     dom.restartBtn.textContent = T.restart;
@@ -334,10 +356,12 @@ export class Game {
     window.addEventListener('keyup', (event) => this.keys.delete(event.code));
     window.addEventListener('blur', () => {
       this.keys.clear();
-      this.pointer.fire = false;
+      this.releaseStick(true);
+      this.releaseFire();
     });
     window.addEventListener('pointermove', (event) => {
-      if (!this.renderer) return;
+      if (!this.renderer || this.coarse) return;
+      if (event.target instanceof Element && event.target.closest('#touch')) return;
       const rect = this.renderer.domElement.getBoundingClientRect();
       const nx = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2;
       const ny = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2;
@@ -349,15 +373,170 @@ export class Game {
       }
     });
     window.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
-      if (event.target instanceof Element && event.target.closest('button')) return;
+      if (this.coarse || event.button !== 0) return;
+      if (event.target instanceof Element && event.target.closest('button, #touch')) return;
       this.pointer.fire = true;
       this.shoot();
     });
-    window.addEventListener('pointerup', () => {
-      this.pointer.fire = false;
-    });
+    window.addEventListener('pointerup', (event) => this.onGlobalPointerUp(event));
+    window.addEventListener('pointercancel', (event) => this.onGlobalPointerUp(event));
+    dom.stick.addEventListener('pointerdown', (event) => this.onStickDown(event));
+    dom.stick.addEventListener('pointermove', (event) => this.onStickMove(event));
+    dom.stick.addEventListener('pointerup', (event) => this.onStickUp(event));
+    dom.stick.addEventListener('pointercancel', (event) => this.onStickUp(event));
+    dom.fireBtn.addEventListener('pointerdown', (event) => this.onFireDown(event));
+    dom.fireBtn.addEventListener('pointerup', (event) => this.onFireUp(event));
+    dom.fireBtn.addEventListener('pointercancel', (event) => this.onFireUp(event));
     this.canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+  }
+
+  onGlobalPointerUp(event) {
+    if (this.stick.id === event.pointerId) this.releaseStick(false);
+    if (this.firePointer === event.pointerId) {
+      this.releaseFire();
+      return;
+    }
+    if (!this.coarse && this.firePointer == null) this.pointer.fire = false;
+  }
+
+  onStickDown(event) {
+    if (this.state !== 'play') return;
+    event.preventDefault();
+    event.stopPropagation();
+    const stick = this.dom.stick;
+    try { stick.setPointerCapture(event.pointerId); } catch (err) { /* already released */ }
+    const rect = stick.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const shiftX = THREE.MathUtils.clamp(event.clientX - cx, -28, 28);
+    const shiftY = THREE.MathUtils.clamp(event.clientY - cy, -28, 28);
+    this.stick.id = event.pointerId;
+    this.stick.originX = cx + shiftX;
+    this.stick.originY = cy + shiftY;
+    this.dom.stickBase.style.transform = `translate(calc(-50% + ${shiftX}px), calc(-50% + ${shiftY}px))`;
+    this.applyStick(event.clientX, event.clientY);
+  }
+
+  onStickMove(event) {
+    if (this.stick.id !== event.pointerId) return;
+    event.preventDefault();
+    this.applyStick(event.clientX, event.clientY);
+  }
+
+  onStickUp(event) {
+    if (this.stick.id !== event.pointerId) return;
+    this.releaseStick(false);
+  }
+
+  applyStick(clientX, clientY) {
+    const maxThrow = 64;
+    const dead = 0.3;
+    let dx = clientX - this.stick.originX;
+    let dy = clientY - this.stick.originY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxThrow) {
+      dx = (dx / dist) * maxThrow;
+      dy = (dy / dist) * maxThrow;
+    }
+    this.stick.px = dx;
+    this.stick.py = dy;
+    let nx = dx / maxThrow;
+    let ny = dy / maxThrow;
+    const mag = Math.hypot(nx, ny);
+    if (mag < dead) {
+      nx = 0;
+      ny = 0;
+    } else {
+      const scaled = (mag - dead) / (1 - dead);
+      nx *= scaled / mag;
+      ny *= scaled / mag;
+    }
+    this.stick.tx = nx;
+    this.stick.ty = ny;
+    this.dom.stickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  }
+
+  releaseStick(snap) {
+    this.stick.id = null;
+    this.stick.tx = 0;
+    this.stick.ty = 0;
+    this.dom.stickBase.style.transform = 'translate(-50%, -50%)';
+    if (snap) {
+      this.stick.x = 0;
+      this.stick.y = 0;
+      this.stick.px = 0;
+      this.stick.py = 0;
+      this.dom.stickKnob.style.transform = 'translate(-50%, -50%)';
+    }
+  }
+
+  onFireDown(event) {
+    if (this.state !== 'play') return;
+    event.preventDefault();
+    event.stopPropagation();
+    try { this.dom.fireBtn.setPointerCapture(event.pointerId); } catch (err) { /* already released */ }
+    this.firePointer = event.pointerId;
+    this.pointer.fire = true;
+    this.shoot();
+  }
+
+  onFireUp(event) {
+    if (this.firePointer != null && event.pointerId !== this.firePointer) return;
+    this.releaseFire();
+  }
+
+  releaseFire() {
+    this.firePointer = null;
+    this.pointer.fire = false;
+  }
+
+  smoothStick(dt) {
+    const follow = 1 - Math.exp(-14 * dt);
+    this.stick.x += (this.stick.tx - this.stick.x) * follow;
+    this.stick.y += (this.stick.ty - this.stick.y) * follow;
+    if (this.stick.id == null) {
+      const back = 1 - Math.exp(-18 * dt);
+      this.stick.px += -this.stick.px * back;
+      this.stick.py += -this.stick.py * back;
+      if (Math.hypot(this.stick.x, this.stick.y) < 0.01) {
+        this.stick.x = 0;
+        this.stick.y = 0;
+      }
+      this.dom.stickKnob.style.transform = `translate(calc(-50% + ${this.stick.px}px), calc(-50% + ${this.stick.py}px))`;
+    }
+  }
+
+  aimNudge() {
+    const mesh = this.player.mesh;
+    this.nose.set(0, 0, -1).applyQuaternion(mesh.quaternion);
+    this.rightV.set(1, 0, 0).applyQuaternion(mesh.quaternion);
+    this.upV.set(0, 1, 0).applyQuaternion(mesh.quaternion);
+    const origin = mesh.position;
+    let best = Infinity;
+    let found = false;
+    const consider = (pos) => {
+      this.v1.copy(pos).sub(origin);
+      const dist = this.v1.length();
+      if (dist < 14 || dist > 180 || dist >= best) return;
+      this.v1.multiplyScalar(1 / dist);
+      if (this.nose.dot(this.v1) < 0.8) return;
+      best = dist;
+      this.aimAt.copy(this.v1);
+      found = true;
+    };
+    for (const enemy of this.enemies) {
+      if (enemy.alive) consider(enemy.mesh.position);
+    }
+    for (const tower of this.towers) {
+      if (tower.alive) consider(tower.mesh.position);
+    }
+    if (!found) {
+      this.nudgeX = 0;
+      this.nudgeY = 0;
+      return;
+    }
+    this.nudgeX = THREE.MathUtils.clamp(this.rightV.dot(this.aimAt) * 2.4, -0.65, 0.65);
+    this.nudgeY = THREE.MathUtils.clamp(-this.upV.dot(this.aimAt) * 2.1, -0.45, 0.45);
   }
 
   onKeyDown(event) {
@@ -525,9 +704,25 @@ export class Game {
   }
 
   updatePlayer(dt) {
-    const mouseSteer = this.pointer.ready && this.pointer.armed;
-    let nx = mouseSteer ? this.pointer.x : 0;
-    let ny = mouseSteer ? this.pointer.y : 0;
+    let nx = 0;
+    let ny = 0;
+    let axis = steerAxis;
+    let turn = PLAYER.turn;
+    if (this.coarse) {
+      this.smoothStick(dt);
+      nx = this.stick.x;
+      ny = this.stick.y;
+      this.aimNudge();
+      const stickMag = Math.min(1, Math.hypot(nx, ny));
+      const gain = 0.62 * (1 - Math.min(1, stickMag * 1.15));
+      nx = THREE.MathUtils.clamp(nx + this.nudgeX * gain, -1, 1);
+      ny = THREE.MathUtils.clamp(ny + this.nudgeY * gain, -1, 1);
+      axis = touchAxis;
+      turn = PLAYER.turn * 0.68;
+    } else if (this.pointer.ready && this.pointer.armed) {
+      nx = this.pointer.x;
+      ny = this.pointer.y;
+    }
     if (this.keys.has('ArrowLeft')) nx -= 0.9;
     if (this.keys.has('ArrowRight')) nx += 0.9;
     if (this.keys.has('ArrowUp')) ny -= 0.9;
@@ -537,10 +732,10 @@ export class Game {
 
     // Yaw is a rate so heading stays free. Pitch springs back to level when the
     // cursor is centered, so traveling the pointer onto the crosshair does not
-    // leave the nose stuck high or low.
-    this.yawVel = steerAxis(nx) * PLAYER.turn;
+    // leave the nose stuck high or low. Touch uses a slower rate and its own curve.
+    this.yawVel = axis(nx) * turn;
     this.yaw += this.yawVel * dt;
-    const targetPitch = THREE.MathUtils.clamp(steerAxis(-ny) * 0.9, -0.95, 0.95);
+    const targetPitch = THREE.MathUtils.clamp(axis(-ny) * 0.9, -0.95, 0.95);
     this.pitch = THREE.MathUtils.damp(this.pitch, targetPitch, 6, dt);
     this.bank = THREE.MathUtils.damp(this.bank, THREE.MathUtils.clamp(-this.yawVel * 0.48, -0.7, 0.7), 6, dt);
     this.applyAttitude();
@@ -1423,6 +1618,8 @@ export class Game {
     this.dom.crosshair.hidden = !playing;
     this.dom.overlay.hidden = this.state !== 'paused' && this.state !== 'dead';
     document.body.classList.toggle('playing', playing);
+    document.body.classList.toggle('touch', this.coarse);
+    this.dom.touch.hidden = !(this.coarse && playing);
   }
 
   openOverlay(mode) {
@@ -1486,6 +1683,8 @@ export class Game {
 
   togglePause() {
     if (this.state === 'play') {
+      this.releaseStick(true);
+      this.releaseFire();
       this.state = 'paused';
       this.sfx.ui();
       this.openOverlay('paused');
@@ -1548,7 +1747,8 @@ export class Game {
     this.braking = false;
     this.pointer.ready = next !== 'play';
     this.pointer.armed = false;
-    this.pointer.fire = false;
+    this.releaseStick(true);
+    this.releaseFire();
     this.dom.banner.classList.remove('show');
     this.dom.toast.classList.remove('show');
     this.shakeAmp = 0;
