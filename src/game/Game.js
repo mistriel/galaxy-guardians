@@ -1139,21 +1139,26 @@ export class Game {
     this.sfx.missileBoom();
     this.addShake(1.3);
     const up = this.v2.set(0, 1, 0);
-    burstSparks(this.sparks, origin, 0xfff6d2, 36, 40, up, 4.2, 1.6);
-    burstSparks(this.sparks, origin, 0xff8a22, 42, 55, null, 5.5, 1.5);
-    spawnRing(this.rings, origin, 0xfff6d2, { life: 1.05, grow: 2200, scale: 4 });
-    spawnRing(this.rings, origin, 0xff7a18, { life: 1.35, grow: 2700, scale: 5 });
+    // The dart blooms far beyond the fog. Draw the mushroom ahead of the camera
+    // so the burst stays readable, and still apply damage at the true end point.
+    const toBurst = this.v3.copy(origin).sub(this.camera.position);
+    const dist = Math.max(toBurst.length(), 0.001);
+    const visual = this.camera.position.clone().addScaledVector(toBurst.multiplyScalar(1 / dist), Math.min(dist, 240));
+    burstSparks(this.sparks, visual, 0xfff6d2, 36, 40, up, 4.2, 1.6);
+    burstSparks(this.sparks, visual, 0xff8a22, 42, 55, null, 5.5, 1.5);
+    spawnRing(this.rings, visual, 0xfff6d2, { life: 0.85, grow: 220, scale: 2.4 });
+    spawnRing(this.rings, visual, 0xff7a18, { life: 1.15, grow: 340, scale: 3.2 });
     for (let i = 1; i <= 4; i += 1) {
-      const stem = origin.clone().addScaledVector(up, i * 10);
+      const stem = visual.clone().addScaledVector(up, i * 10);
       spawnRing(this.rings, stem, i > 2 ? 0xfff2c4 : 0xff9a3c, {
-        life: 0.75,
-        grow: 70 + i * 36,
-        scale: 1.1 + i * 0.15,
+        life: 0.8,
+        grow: 90 + i * 40,
+        scale: 1.4 + i * 0.2,
       });
     }
-    const cap = origin.clone().addScaledVector(up, 48);
-    spawnRing(this.rings, cap, 0xfff6d2, { life: 1.15, grow: 460, scale: 7 });
-    spawnRing(this.rings, cap, 0xff5a22, { life: 0.95, grow: 300, scale: 4.5 });
+    const cap = visual.clone().addScaledVector(up, 48);
+    spawnRing(this.rings, cap, 0xfff6d2, { life: 1.05, grow: 200, scale: 6 });
+    spawnRing(this.rings, cap, 0xff5a22, { life: 0.9, grow: 140, scale: 4 });
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
       if (enemy.mesh.position.distanceTo(origin) <= MISSILE.blast + enemy.cfg.radius) {

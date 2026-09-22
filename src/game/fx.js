@@ -115,6 +115,7 @@ export function createRings(scene, count) {
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      fog: false,
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.visible = false;

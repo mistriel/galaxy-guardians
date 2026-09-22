@@ -77,7 +77,7 @@ Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4
 
 טיל ענק is the fat special. The mesh is a thick gold body at scale 3.4. It flies for 1.7 seconds at 160 (about 270 units) and only then blooms. Blast radius 150. It does not hurt שומרת, the blue triangles, or the friendly carrier.
 
-טילים גרעיניים are a thin movie dart (body radius under 0.08, small tail fins, an axial plume instead of a fat flame, scale 1, speed 260, life 12.5s, no contact fuse). At the end of that long flight the bloom is an energy mushroom: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 3600, and it still skips allies.
+טילים גרעיניים are a thin movie dart (body radius under 0.08, small tail fins, an axial plume instead of a fat flame, scale 1, speed 260, life 12.5s, no contact fuse). At the end of that long flight the bloom is an energy mushroom drawn ahead of the camera so it still fills the view: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 3600, and it still skips allies.
 
 A separate heavy cycle sits beside those two. **E** or the חימוש button fires the selected one. **C** or **הבא** steps אטומים → פגזים → פצצות אולטרה גרעיניות. Atoms are a spinning cluster of pastel beads (speed 175, life 1.35s, blast 78). Shells are short gold rounds (speed 230, life 0.95s, blast 62). Ultra is a glowing orb with two rings that opens into a local festival of light (speed 120, life 2.15s, blast 280), not the sector-wide nuclear wipe. Each has its own cooldown. No gore.
 
