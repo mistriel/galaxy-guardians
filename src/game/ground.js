@@ -756,7 +756,7 @@ export class GroundBattle {
   start(worldId) {
     this.world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
     this.scene.background = new THREE.Color(this.world.skyHorizon);
-    this.scene.fog = new THREE.FogExp2(this.world.fog, 0.0062);
+    this.scene.fog = new THREE.FogExp2(this.world.fog, 0.0048);
     this.sun.castShadow = true;
     this.hemi.color.setHex(this.world.skyHorizon);
     this.hemi.groundColor.setHex(this.world.ground);
@@ -814,7 +814,7 @@ export class GroundBattle {
   buildField() {
     const world = this.world;
     const sky = new THREE.Mesh(
-      new THREE.SphereGeometry(190, 28, 18),
+      new THREE.SphereGeometry(260, 28, 18),
       new THREE.MeshBasicMaterial({
         map: skyTexture(world.skyTop, world.skyHorizon, world.fog),
         side: THREE.BackSide,
@@ -832,7 +832,7 @@ export class GroundBattle {
     groundMat.map = fieldTexture(meadow[0], meadow[1], meadow[2]);
     groundMat.roughness = 0.94;
     groundMat.metalness = 0.02;
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), groundMat);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(480, 480), groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     this.root.add(ground);
