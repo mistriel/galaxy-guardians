@@ -249,6 +249,58 @@ export function createEnemy(type) {
   return root;
 }
 
+/** Friendly escort. Rounded hull, not a triangle, so it never reads as an enemy. */
+export function createAlly() {
+  const root = new THREE.Group();
+  root.name = 'ally';
+  const teal = makeStandard(0x14c8bc, { emissive: 0x084240, emissiveIntensity: 0.55, roughness: 0.34 });
+  const white = makeStandard(0xf4f7fb, { emissive: 0xb7c4d0, emissiveIntensity: 0.35, roughness: 0.3 });
+  const blue = makeStandard(0x2f6dff, { emissive: 0x10215f, emissiveIntensity: 0.45 });
+  const hull = addMesh(root, geo('ally-hull', () => new THREE.CapsuleGeometry(0.58, 1.7, 5, 10)), teal, 0, 0, 0);
+  hull.rotation.x = Math.PI / 2;
+  addMesh(root, box(0.85, 0.32, 1.05), white, 0, 0.42, -0.15);
+  addMesh(root, box(0.55, 0.28, 0.9), blue, -1.05, 0.05, 0.2);
+  addMesh(root, box(0.55, 0.28, 0.9), blue, 1.05, 0.05, 0.2);
+  addMesh(root, box(0.62, 0.36, 0.8), white, 0, 0.02, -1.45);
+  root.userData.bar = attachHealthBar(root, 1.25);
+  root.userData.mats = captureMaterials(root);
+  return root;
+}
+
+/** Capital ship. Allies are a flat deck. The enemy carrier stays a giant triangle. */
+export function createCarrier(side) {
+  const root = new THREE.Group();
+  root.name = `carrier-${side}`;
+  if (side === 'enemy') {
+    const hull = makeStandard(0xc4322a, { emissive: 0x5a120c, emissiveIntensity: 0.5, roughness: 0.38 });
+    const body = addMesh(root, geo('carrier-wedge', () => new THREE.ConeGeometry(2.5, 8.6, 3)), hull, 0, 0, 0);
+    body.rotation.x = -Math.PI / 2;
+    const edge = addMesh(
+      root,
+      geo('carrier-edge', () => new THREE.ConeGeometry(0.85, 3.4, 3)),
+      makeStandard(0xffe08a, { emissive: 0x8a3a10, emissiveIntensity: 0.55 }),
+      0,
+      0.15,
+      -2.4,
+    );
+    edge.rotation.x = -Math.PI / 2;
+  } else {
+    const deck = makeStandard(0x1a5560, { emissive: 0x083038, emissiveIntensity: 0.4, metalness: 0.35, roughness: 0.42 });
+    const white = makeStandard(0xe7eef4, { emissive: 0x9aabba, emissiveIntensity: 0.25, roughness: 0.35 });
+    const teal = makeStandard(0x14c8bc, { emissive: 0x084240, emissiveIntensity: 0.45 });
+    addMesh(root, box(3.4, 0.5, 8.8), deck, 0, 0, 0);
+    addMesh(root, box(1.05, 1.15, 1.7), white, 0.85, 0.75, 1.5);
+    addMesh(root, box(2.2, 0.18, 6.2), teal, 0, 0.34, -0.3);
+    const lampMat = new THREE.MeshBasicMaterial({ color: 0x7af6ee });
+    for (let i = 0; i < 5; i += 1) {
+      addMesh(root, geo('runway-lamp', () => new THREE.SphereGeometry(0.12, 8, 6)), lampMat, -0.55, 0.4, -3.1 + i * 1.45);
+    }
+  }
+  root.userData.bar = attachHealthBar(root, side === 'enemy' ? 2.4 : 1.5);
+  root.userData.mats = captureMaterials(root);
+  return root;
+}
+
 export function createTower(type) {
   const root = new THREE.Group();
   root.name = `tower-${type}`;

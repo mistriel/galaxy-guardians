@@ -73,6 +73,7 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Strafe | `A` / `D` |
 | Lasers | Space or left click. Thick beams. On a phone, hold ירי |
 | Nuclear missile | Orange טיל גרעיני button, `F`, or right click. Wipes the area, then waits 4s |
+| Allies | Four large escorts fight with you. נושאת מטוסים relaunches them. נושאת האויב launches triangle fighters |
 | Phone steer | Large left joystick. A soft aim assist helps while the stick is near center |
 | Pause | `Esc` or `P` |
 | Mute | `M` |

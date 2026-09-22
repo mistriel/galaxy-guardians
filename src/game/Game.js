@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { T } from './i18n.js';
 import {
+  ALLY,
+  CARRIER,
   COMBO_MAX,
   COMBO_STEP,
   COMBO_WINDOW,
@@ -18,6 +20,8 @@ import { Sfx } from './audio.js';
 import { bonusHome, buildLayout } from './layout.js';
 import {
   boltGeometry,
+  createAlly,
+  createCarrier,
   createMissile,
   createPlayerShip,
   createEnemy,
@@ -301,6 +305,7 @@ export class Game {
     this.playerBolts = this.makeBolts(POOLS.playerBolts);
     this.enemyBolts = this.makeBolts(POOLS.enemyBolts);
     this.missiles = this.makeMissiles();
+    this.buildFleet();
 
     this.pickups = [];
     const pickupTypes = ['rapid', 'spread', 'shield', 'repair'];
@@ -766,6 +771,10 @@ export class Game {
             }
           }
         }
+        const foe = this.carriers && this.carriers.enemy;
+        if (!boom && foe && foe.alive && missile.pos.distanceTo(foe.mesh.position) <= MISSILE.hitRadius + foe.radius) {
+          boom = true;
+        }
       }
       if (!boom) continue;
       const pos = missile.pos.clone();
@@ -795,6 +804,10 @@ export class Game {
       if (tower.mesh.position.distanceTo(origin) <= MISSILE.blast + tower.radius) {
         this.damageTower(tower, MISSILE.damage, true);
       }
+    }
+    const foe = this.carriers && this.carriers.enemy;
+    if (foe && foe.alive && foe.mesh.position.distanceTo(origin) <= MISSILE.blast + foe.radius) {
+      this.damageCarrier(foe, MISSILE.damage);
     }
   }
 
@@ -856,6 +869,7 @@ export class Game {
     this.updatePlayer(dt);
     this.updateQueue();
     this.updateEnemies(dt);
+    this.updateFleet(dt);
     this.separateEnemies();
     this.updateTowers(dt, true);
     this.updateBolts(dt);
@@ -1338,6 +1352,11 @@ export class Game {
           break;
         }
       }
+      const foe = this.carriers && this.carriers.enemy;
+      if (!hit && foe && foe.alive && bolt.pos.distanceTo(foe.mesh.position) <= bolt.radius + foe.radius) {
+        this.damageCarrier(foe, bolt.damage);
+        hit = true;
+      }
       if (!hit) {
         for (const tower of this.towers) {
           if (!tower.alive) continue;
@@ -1354,9 +1373,43 @@ export class Game {
     if (this.state !== 'play') return;
     for (const bolt of this.enemyBolts) {
       if (!bolt.alive) continue;
+      if (bolt.team === 'ally') {
+        let hit = false;
+        for (const enemy of this.enemies) {
+          if (!enemy.alive) continue;
+          if (bolt.pos.distanceTo(enemy.mesh.position) <= bolt.radius + enemy.cfg.radius) {
+            this.damageEnemy(enemy, bolt.damage, bolt.vel);
+            hit = true;
+            break;
+          }
+        }
+        const foe = this.carriers && this.carriers.enemy;
+        if (!hit && foe && foe.alive && bolt.pos.distanceTo(foe.mesh.position) <= bolt.radius + foe.radius) {
+          this.damageCarrier(foe, bolt.damage);
+          hit = true;
+        }
+        if (hit) this.killBolt(bolt);
+        continue;
+      }
       if (bolt.pos.distanceTo(this.player.mesh.position) <= bolt.radius + PLAYER.radius) {
         this.killBolt(bolt);
         this.damagePlayer(bolt.damage);
+        continue;
+      }
+      if (this.allies) {
+        for (const ally of this.allies) {
+          if (!ally.alive) continue;
+          if (bolt.pos.distanceTo(ally.mesh.position) <= bolt.radius + ALLY.radius) {
+            this.killBolt(bolt);
+            this.damageAlly(ally, bolt.damage);
+            break;
+          }
+        }
+      }
+      const friend = this.carriers && this.carriers.ally;
+      if (bolt.alive && friend && friend.alive && bolt.pos.distanceTo(friend.mesh.position) <= bolt.radius + friend.radius) {
+        this.killBolt(bolt);
+        this.damageCarrier(friend, bolt.damage);
       }
     }
   }
@@ -1459,6 +1512,7 @@ export class Game {
     const size = enemy.type === 'vorak' || enemy.type === 'slab' ? 'big' : enemy.type === 'nib' ? 'small' : 'mid';
     if (!quiet) {
       this.fxBoom(pos, enemy.cfg.color, size);
+      this.voidBurst(pos, enemy.cfg.color);
       this.addShake(enemy.type === 'vorak' ? 0.85 : enemy.type === 'slab' ? 0.48 : 0.16);
       if (enemy.type === 'vorak') this.sfx.bigBoom();
       else this.sfx.explode();
@@ -1577,6 +1631,13 @@ export class Game {
     this.openOverlay('dead');
   }
 
+  voidBurst(position, color) {
+    spawnRing(this.rings, position, color, { life: 0.75, grow: 150, scale: 2.4 });
+    spawnRing(this.rings, position, 0xd7f7ff, { life: 0.55, grow: 210, scale: 1.1 });
+    burstSparks(this.sparks, position, color, 26, 48, null, 2.8, 1.4);
+    burstSparks(this.sparks, position, 0xeaf8ff, 12, 26, null, 1.8, 1.3);
+  }
+
   fxBoom(position, color, size) {
     const count = size === 'big' ? 34 : size === 'mid' ? 16 : 9;
     const speed = size === 'big' ? 30 : size === 'small' ? 12 : 18;
@@ -1659,6 +1720,7 @@ export class Game {
       });
       at += 0.55;
     }
+    this.supportWave();
     const named = types.includes('vorak') ? ` · ${T.enemyNames.vorak}` : '';
     this.showBanner(`${T.wave} ${this.wave}${named}`);
     this.sfx.wave();
@@ -1783,6 +1845,271 @@ export class Game {
     });
   }
 
+  buildFleet() {
+    this.allies = [];
+    for (let i = 0; i < ALLY.count; i += 1) {
+      const mesh = createAlly();
+      mesh.visible = false;
+      mesh.scale.setScalar(ALLY.visualScale);
+      this.scene.add(mesh);
+      this.allies.push({
+        mesh,
+        alive: false,
+        hp: ALLY.hp,
+        maxHp: ALLY.hp,
+        fireCd: 0.4 + i * 0.15,
+        invuln: 0,
+        slot: i,
+      });
+    }
+    const make = (side) => {
+      const mesh = createCarrier(side);
+      mesh.visible = false;
+      mesh.scale.setScalar(CARRIER.visualScale);
+      this.scene.add(mesh);
+      return {
+        side,
+        mesh,
+        alive: false,
+        hp: side === 'enemy' ? CARRIER.enemyHp : CARRIER.hp,
+        maxHp: side === 'enemy' ? CARRIER.enemyHp : CARRIER.hp,
+        radius: CARRIER.radius,
+        fireCd: 1.4,
+      };
+    };
+    this.carriers = { ally: make('ally'), enemy: make('enemy') };
+    this.allyGap = 0;
+    this.slot = new THREE.Vector3();
+    this.goal = new THREE.Vector3();
+  }
+
+  resetFleet() {
+    if (!this.allies) return;
+    for (const ally of this.allies) {
+      ally.alive = false;
+      ally.hp = ALLY.hp;
+      ally.mesh.visible = false;
+      ally.mesh.position.set(0, -980, 0);
+    }
+    for (const carrier of [this.carriers.ally, this.carriers.enemy]) {
+      carrier.alive = false;
+      carrier.hp = carrier.maxHp;
+      carrier.mesh.visible = false;
+      carrier.mesh.position.set(0, -980, 0);
+    }
+  }
+
+  supportWave() {
+    if (!this.carriers || this.state === 'menu') return;
+    this.reviveCarrier(this.carriers.ally, -46, 8, 34);
+    this.reviveCarrier(this.carriers.enemy, 26, 14, 148);
+    this.launchVolley();
+    this.fillAllies(true);
+  }
+
+  reviveCarrier(carrier, right, up, fwd) {
+    this.park(carrier.mesh.position, right, up, fwd);
+    carrier.alive = true;
+    carrier.hp = carrier.maxHp;
+    carrier.mesh.visible = true;
+    carrier.mesh.scale.setScalar(CARRIER.visualScale);
+    this.goal.copy(carrier.mesh.position).add(this.nose);
+    carrier.mesh.lookAt(this.goal);
+    if (carrier.mesh.userData.bar) carrier.mesh.userData.bar.group.visible = false;
+    restoreMaterials(carrier.mesh.userData.mats);
+  }
+
+  park(out, right, up, fwd) {
+    this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
+    this.rightV.set(1, 0, 0).applyQuaternion(this.player.mesh.quaternion);
+    this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
+    out.copy(this.player.mesh.position)
+      .addScaledVector(this.rightV, right)
+      .addScaledVector(this.upV, up)
+      .addScaledVector(this.nose, fwd);
+  }
+
+  launchVolley() {
+    const carrier = this.carriers.enemy;
+    if (!carrier.alive) return;
+    for (let i = 0; i < 5; i += 1) {
+      const pos = carrier.mesh.position.clone();
+      pos.addScaledVector(this.rightV, (i - 2) * 10);
+      pos.addScaledVector(this.nose, 18);
+      const lane = this.player.mesh.position.clone().sub(pos);
+      if (lane.lengthSq() < 0.01) lane.set(0, 0, -1);
+      else lane.normalize();
+      this.spawnEnemy(i % 2 === 0 ? 'glint' : 'nib', { pos, lane });
+      burstSparks(this.sparks, pos, CARRIER.colorEnemy, 6, 12, this.nose, 1.2);
+    }
+  }
+
+  fillAllies(all) {
+    if (!this.carriers.ally.alive) return;
+    for (const ally of this.allies) {
+      if (ally.alive) continue;
+      this.launchAlly(ally);
+      if (!all) return;
+    }
+  }
+
+  launchAlly(ally) {
+    const carrier = this.carriers.ally;
+    ally.alive = true;
+    ally.hp = ALLY.hp;
+    ally.invuln = 0.8;
+    ally.fireCd = 0.25;
+    ally.mesh.visible = true;
+    ally.mesh.scale.setScalar(ALLY.visualScale);
+    ally.mesh.position.copy(carrier.mesh.position).addScaledVector(this.nose, 16 + ally.slot * 3);
+    burstSparks(this.sparks, ally.mesh.position, ALLY.color, 8, 14, this.nose, 1.4);
+  }
+
+  updateFleet(dt) {
+    if (!this.carriers) return;
+    this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
+    this.rightV.set(1, 0, 0).applyQuaternion(this.player.mesh.quaternion);
+    this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
+    this.steerCarrier(this.carriers.ally, -46, 8, 34, 58, dt);
+    this.steerCarrier(this.carriers.enemy, 26, 14, 148, 32, dt);
+    const foe = this.carriers.enemy;
+    if (foe.alive) {
+      foe.fireCd -= dt;
+      if (foe.fireCd <= 0) {
+        foe.fireCd = 2.1;
+        const origin = foe.mesh.position.clone();
+        const dir = this.player.mesh.position.clone().sub(origin);
+        if (dir.lengthSq() > 0.01) {
+          dir.normalize();
+          this.spawnBolt('enemy', origin, dir, 70, 14, 0xff5a36, 2.1);
+        }
+      }
+      this.updateBar(foe);
+    }
+    if (this.carriers.ally.alive) this.updateBar(this.carriers.ally);
+    this.allyGap -= dt;
+    if (this.allyGap <= 0) {
+      this.allyGap = 1.7;
+      this.fillAllies(false);
+    }
+    const slots = [
+      [22, 8, 20],
+      [-22, 8, 20],
+      [30, 1, 8],
+      [-30, 1, 8],
+    ];
+    for (const ally of this.allies) {
+      if (!ally.alive) continue;
+      ally.invuln = Math.max(0, ally.invuln - dt);
+      ally.fireCd -= dt;
+      const slot = slots[ally.slot];
+      this.slot.copy(this.player.mesh.position)
+        .addScaledVector(this.rightV, slot[0])
+        .addScaledVector(this.upV, slot[1])
+        .addScaledVector(this.nose, slot[2]);
+      const pos = ally.mesh.position;
+      this.v1.copy(this.slot).sub(pos);
+      const gap = this.v1.length();
+      const pace = Math.max(ALLY.speed, this.speed + 18);
+      if (gap > 1.5) {
+        this.v1.multiplyScalar(1 / gap);
+        pos.addScaledVector(this.v1, Math.min(gap, pace * dt));
+      }
+      let aim = null;
+      let best = 240 * 240;
+      for (const enemy of this.enemies) {
+        if (!enemy.alive) continue;
+        const d2 = pos.distanceToSquared(enemy.mesh.position);
+        if (d2 < best) {
+          best = d2;
+          aim = enemy.mesh.position;
+        }
+      }
+      if (foe.alive) {
+        const d2 = pos.distanceToSquared(foe.mesh.position);
+        if (d2 < best) aim = foe.mesh.position;
+      }
+      if (aim) {
+        ally.mesh.lookAt(aim);
+        ally.mesh.scale.setScalar(ALLY.visualScale);
+        if (ally.fireCd <= 0 && best < 190 * 190) {
+          ally.fireCd = ALLY.fireEvery;
+          const origin = pos.clone();
+          const dir = aim.clone().sub(origin);
+          if (dir.lengthSq() > 0.01) {
+            dir.normalize();
+            this.spawnBolt('ally', origin, dir, 130, ALLY.shotDamage, 0x9fffea, 1.6);
+          }
+        }
+      } else {
+        this.goal.copy(pos).add(this.nose);
+        ally.mesh.lookAt(this.goal);
+        ally.mesh.scale.setScalar(ALLY.visualScale);
+      }
+      for (const enemy of this.enemies) {
+        if (!enemy.alive || ally.invuln > 0) continue;
+        if (pos.distanceTo(enemy.mesh.position) < ALLY.radius * 0.7 + enemy.cfg.radius) {
+          this.damageAlly(ally, 12);
+          break;
+        }
+      }
+      this.updateBar(ally);
+    }
+  }
+
+  steerCarrier(carrier, right, up, fwd, speed, dt) {
+    if (!carrier.alive) return;
+    this.park(this.goal, right, up, fwd);
+    this.v1.copy(this.goal).sub(carrier.mesh.position);
+    const dist = this.v1.length();
+    if (dist > 6) {
+      this.v1.multiplyScalar(1 / dist);
+      carrier.mesh.position.addScaledVector(this.v1, Math.min(dist, speed * dt));
+    }
+    this.goal.copy(carrier.mesh.position).add(this.nose);
+    carrier.mesh.lookAt(this.goal);
+    carrier.mesh.scale.setScalar(CARRIER.visualScale);
+  }
+
+  damageAlly(ally, amount) {
+    if (!ally.alive || ally.invuln > 0) return;
+    ally.hp -= amount;
+    ally.invuln = 0.55;
+    flashMaterials(ally.mesh.userData.mats);
+    if (ally.hp > 0) return;
+    ally.alive = false;
+    const pos = ally.mesh.position.clone();
+    ally.mesh.visible = false;
+    ally.mesh.position.set(0, -980, 0);
+    if (ally.mesh.userData.bar) ally.mesh.userData.bar.group.visible = false;
+    this.voidBurst(pos, ALLY.color);
+    this.sfx.explode();
+  }
+
+  damageCarrier(carrier, amount) {
+    if (!carrier.alive) return;
+    carrier.hp -= amount;
+    flashMaterials(carrier.mesh.userData.mats);
+    const color = carrier.side === 'enemy' ? CARRIER.colorEnemy : CARRIER.colorAlly;
+    burstSparks(this.sparks, carrier.mesh.position, color, 8, 16, null);
+    if (carrier.hp > 0) return;
+    carrier.alive = false;
+    const pos = carrier.mesh.position.clone();
+    carrier.mesh.visible = false;
+    carrier.mesh.position.set(0, -980, 0);
+    if (carrier.mesh.userData.bar) carrier.mesh.userData.bar.group.visible = false;
+    this.voidBurst(pos, color);
+    this.fxBoom(pos, color, 'big');
+    this.addShake(1.1);
+    this.sfx.bigBoom();
+    if (carrier.side === 'enemy') {
+      this.addScore(CARRIER.score, pos, true);
+      this.showToast(T.carrierEnemy);
+    } else {
+      this.showToast(T.carrier);
+    }
+  }
+
   drawRadar() {
     const canvas = this.dom.radar;
     const ctx = canvas.getContext('2d');
@@ -1843,6 +2170,16 @@ export class Game {
       const mark = enemy.type === 'vorak' ? ['#e7a15a', 9] : ['#ff4d8d', 4];
       plot(enemy.mesh.position.x, enemy.mesh.position.z, mark[0], mark[1]);
     }
+    if (this.allies) {
+      for (const ally of this.allies) {
+        if (!ally.alive) continue;
+        plot(ally.mesh.position.x, ally.mesh.position.z, '#7af6ee', 7);
+      }
+    }
+    if (this.carriers) {
+      if (this.carriers.ally.alive) plot(this.carriers.ally.mesh.position.x, this.carriers.ally.mesh.position.z, '#b8fff4', 12);
+      if (this.carriers.enemy.alive) plot(this.carriers.enemy.mesh.position.x, this.carriers.enemy.mesh.position.z, '#ff5a3a', 12);
+    }
     ctx.fillStyle = '#2ee6c7';
     ctx.beginPath();
     ctx.moveTo(cx, cy - 7);
@@ -1868,6 +2205,10 @@ export class Game {
     if (spreadLeft > 0) parts.push(`${T.weaponSpread} ${Math.ceil(spreadLeft)}`);
     if (!parts.length) parts.push(`${T.weapon}: ${T.weaponNormal}`);
     parts.push(this.missileCd > 0 ? `${T.missile} ${Math.ceil(this.missileCd)}` : T.missileReady);
+    if (this.allies) {
+      const ready = this.allies.filter((ally) => ally.alive).length;
+      parts.push(`${T.allies} ${ready}`);
+    }
     this.dom.weapon.textContent = parts.join(' · ');
     const cooling = this.missileCd > 0;
     const missileLabel = cooling ? `${T.missile} ${Math.ceil(this.missileCd)}` : T.missile;
@@ -2075,11 +2416,12 @@ export class Game {
     }
     for (const popup of this.popups) popup.el.remove();
     this.popups = [];
+    if (this.allies) this.resetFleet(next);
     if (next === 'play') this.beginWave();
     this.syncVisibility();
     this.syncHud();
     this.updateMenuBest();
-    if (next === 'play') this.showToast(T.missileReady);
+    if (next === 'play') this.showToast(`${T.missileReady} · ${T.alliesIn}`);
   }
 
   readBest() {

@@ -61,6 +61,8 @@ Primary fire is a thick beam. The nuclear missile is the power-fantasy button, l
 
 ## Enemies
 
+Four allied escorts (עוזרים) fly with Shomeret. They share one scale, 6.8, so each escort is clearly larger than the freighter. A friendly carrier (נושאת מטוסים) keeps launching them. An enemy carrier (נושאת האויב) is a giant triangle that launches more triangle fighters at the start of each wave. Destroyed ships throw a wide ring into the void.
+
 Every enemy ship is a three-sided wedge. The point faces the direction of flight, so the silhouette stays a triangle. שומרת is still the blunt freighter. Waves arrive as squads of six, about 100–120 units ahead, so the sector fills with fleets instead of a handful of loners. Contact damage respects the player's invulnerability window.
 
 | Id | Hebrew | HP | Speed | Score | Behavior |
