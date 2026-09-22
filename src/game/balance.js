@@ -29,16 +29,18 @@ export const PLAYER = {
   boltStretch: 4.2,
 };
 
-/** Secondary weapon. One shot clears the fight in front of the ship. */
+/**
+ * Secondary weapon. A needle that crosses the sector before it blooms.
+ * No contact fuse: it never pops on the first ship it passes.
+ * Travel is speed × life (250 × 6.4 = 1600), past the 860-wide arena.
+ */
 export const MISSILE = {
   cooldown: 4,
-  speed: 210,
-  life: 0.72,
-  arm: 0.38,
-  hitRadius: 8,
-  blast: 220,
+  speed: 250,
+  life: 6.4,
+  blast: 1900,
   damage: 9999,
-  visualScale: 2.8,
+  visualScale: 1,
 };
 
 /** Friendly escorts. One shared scale, clearly larger than Shomeret. */
