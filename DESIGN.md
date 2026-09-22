@@ -18,7 +18,7 @@ A and D (or the phone side buttons) slide the push. דחיפה or Space hurries 
 
 **Shomeret / שומרת**
 
-A long cargo freighter, scaled to 2.1 so she reads clearly without filling the frame. Still larger than a speck. Lopsided silhouette:
+A long cargo freighter, scaled to 3 so she reads large in the chase view. Lopsided silhouette:
 
 - Cockpit blister offset to port
 - Round cargo drum bolted to starboard
@@ -26,7 +26,7 @@ A long cargo freighter, scaled to 2.1 so she reads clearly without filling the f
 - Uneven fins and a crooked antenna mast
 - Turquoise hull, white nose, blue port fin and cockpit, green cargo drum, red stripe and starboard fin
 
-The nose points down the mesh's local −Z axis. The whole mesh is scaled by 2.1. Nothing about the shape is taken from an existing film or comic vehicle.
+The nose points down the mesh's local −Z axis. The whole mesh is scaled by 3. Nothing about the shape is taken from an existing film or comic vehicle.
 
 The מספנה spends persistent נקודות (separate from the run score and the best score). שומרת and the movie לייזר are free. נץ costs 1200 and is a narrow dart at scale 1.75. עוגן costs 2200 and is a wide hauler at scale 2.35. מניפה (900) fires three small tracers. מחט (1400) fires a thinner faster dart.
 
@@ -81,7 +81,7 @@ Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4
 
 ## Enemies
 
-Two factions fill the sector. Blues are triangles and fight with שומרת: 32 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the five-color freighter at scale 2.1.
+Two factions fill the sector. Blues are triangles and fight with שומרת: 32 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the five-color freighter at scale 3.
 
 Waves arrive as squads of eight. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is 50 red circles. Later waves climb toward the pool caps (nib 56, glint 36, howler 18, slab 8, vorak 2) so a second wave can still spawn. Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
 
