@@ -47,11 +47,13 @@ import {
   createNebulas,
   createRings,
   createSparks,
+  createSpeedTunnel,
   createStarfield,
   makeSoftTexture,
   spawnRing,
   updateRings,
   updateSparks,
+  updateSpeedTunnel,
 } from './fx.js';
 
 const BEST_KEY = 'galaxy-guardians-best';
@@ -305,6 +307,8 @@ export class Game {
 
     this.sparks = createSparks(this.scene, this.soft, POOLS.sparks);
     this.rings = createRings(this.scene, POOLS.rings);
+    this.speedTunnel = createSpeedTunnel();
+    this.scene.add(this.speedTunnel);
 
     this.shipMeshes = {
       shomeret: createPlayerShip(this.soft),
@@ -1293,6 +1297,7 @@ export class Game {
       updateSparks(this.sparks, dt);
       updateRings(this.rings, this.camera, dt);
       this.updateCameraMenu(dt);
+      this.updateSpeedTunnel(dt);
       this.render();
       return;
     }
@@ -1302,6 +1307,7 @@ export class Game {
       updateRings(this.rings, this.camera, dt);
       this.updateStarParallax();
       this.updateChaseCamera(dt);
+      this.updateSpeedTunnel(dt);
       this.updatePopups(dt);
       this.render();
       return;
@@ -1322,6 +1328,7 @@ export class Game {
     updateRings(this.rings, this.camera, dt);
     this.updateStarParallax();
     this.updateChaseCamera(dt);
+    this.updateSpeedTunnel(dt);
     this.syncHud();
     this.drawRadar();
     this.updatePopups(dt);
@@ -1379,11 +1386,16 @@ export class Game {
     this.bank = THREE.MathUtils.damp(this.bank, THREE.MathUtils.clamp(-this.yawVel * 0.48, -0.7, 0.7), 6, dt);
     this.applyAttitude();
 
+    const wasBoosting = this.boosting;
     this.boosting = this.boostHeld
       || this.stickBoost
       || this.keys.has('KeyW')
       || this.keys.has('ShiftLeft')
       || this.keys.has('ShiftRight');
+    if (this.boosting && !wasBoosting && this.state === 'play') {
+      this.sfx.whoosh();
+      spawnRing(this.rings, this.player.mesh.position, 0xe8f4ff, { life: 0.32, scale: 2.4, grow: 78 });
+    }
     this.braking = this.keys.has('KeyS') || this.stickBrake;
     let targetSpeed = PLAYER.cruise;
     if (this.boosting) targetSpeed = PLAYER.boost;
@@ -2251,6 +2263,13 @@ export class Game {
       this.shakeAmp = Math.max(0, this.shakeAmp - dt * 1.7);
     }
     this.dampFov(this.boosting && this.state === 'play' ? 98 : 66);
+  }
+
+  updateSpeedTunnel(dt) {
+    updateSpeedTunnel(this.speedTunnel, this.camera, dt, {
+      active: this.boosting && this.state === 'play',
+      reduceMotion: this.reduceMotion,
+    });
   }
 
   dampFov(target) {

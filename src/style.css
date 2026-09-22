@@ -533,7 +533,8 @@ body.touch #flight-row {
   min-height: 48px;
   padding: 8px 14px;
   border-radius: 999px;
-  font-size: 1.15rem;
+  font-size: 1.02rem;
+  line-height: 1.15;
 }
 #boost-btn.on, #boost-touch.on {
   background: #fff7a4;
@@ -543,11 +544,16 @@ body.touch #flight-row {
   position: absolute;
   right: max(22px, calc(env(safe-area-inset-right) + 8px));
   bottom: max(292px, calc(env(safe-area-inset-bottom) + 284px));
+  width: 118px;
   min-width: 118px;
-  height: 64px;
-  border-radius: 999px;
-  font-size: 1.15rem;
-  padding: 6px 12px;
+  max-width: 124px;
+  height: 72px;
+  border-radius: 18px;
+  font-size: 0.72rem;
+  line-height: 1.12;
+  padding: 4px 8px;
+  white-space: normal;
+  text-align: center;
 }
 #ordnance-btn, #ordnance-touch, #ordnance-cycle, #ordnance-cycle-touch {
   border: 3px solid rgba(220, 255, 255, 0.95);
@@ -616,9 +622,12 @@ body.touch #flight-row {
     bottom: max(146px, calc(env(safe-area-inset-bottom) + 138px));
   }
   #boost-touch {
-    min-width: 92px;
-    height: 44px;
-    font-size: 0.9rem;
+    width: 100px;
+    min-width: 100px;
+    max-width: 108px;
+    height: 52px;
+    font-size: 0.62rem;
+    line-height: 1.05;
     bottom: max(220px, calc(env(safe-area-inset-bottom) + 212px));
   }
   #giant-touch {

@@ -37,14 +37,14 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Action | Input |
 | --- | --- |
 | Steer yaw / pitch | Mouse offset from center, or arrow keys |
-| Turbo | Hold `W`, Shift, the טורבו button on the HUD, or the phone טורבו button (240 u/s) |
+| Speed rush | Hold `W`, Shift, the מהירות על חלל button on the HUD, or the phone מהירות על חלל button (240 u/s). Light streaks and a soft whoosh frame the ship |
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
 | Shoot | Space, left click, or the red ירי button. Small cinematic tracers |
 | Giant missile | Gold טיל ענק button or `Q`. Fat body, scale 3.4, blooms after 1.7s (about 270 units). Blast 150. Cooldown 3s. Does not touch allies |
 | Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin dart, 6.4s flight, then an energy mushroom. Cooldown 4s |
-| Phone move | Left joystick. Horizontal strafes. Up holds turbo, down brakes. Brake wins if both |
+| Phone move | Left joystick. Horizontal strafes. Up holds מהירות על חלל, down brakes. Brake wins if both |
 | Phone aim | Right joystick. Touch yaw rate is 68% of the mouse rate. The stick value is not passed through the mouse deadzone |
 | Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
 | Pause | `Esc` or `P`, or the השהיה button |
@@ -71,7 +71,7 @@ The play space is a closed sphere of radius **430** that feels open. Stars and d
 | Fire interval | 0.15s (0.075s with rapid fire) |
 | Missile | Speed 250. Lifetime 6.4s, so it travels about 1600 units before it blooms. No contact fuse and no arena-edge fuse. Blast radius 1900 still clears the sector it crossed. Cooldown 4s |
 
-Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding טורבו jumps the ship to 240 and opens the view so the rush reads. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
+Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding מהירות על חלל jumps the ship to 240, opens the view, and draws pale light streaks around the ship. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
 
 Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4 bolt, so it reads as a bright streak rather than a slab. Damage stays 36.
 

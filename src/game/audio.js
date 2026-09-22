@@ -130,4 +130,10 @@ export class Sfx {
   ui() {
     this.blip({ freq: 660, dur: 0.04, type: 'square', vol: 0.05 });
   }
+
+  whoosh() {
+    this.noise(0.34, 0.28, 1600);
+    this.blip({ freq: 160, dur: 0.28, type: 'sine', vol: 0.05, slide: 380 });
+    this.blip({ freq: 90, dur: 0.2, type: 'triangle', vol: 0.04, slide: 140 });
+  }
 }
