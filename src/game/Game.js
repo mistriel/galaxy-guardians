@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { T } from './i18n.js';
 import {
+  ALLIES,
   COMBO_MAX,
   COMBO_STEP,
   COMBO_WINDOW,
@@ -10,6 +11,7 @@ import {
   POWER,
   TOWERS,
   WAVE_BONUS,
+  WING,
   WORLD,
   waveSpec,
 } from './balance.js';
@@ -18,6 +20,7 @@ import { bonusHome, buildLayout } from './layout.js';
 import {
   boltGeometry,
   createPlayerShip,
+  createAlly,
   createEnemy,
   createPickup,
   createTower,
@@ -37,6 +40,15 @@ import {
 } from './fx.js';
 
 const BEST_KEY = 'galaxy-guardians-best';
+const ESCORT_SLOTS = [
+  new THREE.Vector3(-14, 1.3, -1.5),
+  new THREE.Vector3(14.5, 0.4, -0.5),
+  new THREE.Vector3(-1.5, 3.6, 7),
+];
+const MEND_SLOTS = [
+  new THREE.Vector3(-6, -1.5, 14),
+  new THREE.Vector3(6.5, -0.7, 15),
+];
 const PICKUP_TEXT = {
   rapid: T.pickupRapid,
   spread: T.pickupSpread,
@@ -119,6 +131,13 @@ export class Game {
     this.aimAt = new THREE.Vector3();
     this.camDesired = new THREE.Vector3();
     this.look = new THREE.Vector3();
+    this.slotLocal = new THREE.Vector3();
+    this.slotWorld = new THREE.Vector3();
+    this.orbitSlot = new THREE.Vector3();
+    this.muzzleWorld = new THREE.Vector3();
+    this.shotDir = new THREE.Vector3();
+    this.allyDelta = new THREE.Vector3();
+    this.faceAt = new THREE.Vector3();
 
     this.dom = {
       hud: document.querySelector('#hud'),
@@ -142,6 +161,7 @@ export class Game {
       wave: document.querySelector('#wave'),
       waveLabel: document.querySelector('#wave-label'),
       combo: document.querySelector('#combo'),
+      allies: document.querySelector('#allies'),
       weapon: document.querySelector('#weapon'),
       flight: document.querySelector('#flight'),
       pauseBtn: document.querySelector('#pause-btn'),
@@ -234,7 +254,7 @@ export class Game {
     this.player.mesh.scale.setScalar(PLAYER.visualScale);
     this.scene.add(this.player.mesh);
     this.bubble = new THREE.Mesh(
-      new THREE.SphereGeometry(2.35, 24, 18),
+      new THREE.SphereGeometry(2.2, 24, 18),
       new THREE.MeshBasicMaterial({
         color: 0x8ef6ff,
         transparent: true,
@@ -243,6 +263,7 @@ export class Game {
         side: THREE.DoubleSide,
       }),
     );
+    this.bubble.scale.set(1.15, 0.7, 1.32);
     this.player.mesh.add(this.bubble);
 
     this.towers = [];
@@ -290,6 +311,35 @@ export class Game {
     this.playerBolts = this.makeBolts(POOLS.playerBolts);
     this.enemyBolts = this.makeBolts(POOLS.enemyBolts);
 
+    this.allies = [];
+    const wingCounts = { escort: 0, drone: 0, mend: 0, ward: 0 };
+    WING.forEach((type, index) => {
+      const mesh = createAlly(type, this.soft);
+      this.scene.add(mesh);
+      const ally = {
+        type,
+        cfg: ALLIES[type],
+        mesh,
+        alive: true,
+        hp: ALLIES[type].hp,
+        maxHp: ALLIES[type].hp,
+        slot: wingCounts[type],
+        wingIndex: index,
+        phase: index * 0.62,
+        lift: (index % 5) * 0.4,
+        vel: new THREE.Vector3(),
+        fireCd: Math.random() * 0.4,
+        hitCd: 0,
+        healCd: 0.4,
+        pulseCd: 2 + index * 0.2,
+        flash: 0,
+        respawn: 0,
+      };
+      wingCounts[type] += 1;
+      this.allies.push(ally);
+      this.placeAlly(ally);
+    });
+
     this.pickups = [];
     const pickupTypes = ['rapid', 'spread', 'shield', 'repair'];
     for (let i = 0; i < POOLS.pickups; i += 1) {
@@ -317,9 +367,10 @@ export class Game {
     dom.tagline.textContent = T.tagline;
     dom.sector.textContent = T.sector;
     dom.goal.textContent = T.goal;
+    const allyList = Object.values(T.allyNames).join(', ');
     const enemyList = Object.values(T.enemyNames).join(', ');
     const towerList = Object.values(T.towerNames).join(', ');
-    dom.roster.textContent = `${T.enemies}: ${enemyList}. ${T.towers}: ${towerList}.`;
+    dom.roster.textContent = `${T.allies}: ${allyList}. ${T.enemies}: ${enemyList}. ${T.towers}: ${towerList}.`;
     dom.controlsTitle.textContent = T.controlsTitle;
     dom.controls.replaceChildren();
     for (const line of T.controls) {
@@ -655,6 +706,7 @@ export class Game {
     this.time += dt;
     if (this.state === 'menu') {
       this.updateShowcase(dt);
+      this.updateWingShowcase(dt);
       this.updateTowers(dt, false);
       this.updateStarParallax();
       updateSparks(this.sparks, dt);
@@ -675,6 +727,7 @@ export class Game {
 
     this.updatePlayer(dt);
     this.updateQueue();
+    this.updateAllies(dt);
     this.updateEnemies(dt);
     this.separateEnemies();
     this.updateTowers(dt, true);
@@ -794,7 +847,7 @@ export class Game {
       glows[0].getWorldPosition(this.v1);
       this.v2.copy(this.nose).multiplyScalar(-1);
       if (Math.random() < dt * 28) {
-        burstSparks(this.sparks, this.v1, 0xff8a3a, 1, 10, this.v2);
+        burstSparks(this.sparks, this.v1, 0x6a9bff, 1, 10, this.v2);
       }
     }
   }
@@ -808,11 +861,13 @@ export class Game {
     this.fireCd = rapid ? PLAYER.rapidDelay : PLAYER.fireDelay;
     const angles = spread ? [-0.14, 0, 0.14] : [0];
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
+    const muzzle = this.player.mesh.userData.muzzlePoint;
+    if (muzzle) muzzle.getWorldPosition(this.muzzleWorld);
+    else this.muzzleWorld.copy(this.player.mesh.position).addScaledVector(this.nose, 2.2 * PLAYER.visualScale);
     for (const angle of angles) {
       const dir = this.v1.copy(this.nose).applyAxisAngle(this.upV, angle).normalize();
-      const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.2 * PLAYER.visualScale);
-      this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1);
-      burstSparks(this.sparks, origin, 0xe8fff8, 28, 32, dir, 3.4);
+      this.spawnBolt('player', this.muzzleWorld, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1);
+      burstSparks(this.sparks, this.muzzleWorld, 0xe8fff8, 28, 32, dir, 3.4);
       const muzzleFlash = this.player.mesh.userData.muzzleFlash;
       if (muzzleFlash) {
         muzzleFlash.visible = true;
@@ -834,9 +889,10 @@ export class Game {
   pulseEngines(scale) {
     const glows = this.player.mesh.userData.glows;
     if (!glows) return;
-    glows[0].scale.setScalar(1.2 * scale);
-    glows[1].scale.setScalar(0.55 * scale);
-    this.player.mesh.userData.engineLight.intensity = 1.1 * scale;
+    for (const glow of glows) {
+      glow.scale.setScalar((glow.userData.base || 1) * scale);
+    }
+    this.player.mesh.userData.engineLight.intensity = 1.15 * scale;
   }
 
   updateQueue() {
@@ -885,12 +941,24 @@ export class Game {
       if (!enemy.alive) continue;
       enemy.fireCd -= dt;
       const pos = enemy.mesh.position;
-      const to = this.v1.copy(this.player.mesh.position).sub(pos);
-      const dist = to.length();
+      this.faceAt.copy(this.player.mesh.position);
+      const to = this.v1.copy(this.faceAt).sub(pos);
+      let dist = to.length();
       if (dist > 0.001) to.multiplyScalar(1 / dist);
       else to.set(0, 0, -1);
 
       enemy.phase += dt;
+      const playerDist = dist;
+      if (enemy.cfg.ai === 'chase' || enemy.cfg.ai === 'kite') {
+        const bait = this.nearestAlly(pos);
+        if (bait && bait.dist < 95 && (bait.dist < playerDist * 0.85 || (enemy.strafe < 0 && bait.dist < playerDist * 1.2))) {
+          this.faceAt.copy(bait.ally.mesh.position);
+          to.copy(this.faceAt).sub(pos);
+          dist = to.length();
+          if (dist > 0.001) to.multiplyScalar(1 / dist);
+          else to.set(0, 0, -1);
+        }
+      }
       const desired = this.v2.copy(to);
       if (enemy.cfg.ai === 'chase') {
         const side = this.v3.set(-to.z, 0, to.x);
@@ -946,14 +1014,14 @@ export class Game {
       pos.y = THREE.MathUtils.clamp(pos.y, -100, 140);
 
       if (enemy.cfg.ai === 'maul') {
-        enemy.mesh.lookAt(this.player.mesh.position);
+        this.faceNose(enemy.mesh, this.player.mesh.position);
       } else if (enemy.vel.lengthSq() > 4) {
         this.v3.copy(pos).add(enemy.vel);
-        enemy.mesh.lookAt(this.v3);
+        this.faceNose(enemy.mesh, this.v3);
       }
 
       enemy.ramCd -= dt;
-      if (dist < enemy.cfg.radius + PLAYER.radius && enemy.ramCd <= 0) {
+      if (pos.distanceTo(this.player.mesh.position) < enemy.cfg.radius + PLAYER.radius && enemy.ramCd <= 0) {
         enemy.ramCd = 0.85;
         this.damagePlayer(enemy.cfg.contact);
       }
@@ -989,6 +1057,256 @@ export class Game {
         }
       }
     }
+  }
+
+  faceNose(mesh, target) {
+    mesh.lookAt(target);
+    mesh.rotateY(Math.PI);
+  }
+
+  allySlot(ally) {
+    if (ally.type === 'escort') return ESCORT_SLOTS[ally.slot] || ESCORT_SLOTS[0];
+    if (ally.type === 'mend') return MEND_SLOTS[ally.slot] || MEND_SLOTS[0];
+    const ward = ally.type === 'ward';
+    const ang = ally.phase + this.time * (ward ? 0.65 : 1.2);
+    const rad = ward ? 11.5 + ally.slot * 0.8 : 6.2 + (ally.slot % 4) * 1.2;
+    const y = Math.sin(this.time * 1.45 + ally.phase) * 1.7 + (ward ? 3.6 : (ally.slot % 2 ? 1.8 : -0.5));
+    const z = Math.sin(ang) * rad * 0.5 + (ward ? 1.5 : 4);
+    this.orbitSlot.set(Math.cos(ang) * rad, y, z);
+    return this.orbitSlot;
+  }
+
+  placeAlly(ally) {
+    this.slotLocal.copy(this.allySlot(ally));
+    this.slotWorld.copy(this.slotLocal).applyQuaternion(this.player.mesh.quaternion).add(this.player.mesh.position);
+    ally.mesh.position.copy(this.slotWorld);
+    ally.vel.set(0, 0, 0);
+  }
+
+  updateWingShowcase(dt) {
+    for (const ally of this.allies) {
+      ally.mesh.visible = true;
+      const ang = this.time * (0.28 + (ally.wingIndex % 5) * 0.05) + ally.phase;
+      const rad = 9 + (ally.wingIndex % 6) * 1.15;
+      const y = Math.sin(this.time * 0.9 + ally.phase) * 1.8 + ally.lift;
+      ally.mesh.position.set(Math.cos(ang) * rad, y, Math.sin(ang) * rad * 0.72);
+      this.faceNose(ally.mesh, this.player.mesh.position);
+      const spin = ally.mesh.userData.spinner;
+      if (spin) spin.rotation.y += dt * 2.2;
+      if (ally.mesh.userData.bar) ally.mesh.userData.bar.group.visible = false;
+    }
+  }
+
+  updateAllies(dt) {
+    let chirped = false;
+    for (const ally of this.allies) {
+      if (!ally.alive) {
+        ally.respawn -= dt;
+        if (ally.respawn <= 0) this.reviveAlly(ally);
+        continue;
+      }
+      const pos = ally.mesh.position;
+      this.slotLocal.copy(this.allySlot(ally));
+      this.slotWorld.copy(this.slotLocal).applyQuaternion(this.player.mesh.quaternion).add(this.player.mesh.position);
+      this.allyDelta.copy(this.slotWorld).sub(pos);
+      const dist = this.allyDelta.length();
+      const catchup = dist > 32 ? 1.9 : dist > 14 ? 1.28 : 1;
+      if (dist > 0.12) this.allyDelta.multiplyScalar(1 / dist);
+      else this.allyDelta.set(0, 0, 0);
+      this.faceAt.copy(this.allyDelta).multiplyScalar(ally.cfg.speed * catchup);
+      ally.vel.lerp(this.faceAt, 1 - Math.exp(-3.6 * dt));
+      pos.addScaledVector(ally.vel, dt);
+      if (pos.length() > WORLD.bounds - 10) pos.setLength(WORLD.bounds - 10);
+
+      this.allyDelta.copy(pos).sub(this.player.mesh.position);
+      const gap = this.allyDelta.length();
+      const minGap = PLAYER.radius * 0.72 + ally.cfg.radius;
+      if (gap < minGap && gap > 0.001) {
+        pos.addScaledVector(this.allyDelta.multiplyScalar(1 / gap), minGap - gap);
+      }
+
+      ally.fireCd -= dt;
+      ally.hitCd = Math.max(0, ally.hitCd - dt);
+      const hostile = this.pickHostile(pos);
+      if (hostile) this.faceNose(ally.mesh, hostile.pos);
+      else if (ally.vel.lengthSq() > 1) {
+        this.faceAt.copy(pos).add(ally.vel);
+        this.faceNose(ally.mesh, this.faceAt);
+      } else {
+        this.faceAt.copy(pos).add(this.nose);
+        this.faceNose(ally.mesh, this.faceAt);
+      }
+
+      if (hostile && hostile.dist < ally.cfg.range && ally.fireCd <= 0) {
+        ally.fireCd = ally.cfg.fireEvery * (0.82 + Math.random() * 0.35);
+        this.shotDir.copy(hostile.pos).sub(pos);
+        if (this.shotDir.lengthSq() > 0.01) {
+          this.shotDir.normalize();
+          this.shotDir.x += (Math.random() - 0.5) * 0.05;
+          this.shotDir.y += (Math.random() - 0.5) * 0.05;
+          this.shotDir.normalize();
+          this.muzzleWorld.copy(pos).addScaledVector(this.shotDir, ally.cfg.radius + 0.6);
+          this.spawnBolt('ally', this.muzzleWorld, this.shotDir, ally.cfg.shotSpeed, ally.cfg.shotDamage, ally.cfg.color, ally.cfg.shotScale);
+          if (!chirped) {
+            this.sfx.allyShot();
+            chirped = true;
+          }
+        }
+      }
+
+      if (ally.type === 'mend') this.tickMend(ally, dt);
+      if (ally.type === 'ward') this.tickWard(ally, dt);
+      if (ally.flash > 0) {
+        ally.flash -= dt;
+        if (ally.flash <= 0) restoreMaterials(ally.mesh.userData.mats);
+      }
+      const spin = ally.mesh.userData.spinner;
+      if (spin) spin.rotation.y += dt * 2.4;
+      this.updateBar(ally);
+    }
+    this.separateAllies();
+    this.resolveWingHits();
+  }
+
+  tickMend(ally, dt) {
+    ally.healCd -= dt;
+    if (ally.healCd > 0 || this.hull >= PLAYER.hull) return;
+    if (ally.mesh.position.distanceTo(this.player.mesh.position) > ally.cfg.healRange) return;
+    ally.healCd = ally.cfg.healEvery;
+    this.hull = Math.min(PLAYER.hull, this.hull + ally.cfg.heal);
+    burstSparks(this.sparks, this.player.mesh.position, 0x8dffb0, 6, 10, null);
+  }
+
+  tickWard(ally, dt) {
+    ally.pulseCd -= dt;
+    if (ally.pulseCd > 0) return;
+    if (this.shield >= PLAYER.shield) return;
+    if (ally.mesh.position.distanceTo(this.player.mesh.position) > 40) return;
+    ally.pulseCd = ally.cfg.shieldEvery;
+    this.shield = Math.min(PLAYER.shield, this.shield + ally.cfg.shieldPulse);
+    spawnRing(this.rings, this.player.mesh.position, 0x9ef6e8);
+  }
+
+  separateAllies() {
+    const list = this.allies.filter((ally) => ally.alive);
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const a = list[i].mesh.position;
+        const b = list[j].mesh.position;
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dz = a.z - b.z;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        const min = (list[i].cfg.radius + list[j].cfg.radius) * 0.85;
+        if (distSq > 0.0001 && distSq < min * min) {
+          const dist = Math.sqrt(distSq);
+          const push = ((min - dist) * 0.45) / dist;
+          a.x += dx * push;
+          a.y += dy * push;
+          a.z += dz * push;
+          b.x -= dx * push;
+          b.y -= dy * push;
+          b.z -= dz * push;
+        }
+      }
+    }
+  }
+
+  resolveWingHits() {
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      for (const ally of this.allies) {
+        if (!ally.alive || ally.hitCd > 0) continue;
+        const gap = enemy.mesh.position.distanceTo(ally.mesh.position);
+        if (gap < enemy.cfg.radius + ally.cfg.radius) {
+          ally.hitCd = 0.7;
+          this.damageAlly(ally, Math.max(4, enemy.cfg.contact * 0.55));
+        }
+      }
+    }
+  }
+
+  pickHostile(from) {
+    let best = null;
+    let bestDist = 150;
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      const dist = from.distanceTo(enemy.mesh.position);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { pos: enemy.mesh.position, dist, kind: 'enemy' };
+      }
+    }
+    if (best) return best;
+    bestDist = 120;
+    for (const tower of this.towers) {
+      if (!tower.alive || tower.type === 'crate') continue;
+      const dist = from.distanceTo(tower.mesh.position);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { pos: tower.mesh.position, dist, kind: 'tower' };
+      }
+    }
+    return best;
+  }
+
+  combatFocus(from) {
+    let best = this.player.mesh.position;
+    let bestDist = from.distanceTo(best);
+    for (const ally of this.allies) {
+      if (!ally.alive) continue;
+      const dist = from.distanceTo(ally.mesh.position);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = ally.mesh.position;
+      }
+    }
+    return best;
+  }
+
+  nearestAlly(from) {
+    let ally = null;
+    let dist = Infinity;
+    for (const item of this.allies) {
+      if (!item.alive) continue;
+      const gap = from.distanceTo(item.mesh.position);
+      if (gap < dist) {
+        dist = gap;
+        ally = item;
+      }
+    }
+    return ally ? { ally, dist } : null;
+  }
+
+  reviveAlly(ally) {
+    ally.alive = true;
+    ally.hp = ally.maxHp;
+    ally.fireCd = 0.25;
+    ally.hitCd = 0.35;
+    ally.healCd = 0.4;
+    ally.pulseCd = 1.2;
+    ally.flash = 0;
+    ally.mesh.visible = true;
+    restoreMaterials(ally.mesh.userData.mats);
+    this.placeAlly(ally);
+    burstSparks(this.sparks, ally.mesh.position, ally.cfg.color, 8, 14, null);
+  }
+
+  damageAlly(ally, amount) {
+    if (!ally.alive || this.state !== 'play') return;
+    ally.hp -= amount;
+    ally.flash = 0.08;
+    flashMaterials(ally.mesh.userData.mats);
+    burstSparks(this.sparks, ally.mesh.position, ally.cfg.color, 5, 12, null);
+    if (ally.hp > 0) return;
+    ally.alive = false;
+    ally.hp = 0;
+    const pos = ally.mesh.position.clone();
+    ally.mesh.visible = false;
+    ally.mesh.position.set(0, -999, 0);
+    if (ally.mesh.userData.bar) ally.mesh.userData.bar.group.visible = false;
+    ally.respawn = ally.cfg.respawn;
+    this.fxBoom(pos, ally.cfg.color, 'small');
   }
 
   updateMaul(enemy, dist, dt) {
@@ -1044,7 +1362,12 @@ export class Game {
     if (enemy.fireCd > 0 || !enemy.cfg.shotDamage) return;
     enemy.fireCd = enemy.cfg.fireEvery * (0.85 + Math.random() * 0.3);
     const origin = enemy.mesh.position.clone();
-    const dir = this.player.mesh.position.clone().sub(origin);
+    let aimPos = this.faceAt;
+    if (enemy.cfg.ai === 'tank') {
+      const bait = this.nearestAlly(enemy.mesh.position);
+      if (bait && bait.dist < enemy.cfg.range && Math.random() < 0.4) aimPos = bait.ally.mesh.position;
+    }
+    const dir = aimPos.clone().sub(origin);
     if (dir.lengthSq() < 0.01) return;
     dir.normalize();
     dir.x += (Math.random() - 0.5) * 0.14;
@@ -1063,35 +1386,80 @@ export class Game {
         const pulse = 0.82 + Math.sin(this.time * 4.2 + tower.phase) * 0.22;
         lamp.scale.setScalar(pulse);
       }
-      const barrel = tower.mesh.userData.barrel;
-      if (barrel) {
-        barrel.lookAt(this.player.mesh.position);
-        if (allowFire) {
-          tower.fireCd -= dt;
-          const dist = tower.mesh.position.distanceTo(this.player.mesh.position);
-          if (tower.fireCd <= 0 && dist < TOWERS.nest.range) {
-            tower.fireCd = TOWERS.nest.fireEvery * (0.9 + Math.random() * 0.2);
-            const origin = new THREE.Vector3();
-            tower.mesh.userData.muzzle.getWorldPosition(origin);
-            const dir = this.player.mesh.position.clone().sub(origin);
-            if (dir.lengthSq() > 0.01) {
-              dir.normalize();
-              dir.x += (Math.random() - 0.5) * 0.07;
-              dir.y += (Math.random() - 0.5) * 0.07;
-              dir.normalize();
-              this.spawnBolt('enemy', origin, dir, TOWERS.nest.shotSpeed, TOWERS.nest.shotDamage, 0xff4d6a, TOWERS.nest.shotScale);
-              this.sfx.enemyShot();
-            }
-          }
-        }
-      } else if (allowFire) {
-        tower.fireCd = Math.max(0, tower.fireCd - dt);
+      if (tower.type === 'crate') {
+        const t = this.time + tower.phase;
+        const drift = TOWERS.crate.drift;
+        tower.mesh.position.set(
+          tower.home.x + Math.sin(t * 0.37) * drift,
+          tower.home.y + Math.sin(t * 0.8) * drift * 0.7,
+          tower.home.z + Math.cos(t * 0.31) * drift * 0.85,
+        );
+        tower.mesh.rotation.y += dt * 0.5;
+        tower.mesh.rotation.z = Math.sin(t * 0.5) * 0.14;
+      } else if (tower.type === 'nest') {
+        tower.mesh.position.y = tower.home.y + Math.sin(this.time * 0.7 + tower.phase) * 1.5;
+        this.aimTower(tower, allowFire, TOWERS.nest, dt);
+      } else if (tower.type === 'spire') {
+        tower.mesh.rotation.y += dt * 0.35;
+        this.aimTower(tower, allowFire, TOWERS.spire, dt);
+      } else if (tower.type === 'silo') {
+        tower.mesh.rotation.y += dt * 0.22;
+        if (allowFire) this.ventSilo(tower, dt);
       }
       if (tower.flash > 0) {
         tower.flash -= dt;
         if (tower.flash <= 0) restoreMaterials(tower.mesh.userData.mats);
       }
       this.updateBar(tower);
+    }
+  }
+
+  aimTower(tower, allowFire, cfg, dt) {
+    const pivot = tower.mesh.userData.barrel || tower.mesh.userData.aim;
+    if (!pivot) return;
+    const focus = this.combatFocus(tower.mesh.position);
+    this.faceNose(pivot, focus);
+    if (!allowFire) return;
+    tower.fireCd -= dt;
+    if (tower.fireCd > 0) return;
+    if (tower.mesh.position.distanceTo(focus) > cfg.range) return;
+    const muzzle = tower.mesh.userData.muzzle;
+    if (!muzzle) return;
+    tower.fireCd = cfg.fireEvery * (0.88 + Math.random() * 0.24);
+    muzzle.getWorldPosition(this.muzzleWorld);
+    this.shotDir.copy(focus).sub(this.muzzleWorld);
+    if (this.shotDir.lengthSq() < 0.01) return;
+    this.shotDir.normalize();
+    this.shotDir.x += (Math.random() - 0.5) * 0.08;
+    this.shotDir.y += (Math.random() - 0.5) * 0.08;
+    this.shotDir.normalize();
+    this.spawnBolt('enemy', this.muzzleWorld, this.shotDir, cfg.shotSpeed, cfg.shotDamage, cfg.color, cfg.shotScale);
+    this.sfx.enemyShot();
+  }
+
+  ventSilo(tower, dt) {
+    tower.fireCd -= dt;
+    if (tower.fireCd > 0) return;
+    tower.fireCd = TOWERS.silo.ventEvery * (0.9 + Math.random() * 0.2);
+    const origin = tower.mesh.position;
+    this.shotDir.set(0, 1, 0);
+    burstSparks(this.sparks, origin, 0xffb020, 12, 18, this.shotDir);
+    const radius = TOWERS.silo.ventRadius;
+    const dmg = TOWERS.silo.ventDamage;
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      if (enemy.mesh.position.distanceTo(origin) <= radius + enemy.cfg.radius) {
+        this.damageEnemy(enemy, dmg);
+      }
+    }
+    for (const ally of this.allies) {
+      if (!ally.alive) continue;
+      if (ally.mesh.position.distanceTo(origin) <= radius + ally.cfg.radius) {
+        this.damageAlly(ally, dmg);
+      }
+    }
+    if (this.state === 'play' && this.player.mesh.position.distanceTo(origin) <= radius + PLAYER.radius * 0.45) {
+      this.damagePlayer(dmg);
     }
   }
 
@@ -1114,7 +1482,7 @@ export class Game {
     }
 
     for (const bolt of this.playerBolts) {
-      if (!bolt.alive) continue;
+      if (!bolt.alive || bolt.team === 'enemy') continue;
       let hit = false;
       for (const enemy of this.enemies) {
         if (!enemy.alive) continue;
@@ -1127,6 +1495,7 @@ export class Game {
       if (!hit) {
         for (const tower of this.towers) {
           if (!tower.alive) continue;
+          if (bolt.team === 'ally' && tower.type === 'crate') continue;
           if (bolt.pos.distanceTo(tower.mesh.position) <= bolt.radius + tower.radius) {
             this.damageTower(tower, bolt.damage);
             hit = true;
@@ -1140,6 +1509,20 @@ export class Game {
     if (this.state !== 'play') return;
     for (const bolt of this.enemyBolts) {
       if (!bolt.alive) continue;
+      let soaked = false;
+      for (const ally of this.allies) {
+        if (!ally.alive) continue;
+        const reach = ally.cfg.radius + (ally.type === 'ward' ? ally.cfg.intercept : 0);
+        const gap = bolt.pos.distanceTo(ally.mesh.position);
+        if (gap <= bolt.radius + reach) {
+          this.killBolt(bolt);
+          const grazed = ally.type === 'ward' && gap > ally.cfg.radius + bolt.radius;
+          this.damageAlly(ally, grazed ? bolt.damage * 0.35 : bolt.damage);
+          soaked = true;
+          break;
+        }
+      }
+      if (soaked) continue;
       if (bolt.pos.distanceTo(this.player.mesh.position) <= bolt.radius + PLAYER.radius) {
         this.killBolt(bolt);
         this.damagePlayer(bolt.damage);
@@ -1148,7 +1531,7 @@ export class Game {
   }
 
   spawnBolt(team, origin, dir, speed, damage, color, scale) {
-    const pool = team === 'player' ? this.playerBolts : this.enemyBolts;
+    const pool = team === 'enemy' ? this.enemyBolts : this.playerBolts;
     const bolt = pool.find((item) => !item.alive);
     if (!bolt) return null;
     bolt.alive = true;
@@ -1156,16 +1539,21 @@ export class Game {
     bolt.pos.copy(origin);
     bolt.vel.copy(dir).multiplyScalar(speed);
     if (team === 'player') bolt.vel.addScaledVector(this.nose, this.speed * 0.3);
-    bolt.life = team === 'player' ? PLAYER.bulletLife : 2.5;
+    if (team === 'enemy') bolt.life = 2.5;
+    else if (team === 'ally') bolt.life = 1.05;
+    else bolt.life = PLAYER.bulletLife;
     bolt.damage = damage;
-    bolt.radius = team === 'player' ? PLAYER.bulletRadius : PLAYER.bulletRadius * (scale || 1) * 0.45;
+    if (team === 'player') bolt.radius = PLAYER.bulletRadius;
+    else if (team === 'ally') bolt.radius = 1.2;
+    else bolt.radius = PLAYER.bulletRadius * (scale || 1) * 0.45;
     bolt.mesh.visible = true;
     if (team === 'player') bolt.mesh.scale.set(PLAYER.boltGirth, PLAYER.boltGirth, PLAYER.boltStretch);
     else bolt.mesh.scale.setScalar(scale || 1);
     bolt.mesh.material.color.setHex(color);
     if (bolt.glow) {
       bolt.glow.material.color.setHex(color);
-      bolt.glow.scale.set(team === 'player' ? 0.85 : 2.4, team === 'player' ? 0.85 : 2.4, 1);
+      const glowSize = team === 'player' ? 0.85 : team === 'ally' ? 1.7 : 2.4;
+      bolt.glow.scale.set(glowSize, glowSize, 1);
     }
     bolt.mesh.position.copy(origin);
     return bolt;
@@ -1270,9 +1658,21 @@ export class Game {
     const size = tower.type === 'silo' ? 'big' : tower.type === 'crate' ? 'small' : 'mid';
     this.fxBoom(pos, tower.color, size);
     this.addShake(tower.type === 'crate' ? 0.1 : 0.24);
-    if (tower.type === 'crate') this.sfx.pop();
-    else if (tower.type !== 'silo') this.sfx.explode();
+    if (tower.type === 'crate') {
+      this.sfx.pop();
+      this.shrapnel(pos, TOWERS.crate.shrapnelRadius, TOWERS.crate.shrapnel);
+    } else if (tower.type !== 'silo') this.sfx.explode();
     if (tower.type === 'silo') this.blast(pos, TOWERS.silo.blast, TOWERS.silo.blastDamage);
+  }
+
+  shrapnel(origin, radius, damage) {
+    burstSparks(this.sparks, origin, 0xf0b45a, 10, 20, null);
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      if (enemy.mesh.position.distanceTo(origin) <= radius + enemy.cfg.radius) {
+        this.damageEnemy(enemy, damage);
+      }
+    }
   }
 
   blast(origin, radius, damage) {
@@ -1290,6 +1690,12 @@ export class Game {
       if (!tower.alive) continue;
       if (tower.mesh.position.distanceTo(origin) <= radius) {
         this.damageTower(tower, damage);
+      }
+    }
+    for (const ally of this.allies) {
+      if (!ally.alive) continue;
+      if (ally.mesh.position.distanceTo(origin) <= radius + ally.cfg.radius) {
+        this.damageAlly(ally, damage * 0.45);
       }
     }
     const playerDist = this.player.mesh.position.distanceTo(origin);
@@ -1398,6 +1804,7 @@ export class Game {
     });
     const named = types.includes('vorak') ? ` · ${T.enemyNames.vorak}` : '';
     this.showBanner(`${T.wave} ${this.wave}${named}`);
+    if (this.wave === 1) this.showToast(T.wingWithYou);
     this.sfx.wave();
     if (this.wave > 1 && this.wave % 2 === 0) this.spawnBonusStructures();
   }
@@ -1442,15 +1849,15 @@ export class Game {
 
   updateCameraMenu() {
     const angle = this.time * 0.18;
-    this.camera.position.set(Math.sin(angle) * 19, 5.2 + Math.sin(this.time * 0.7) * 0.35, Math.cos(angle) * 19);
-    this.camera.lookAt(0, 0.45, 0);
+    this.camera.position.set(Math.sin(angle) * 26, 7.2 + Math.sin(this.time * 0.7) * 0.4, Math.cos(angle) * 26);
+    this.camera.lookAt(0, 0.7, 0);
     this.dampFov(52);
   }
 
   updateChaseCamera(dt) {
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
-    const back = 16 + (this.speed / PLAYER.boost) * 5.5;
+    const back = 20 + (this.speed / PLAYER.boost) * 6;
     this.camDesired.copy(this.player.mesh.position).addScaledVector(this.nose, -back).addScaledVector(this.upV, 5.4);
     const blend = 1 - Math.exp(-3.5 * dt);
     this.camera.position.lerp(this.camDesired, blend);
@@ -1580,6 +1987,16 @@ export class Game {
       const mark = enemy.type === 'vorak' ? ['#e7a15a', 9] : ['#ff4d8d', 4];
       plot(enemy.mesh.position.x, enemy.mesh.position.z, mark[0], mark[1]);
     }
+    for (const ally of this.allies) {
+      if (!ally.alive) continue;
+      const color = {
+        escort: '#7eb2ff',
+        drone: '#2ee6c7',
+        mend: '#3dde62',
+        ward: '#d7fff4',
+      }[ally.type];
+      plot(ally.mesh.position.x, ally.mesh.position.z, color, ally.type === 'escort' ? 4 : 3);
+    }
     ctx.fillStyle = '#2ee6c7';
     ctx.beginPath();
     ctx.moveTo(cx, cy - 7);
@@ -1598,6 +2015,10 @@ export class Game {
     this.dom.score.textContent = Math.floor(this.score).toLocaleString('he-IL');
     this.dom.wave.textContent = String(this.wave);
     this.dom.combo.textContent = this.combo > 1 ? `${T.combo} ×${this.combo.toFixed(2)}` : '';
+    if (this.dom.allies && this.allies) {
+      const alive = this.allies.reduce((sum, ally) => sum + (ally.alive ? 1 : 0), 0);
+      this.dom.allies.textContent = `${T.allies} ${alive}`;
+    }
     const rapidLeft = this.rapidUntil - this.time;
     const spreadLeft = this.spreadUntil - this.time;
     const parts = [];
@@ -1765,6 +2186,21 @@ export class Game {
       enemy.mesh.visible = false;
       enemy.mesh.position.set(0, -999, 0);
       if (enemy.mesh.userData.bar) enemy.mesh.userData.bar.group.visible = false;
+    }
+    for (const ally of this.allies) {
+      ally.alive = true;
+      ally.hp = ally.maxHp;
+      ally.respawn = 0;
+      ally.fireCd = Math.random() * 0.35;
+      ally.hitCd = 0;
+      ally.healCd = 0.5;
+      ally.pulseCd = 1.5;
+      ally.flash = 0;
+      ally.vel.set(0, 0, 0);
+      ally.mesh.visible = true;
+      restoreMaterials(ally.mesh.userData.mats);
+      if (ally.mesh.userData.bar) ally.mesh.userData.bar.group.visible = false;
+      this.placeAlly(ally);
     }
     for (const bolt of this.playerBolts.concat(this.enemyBolts)) this.killBolt(bolt);
     for (const pickup of this.pickups) {

@@ -74,6 +74,16 @@ export class Sfx {
     });
   }
 
+  allyShot() {
+    this.blip({
+      freq: 920 + Math.random() * 70,
+      dur: 0.03,
+      type: 'square',
+      vol: 0.025,
+      slide: -240,
+    });
+  }
+
   enemyShot() {
     this.blip({ freq: 210, dur: 0.07, type: 'sawtooth', vol: 0.05, slide: -80 });
   }
