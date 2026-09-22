@@ -604,3 +604,52 @@ export function createGiantMissile() {
   });
   return root;
 }
+
+function glowMat(color) {
+  return new THREE.MeshBasicMaterial({ color, fog: false, toneMapped: false });
+}
+
+/** Five bright beads orbiting a core. Local −Z is forward. */
+export function createAtomCluster() {
+  const root = new THREE.Group();
+  const spinner = new THREE.Group();
+  const colors = [0x7af0ff, 0xffe08a, 0xff8ad8, 0xb8ff7a, 0xffffff];
+  colors.forEach((color, i) => {
+    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), glowMat(color));
+    const angle = (i / colors.length) * Math.PI * 2;
+    bead.position.set(Math.cos(angle) * 0.72, Math.sin(angle) * 0.42, -0.15);
+    spinner.add(bead);
+  });
+  spinner.add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), glowMat(0xf7fbff)));
+  root.add(spinner);
+  root.userData.spinner = spinner;
+  return root;
+}
+
+/** Short gold shell. Local −Z is the nose. */
+export function createShellRound() {
+  const root = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.85, 4, 8), glowMat(0xf0c14a));
+  body.rotation.x = Math.PI / 2;
+  body.position.z = -0.15;
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), glowMat(0xfff6d8));
+  nose.position.z = -0.78;
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.05, 6, 12), glowMat(0xfff1a8));
+  band.rotation.y = Math.PI / 2;
+  root.add(body, nose, band);
+  return root;
+}
+
+/** Festival orb. A bright core and two pastel rings, not a debris cloud. */
+export function createUltraBomb() {
+  const root = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 12), glowMat(0xfff3b0));
+  const spinner = new THREE.Group();
+  const ringA = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.07, 8, 18), glowMat(0xff7ad9));
+  const ringB = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.07, 8, 18), glowMat(0x7af0ff));
+  ringB.rotation.x = Math.PI / 2.3;
+  spinner.add(ringA, ringB);
+  root.add(core, spinner);
+  root.userData.spinner = spinner;
+  return root;
+}

@@ -121,6 +121,45 @@ export const GIANT = {
   visualScale: 3.4,
 };
 
+/**
+ * Extra heavy cycle. Lifetime fuse only, colorful bursts, no gore.
+ * Atoms sparkle, shells pop gold, ultra is a local festival bloom.
+ */
+export const HEAVY = {
+  atoms: {
+    id: 'atoms',
+    cooldown: 1.45,
+    speed: 175,
+    life: 1.35,
+    blast: 78,
+    damage: 150,
+    visualScale: 2.4,
+    shake: 0.25,
+  },
+  shells: {
+    id: 'shells',
+    cooldown: 1.1,
+    speed: 230,
+    life: 0.95,
+    blast: 62,
+    damage: 220,
+    visualScale: 2.1,
+    shake: 0.35,
+  },
+  ultra: {
+    id: 'ultra',
+    cooldown: 5.5,
+    speed: 120,
+    life: 2.15,
+    blast: 280,
+    damage: 820,
+    visualScale: 2.8,
+    shake: 0.95,
+  },
+};
+
+export const HEAVY_ORDER = ['atoms', 'shells', 'ultra'];
+
 /** Blue triangle army. Many small fighters, not a handful of giants. */
 export const ALLY = {
   count: 32,

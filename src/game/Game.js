@@ -8,6 +8,8 @@ import {
   COMBO_WINDOW,
   ENEMIES,
   GIANT,
+  HEAVY,
+  HEAVY_ORDER,
   MISSILE,
   PLAYER,
   POOLS,
@@ -26,8 +28,11 @@ import {
   boltGeometry,
   createAlly,
   createCarrier,
+  createAtomCluster,
   createGiantMissile,
   createMissile,
+  createShellRound,
+  createUltraBomb,
   createNetzShip,
   createOgenShip,
   createPlayerShip,
@@ -116,6 +121,8 @@ export class Game {
     this.fireLock = 0;
     this.missileCd = 0;
     this.giantCd = 0;
+    this.heavyIndex = 0;
+    this.heavyCd = { atoms: 0, shells: 0, ultra: 0 };
     this.chain = [];
     this.rapidUntil = 0;
     this.spreadUntil = 0;
@@ -205,6 +212,10 @@ export class Game {
       nukeBtn: document.querySelector('#nuke-btn'),
       giantBtn: document.querySelector('#giant-btn'),
       giantTouch: document.querySelector('#giant-touch'),
+      ordnanceBtn: document.querySelector('#ordnance-btn'),
+      ordnanceTouch: document.querySelector('#ordnance-touch'),
+      ordnanceCycle: document.querySelector('#ordnance-cycle'),
+      ordnanceCycleTouch: document.querySelector('#ordnance-cycle-touch'),
       boostBtn: document.querySelector('#boost-btn'),
       boostTouch: document.querySelector('#boost-touch'),
       groundMenu: document.querySelector('#ground-menu-btn'),
@@ -367,6 +378,7 @@ export class Game {
     this.enemyBolts = this.makeBolts(POOLS.enemyBolts);
     this.missiles = this.makeMissiles();
     this.giants = this.makeGiants();
+    this.heavy = this.makeHeavy();
     this.buildFleet();
 
     this.pickups = [];
@@ -419,6 +431,10 @@ export class Game {
     dom.nukeBtn.textContent = T.missile;
     dom.giantBtn.textContent = T.giant;
     dom.giantTouch.textContent = T.giant;
+    if (dom.ordnanceCycle) dom.ordnanceCycle.textContent = T.heavyCycle;
+    if (dom.ordnanceCycleTouch) dom.ordnanceCycleTouch.textContent = T.heavyCycle;
+    if (dom.ordnanceBtn) dom.ordnanceBtn.textContent = T.heavyAtoms;
+    if (dom.ordnanceTouch) dom.ordnanceTouch.textContent = T.heavyAtoms;
     dom.boostBtn.textContent = T.boost;
     dom.boostTouch.textContent = T.boost;
     this.syncMuteLabel();
@@ -546,6 +562,12 @@ export class Game {
     dom.nukeBtn.addEventListener('pointerdown', (event) => this.onMissileDown(event));
     dom.giantBtn.addEventListener('pointerdown', (event) => this.onGiantDown(event));
     dom.giantTouch.addEventListener('pointerdown', (event) => this.onGiantDown(event));
+    for (const button of [dom.ordnanceBtn, dom.ordnanceTouch]) {
+      button?.addEventListener('pointerdown', (event) => this.onHeavyDown(event));
+    }
+    for (const button of [dom.ordnanceCycle, dom.ordnanceCycleTouch]) {
+      button?.addEventListener('pointerdown', (event) => this.onHeavyCycle(event));
+    }
     for (const button of [dom.boostBtn, dom.boostTouch]) {
       button.addEventListener('pointerdown', (event) => this.onBoostDown(event));
       button.addEventListener('pointerup', (event) => this.onBoostUp(event));
@@ -820,6 +842,14 @@ export class Game {
       this.launchGiant();
       return;
     }
+    if (event.code === 'KeyE' && this.state === 'play') {
+      this.launchHeavy();
+      return;
+    }
+    if (event.code === 'KeyC' && this.state === 'play') {
+      this.cycleHeavy();
+      return;
+    }
     if (event.code === 'KeyR' && (this.state === 'dead' || this.state === 'paused')) {
       this.startMission();
       return;
@@ -961,9 +991,109 @@ export class Game {
     burstSparks(this.sparks, origin, 0xffc14a, 10, 18, this.nose, 1.4, 1.1);
   }
 
+  makeHeavy() {
+    const pools = {
+      atoms: { factory: createAtomCluster, count: 4 },
+      shells: { factory: createShellRound, count: 3 },
+      ultra: { factory: createUltraBomb, count: 2 },
+    };
+    const heavy = {};
+    for (const [id, spec] of Object.entries(pools)) {
+      heavy[id] = [];
+      for (let i = 0; i < spec.count; i += 1) {
+        const mesh = spec.factory();
+        mesh.visible = false;
+        this.scene.add(mesh);
+        heavy[id].push({
+          mesh,
+          alive: false,
+          pos: new THREE.Vector3(),
+          vel: new THREE.Vector3(),
+          life: 0,
+        });
+      }
+    }
+    return heavy;
+  }
+
+  heavyKind() {
+    return HEAVY_ORDER[this.heavyIndex] || 'atoms';
+  }
+
+  heavyLabel(id, cooling) {
+    const name = {
+      atoms: T.heavyAtoms,
+      shells: T.heavyShells,
+      ultra: T.heavyUltraShort,
+    }[id] || T.heavyAtoms;
+    return cooling ? `${name} ${Math.ceil(this.heavyCd[id])}` : name;
+  }
+
+  clearHeavy() {
+    if (!this.heavy) return;
+    for (const id of HEAVY_ORDER) {
+      for (const shot of this.heavy[id]) {
+        shot.alive = false;
+        shot.mesh.visible = false;
+      }
+    }
+  }
+
+  cycleHeavy() {
+    if (this.state !== 'play') return;
+    this.heavyIndex = (this.heavyIndex + 1) % HEAVY_ORDER.length;
+    const id = this.heavyKind();
+    const full = id === 'ultra' ? T.heavyUltra : this.heavyLabel(id, false);
+    this.showToast(full);
+  }
+
+  launchHeavy() {
+    if (this.state !== 'play' || !this.heavy) return;
+    const id = this.heavyKind();
+    const spec = HEAVY[id];
+    if (this.heavyCd[id] > 0) return;
+    const shot = this.heavy[id].find((item) => !item.alive);
+    if (!shot) return;
+    this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
+    const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 8 * this.shipScale());
+    shot.alive = true;
+    shot.life = spec.life;
+    shot.pos.copy(origin);
+    shot.vel.copy(this.nose).multiplyScalar(spec.speed);
+    shot.mesh.visible = true;
+    shot.mesh.position.copy(origin);
+    shot.mesh.scale.setScalar(spec.visualScale);
+    this.heavyCd[id] = spec.cooldown;
+    if (id === 'atoms') this.sfx.blip?.({ freq: 520, dur: 0.08, type: 'sine', vol: 0.05, slide: 80 });
+    else this.sfx.missile();
+    burstSparks(this.sparks, origin, id === 'shells' ? 0xffc14a : 0x7af0ff, 8, 12, this.nose, 0.8, 0.7);
+  }
+
+  onHeavyDown(event) {
+    if (this.state !== 'play') return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.launchHeavy();
+  }
+
+  onHeavyCycle(event) {
+    if (this.state !== 'play') return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.cycleHeavy();
+  }
+
   updateMissiles(dt) {
     this.stepOrdnance(this.missiles, dt, MISSILE.visualScale, 0xff6a1a, (pos) => this.detonateMissile(pos));
     this.stepOrdnance(this.giants, dt, GIANT.visualScale, 0xffc14a, (pos) => this.detonateGiant(pos));
+    if (this.heavy) {
+      for (const id of HEAVY_ORDER) {
+        const spec = HEAVY[id];
+        this.stepOrdnance(this.heavy[id], dt, spec.visualScale, id === 'shells' ? 0xffc14a : 0x7af0ff, (pos) => {
+          this.detonateHeavy(id, pos);
+        });
+      }
+    }
     this.updateChain();
   }
 
@@ -977,6 +1107,8 @@ export class Game {
       this.v3.copy(missile.pos).add(missile.vel);
       missile.mesh.lookAt(this.v3);
       missile.mesh.scale.setScalar(scale);
+      const spinner = missile.mesh.userData.spinner;
+      if (spinner) spinner.rotation.y += dt * 5;
       const trail = this.v1.copy(missile.vel).multiplyScalar(-1);
       if (trail.lengthSq() > 0.001) trail.normalize();
       if (Math.random() < 0.35) {
@@ -1024,6 +1156,51 @@ export class Game {
     const foe = this.carriers && this.carriers.enemy;
     if (foe && foe.alive && foe.mesh.position.distanceTo(origin) <= MISSILE.blast + foe.radius) {
       this.damageCarrier(foe, MISSILE.damage);
+    }
+  }
+
+  detonateHeavy(id, origin) {
+    const spec = HEAVY[id];
+    const palettes = {
+      atoms: [0x7af0ff, 0xffe08a, 0xff8ad8, 0xb8ff7a],
+      shells: [0xffc14a, 0xfff6d2],
+      ultra: [0xfff3b0, 0xff7ad9, 0x7af0ff, 0xffe08a],
+    };
+    this.sfx.missileBoom();
+    this.addShake(spec.shake);
+    const colors = palettes[id] || palettes.atoms;
+    colors.forEach((color, index) => {
+      burstSparks(this.sparks, origin, color, id === 'ultra' ? 18 : 10, 16 + index * 4, null, 1.4 + index * 0.35, 1.1);
+      spawnRing(this.rings, origin, color, {
+        life: 0.55 + index * 0.12,
+        grow: spec.blast * (0.45 + index * 0.22),
+        scale: 1.2 + index * 0.45,
+      });
+    });
+    if (id === 'ultra') {
+      const up = this.v2.set(0, 1, 0);
+      const cap = origin.clone().addScaledVector(up, 18);
+      spawnRing(this.rings, cap, 0xfff6d2, { life: 0.9, grow: 220, scale: 4.2 });
+    }
+    this.blastAround(origin, spec.blast, spec.damage);
+  }
+
+  blastAround(origin, blast, damage) {
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      if (enemy.mesh.position.distanceTo(origin) <= blast + enemy.cfg.radius) {
+        this.damageEnemy(enemy, damage, true);
+      }
+    }
+    for (const tower of this.towers) {
+      if (!tower.alive) continue;
+      if (tower.mesh.position.distanceTo(origin) <= blast + tower.radius) {
+        this.damageTower(tower, damage, true);
+      }
+    }
+    const foe = this.carriers && this.carriers.enemy;
+    if (foe && foe.alive && foe.mesh.position.distanceTo(origin) <= blast + foe.radius) {
+      this.damageCarrier(foe, damage);
     }
   }
 
@@ -1218,6 +1395,7 @@ export class Game {
     this.fireCd = Math.max(0, this.fireCd - dt);
     this.missileCd = Math.max(0, this.missileCd - dt);
     this.giantCd = Math.max(0, this.giantCd - dt);
+    for (const id of HEAVY_ORDER) this.heavyCd[id] = Math.max(0, this.heavyCd[id] - dt);
     if (this.pointer.fire || this.keys.has('Space')) this.shoot();
 
     if (this.time - this.lastHit > PLAYER.shieldDelay && this.shield < PLAYER.shield && this.invuln <= 0) {
@@ -1845,6 +2023,7 @@ export class Game {
         missile.mesh.visible = false;
       }
     }
+    this.clearHeavy();
     this.player.mesh.visible = false;
     this.bubble.visible = false;
     const pos = this.player.mesh.position.clone();
@@ -2470,6 +2649,9 @@ export class Game {
     }
     parts.push(this.giantCd > 0 ? `${T.giant} ${Math.ceil(this.giantCd)}` : T.giantReady);
     parts.push(this.missileCd > 0 ? `${T.missile} ${Math.ceil(this.missileCd)}` : T.missileReady);
+    const heavyId = this.heavyKind();
+    const heavyCool = this.heavyCd[heavyId] > 0;
+    parts.push(heavyCool ? this.heavyLabel(heavyId, true) : `${this.heavyLabel(heavyId, false)} ${T.heavyReady}`);
     if (this.allies) {
       const ready = this.allies.filter((ally) => ally.alive).length;
       parts.push(`${T.allies} ${ready}`);
@@ -2488,6 +2670,14 @@ export class Game {
       if (!button) continue;
       button.classList.toggle('cooling', giantCooling);
       button.textContent = giantLabel;
+    }
+    const heavyName = this.heavyLabel(heavyId, heavyCool);
+    for (const button of [this.dom.ordnanceBtn, this.dom.ordnanceTouch]) {
+      if (!button) continue;
+      button.classList.toggle('cooling', heavyCool);
+      button.classList.remove('kind-atoms', 'kind-shells', 'kind-ultra');
+      button.classList.add(`kind-${heavyId}`);
+      button.textContent = heavyName;
     }
     this.dom.flight.textContent = this.boosting ? T.boost : this.braking ? T.brake : T.cruise;
     for (const button of [this.dom.boostBtn, this.dom.boostTouch]) {
@@ -2516,6 +2706,8 @@ export class Game {
     this.dom.touch.hidden = !(this.coarse && playing);
     this.dom.nukeBtn.hidden = !playing;
     this.dom.giantBtn.hidden = !playing;
+    if (this.dom.ordnanceBtn) this.dom.ordnanceBtn.hidden = !playing;
+    if (this.dom.ordnanceCycle) this.dom.ordnanceCycle.hidden = !playing;
     this.dom.boostBtn.hidden = !playing;
   }
 
@@ -2765,6 +2957,8 @@ export class Game {
     this.fireLock = 0.45;
     this.missileCd = 0;
     this.giantCd = 0;
+    this.heavyIndex = 0;
+    this.heavyCd = { atoms: 0, shells: 0, ultra: 0 };
     this.chain = [];
     this.rapidUntil = 0;
     this.spreadUntil = 0;
@@ -2815,6 +3009,7 @@ export class Game {
         missile.mesh.visible = false;
       }
     }
+    this.clearHeavy();
     for (const pickup of this.pickups) {
       pickup.alive = false;
       pickup.mesh.visible = false;
