@@ -24,7 +24,9 @@ export const PLAYER = {
   bulletSpeed: 145,
   bulletLife: 1.15,
   bulletDamage: 36,
-  bulletRadius: 1.15,
+  bulletRadius: 2.1,
+  boltGirth: 8,
+  boltStretch: 4.2,
 };
 
 export const POWER = {

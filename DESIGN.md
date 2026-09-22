@@ -46,7 +46,8 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Invulnerability after a hit | 0.7s (ship blinks) |
 | Collision radius | 4.6 |
 | Shot damage | 36 |
-| Shot visual scale | 1.7 |
+| Shot hit radius | 2.1 |
+| Shot beam | 2.7 thick, about 14 long, with a large muzzle flash |
 | Shot speed / life | 145 u/s, 1.15s |
 | Fire interval | 0.15s (0.075s with rapid fire) |
 
