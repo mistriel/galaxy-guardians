@@ -69,7 +69,7 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Action | Input |
 | --- | --- |
 | Steer | Mouse (crosshair stays at screen center) or arrow keys |
-| Boost / brake | `W` / `S` |
+| Turbo / brake | Hold `W`, Shift, or the טורבו button / `S` |
 | Strafe | `A` / `D` |
 | Lasers | Space or left click. Thick beams. On a phone, hold ירי |
 | Nuclear missile | Orange טיל גרעיני button, `F`, or right click. Wipes the area, then waits 4s |

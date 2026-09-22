@@ -145,7 +145,7 @@ body.playing button { cursor: pointer; }
 #combo { min-height: 1.2rem; color: var(--pink); font-weight: 800; }
 
 .hud-actions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 280px; }
-#nuke-btn { flex: 1 0 100%; }
+#nuke-btn, #boost-btn { flex: 1 0 100%; }
 
 button.tiny, button.ghost, button.primary {
   border-radius: 999px;
@@ -432,7 +432,36 @@ body.touch #flight-row {
   line-height: 1.05;
   padding: 8px;
 }
-#stick, #fire-btn, #missile-btn, #nuke-btn {
+#boost-btn, #boost-touch {
+  border: 3px solid rgba(255, 255, 214, 0.95);
+  background: rgba(198, 255, 46, 0.96);
+  color: #142004;
+  font-weight: 900;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35), 0 0 16px rgba(190, 255, 40, 0.45);
+}
+#boost-btn {
+  min-height: 48px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 1.15rem;
+}
+#boost-btn.on, #boost-touch.on {
+  background: #fff7a4;
+  box-shadow: 0 0 24px rgba(230, 255, 80, 0.95);
+}
+#boost-touch {
+  position: absolute;
+  right: max(28px, calc(env(safe-area-inset-right) + 14px));
+  bottom: max(286px, calc(env(safe-area-inset-bottom) + 280px));
+  min-width: 118px;
+  height: 64px;
+  border-radius: 999px;
+  font-size: 1.15rem;
+  padding: 6px 12px;
+}
+#stick, #fire-btn, #missile-btn, #nuke-btn, #boost-btn, #boost-touch {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -449,6 +478,12 @@ body.touch #flight-row {
     height: 70px;
     font-size: 1.05rem;
     bottom: max(112px, calc(env(safe-area-inset-bottom) + 108px));
+  }
+  #boost-touch {
+    min-width: 92px;
+    height: 48px;
+    font-size: 0.95rem;
+    bottom: max(190px, calc(env(safe-area-inset-bottom) + 184px));
   }
   body.touch #radar { bottom: 166px; width: 64px; height: 64px; }
   body.touch #flight-row { bottom: 112px; max-width: calc(100% - 250px); }
