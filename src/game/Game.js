@@ -652,7 +652,7 @@ export class Game {
       glows[0].getWorldPosition(this.v1);
       this.v2.copy(this.nose).multiplyScalar(-1);
       if (Math.random() < dt * 28) {
-        burstSparks(this.sparks, this.v1, 0xff8a3a, 1, 10, this.v2);
+        burstSparks(this.sparks, this.v1, 0x6a9bff, 1, 10, this.v2);
       }
     }
   }

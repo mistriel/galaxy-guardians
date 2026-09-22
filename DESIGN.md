@@ -6,15 +6,16 @@ Original 3D arcade flight combat. The fantasy is a ragtag cargo tug punching thr
 
 **Shomeret / שומרת**
 
-A plow-jaw guardian freighter. The silhouette is a wide blade and an open cargo jaw, not the old short tug with a side drum:
+A plow-jaw guardian freighter, painted entirely blue. The silhouette is a wide blade and an open cargo jaw, not the old short tug with a side drum:
 
-- White plow across the bow, with a red chevron
-- Two forward cargo prongs (the port jaw is longer and blue, the starboard jaw is shorter with a red tip) plus a short turquoise ram underneath
-- Centered white bridge and a blue canopy, not a cockpit stuck on one side
-- Green cargo blocks stepped along the spine
-- Unequal twin tails (blue port, red starboard) tied by a green crossbar
-- Three rear bells: turquoise, red, and green
-- Turquoise keel, white castle and plow, blue port jaw and tail, green cargo, red stripe and starboard tail
+- Wide plow across the bow, with a darker chevron
+- Two forward cargo prongs (the port jaw is longer, the starboard jaw is shorter) plus a short ram underneath
+- Centered bridge and canopy, not a cockpit stuck on one side
+- Cargo blocks stepped along the spine
+- Unequal twin tails tied by a crossbar
+- Three rear bells, all glowing blue
+
+Hull, plow, jaws, cargo, tails, and engines are all blue.
 
 The nose points down the mesh's local −Z axis. The whole mesh is scaled by 2.25. Shots leave the plow tip. Nothing about the shape is taken from an existing film or comic vehicle.
 
