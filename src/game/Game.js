@@ -144,6 +144,7 @@ export class Game {
     this.boltUp = new THREE.Vector3();
     this.boltFwd = new THREE.Vector3();
     this.nose = new THREE.Vector3();
+    this.inward = new THREE.Vector3();
     this.rightV = new THREE.Vector3();
     this.upV = new THREE.Vector3();
     this.aimAt = new THREE.Vector3();
@@ -258,13 +259,15 @@ export class Game {
     this.scene.background = new THREE.Color(WORLD.background);
     this.scene.fog = new THREE.FogExp2(WORLD.background, WORLD.fog);
 
-    this.camera = new THREE.PerspectiveCamera(52, 1, 0.1, 2200);
+    this.camera = new THREE.PerspectiveCamera(52, 1, 0.1, 4800);
     this.camera.position.set(0, 4.2, 15);
 
     this.soft = makeSoftTexture();
-    this.stars = createStarfield(1400, 1100, 1.7);
-    this.dust = createStarfield(420, 820, 2.6);
-    this.scene.add(this.stars, this.dust, createNebulas(this.soft));
+    this.stars = createStarfield(2000, 1500, 1.7);
+    this.dust = createStarfield(640, 980, 2.5);
+    this.farStars = createStarfield(1100, 2600, 2.1);
+    this.nebulas = createNebulas(this.soft);
+    this.scene.add(this.stars, this.dust, this.farStars, this.nebulas);
 
     this.scene.add(new THREE.HemisphereLight(0xc5dcff, 0x221428, 0.72));
     this.scene.add(new THREE.AmbientLight(0x8ea0b8, 0.28));
@@ -1210,13 +1213,7 @@ export class Game {
     if (this.coarse) strafe += this.move.x * PLAYER.strafe;
     this.player.mesh.position.addScaledVector(this.nose, this.speed * dt);
     this.player.mesh.position.addScaledVector(this.rightV, strafe * dt);
-
-    const pos = this.player.mesh.position;
-    if (pos.length() > WORLD.bounds) {
-      pos.setLength(WORLD.bounds);
-      this.edge = 1.1;
-    }
-    this.edge = Math.max(0, this.edge - dt);
+    this.foldArena(this.player.mesh.position, dt);
 
     this.fireCd = Math.max(0, this.fireCd - dt);
     this.missileCd = Math.max(0, this.missileCd - dt);
@@ -1380,9 +1377,12 @@ export class Game {
       desired.multiplyScalar(speed);
       enemy.vel.lerp(desired, 1 - Math.exp(-2.4 * dt));
       pos.addScaledVector(enemy.vel, dt);
-      if (pos.length() > WORLD.bounds - 30) {
-        enemy.anchor.multiplyScalar(Math.pow(0.92, dt * 8));
-        if (pos.length() > WORLD.bounds - 12) pos.setLength(WORLD.bounds - 12);
+      const reach = pos.length();
+      if (reach > WORLD.bounds - 80) {
+        enemy.anchor.multiplyScalar(Math.pow(0.94, dt * 8));
+        const curve = THREE.MathUtils.clamp((reach - (WORLD.bounds - 80)) / 70, 0, 1);
+        pos.addScaledVector(pos, -curve * 0.45 * dt);
+        if (pos.length() > WORLD.bounds - 8) pos.setLength(WORLD.bounds - 8);
       }
       pos.y = THREE.MathUtils.clamp(pos.y, -100, 140);
 
@@ -1990,9 +1990,27 @@ export class Game {
   }
 
   updateStarParallax() {
-    this.stars.position.copy(this.player.mesh.position);
-    this.dust.position.copy(this.player.mesh.position).multiplyScalar(0.48);
+    const ship = this.player.mesh.position;
+    this.stars.position.copy(ship);
+    this.farStars.position.copy(ship);
+    this.dust.position.copy(ship).multiplyScalar(0.42);
+    this.nebulas.position.copy(ship).multiplyScalar(0.2);
     this.stars.rotation.y = this.state === 'menu' ? this.time * 0.02 : 0;
+    this.farStars.rotation.y = this.time * 0.008;
+  }
+
+  /** Closed arena without a wall: a wide inward current, then a safety radius. */
+  foldArena(pos, dt) {
+    const dist = pos.length();
+    if (dist > WORLD.soft) {
+      const t = THREE.MathUtils.smoothstep(dist, WORLD.soft, WORLD.bounds);
+      this.inward.copy(pos).multiplyScalar(-1 / Math.max(dist, 0.001));
+      pos.addScaledVector(this.inward, (14 + t * t * 340) * dt);
+      this.speed = Math.max(PLAYER.brake, this.speed - t * t * 190 * dt);
+      if (t > 0.62) this.edge = Math.max(this.edge, 1.15);
+    }
+    if (pos.length() > WORLD.bounds) pos.setLength(WORLD.bounds * 0.992);
+    this.edge = Math.max(0, this.edge - dt);
   }
 
   updateCameraMenu() {

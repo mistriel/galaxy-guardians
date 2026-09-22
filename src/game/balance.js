@@ -1,8 +1,11 @@
 /** Arcade tuning. DESIGN.md mirrors these numbers. */
 
 export const WORLD = {
+  /** Safety radius. The ship is turned around softly before this. */
   bounds: 430,
-  fog: 0.0048,
+  /** Where the closed curve begins. Inside this the flight is free. */
+  soft: 200,
+  fog: 0.0033,
   background: 0x070b16,
 };
 

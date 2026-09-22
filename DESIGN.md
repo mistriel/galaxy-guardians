@@ -53,7 +53,7 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 
 Full-stick yaw rate is 1.75 rad/s. Pitch follows the cursor and eases back to level when the cursor is centered, so the nose cannot get stuck off the horizon. Banking is cosmetic and follows yaw rate. There is a small deadzone at the center of the mouse. Mouse steering arms only after the cursor has visited that center, so leaving the start button does not yank the ship.
 
-The play space is a sphere of radius **430**. Hitting the edge shows **קצה הגזרה** and slides the ship back inside.
+The play space is a closed sphere of radius **430** that feels open. Stars and dust travel with the ship, so there is no sky wall. From radius **200** a smooth inward current slows a radial boost and eases the ship home. The Hebrew line **המרחב מתעקל** appears only deep in that curve. A last safety keeps the ship inside 430. Gallery rings, portals, and missiles are unchanged. Ground fields are wide planes that fade in fog, so the battle valley is closed without a cliff edge.
 
 ## Player
 
