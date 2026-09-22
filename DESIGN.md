@@ -27,7 +27,9 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
-| Shoot | Space or left click |
+| Shoot | Space or left click. On a phone, hold the round ירי button |
+| Steer on a phone | Large left joystick. Deadzone is wide, and the stick eases instead of jumping |
+| Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
 | Pause | `Esc` or `P`, or the השהיה button |
 | Mute | `M` or the קול button |
 | Restart | משימה חדשה, Enter, or `R` on the game-over / pause panel |
