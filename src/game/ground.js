@@ -1093,7 +1093,8 @@ export class GroundBattle {
     const flash = unit.mesh.userData.flash;
     if (flash) flash.material.opacity = 1;
     if (Math.random() < 0.22) {
-    this.sfx.blip?.({ freq: unit.kind === 'defender' ? 180 : 320, dur: 0.05, type: 'square', vol: 0.03, slide: -40 });
+      this.sfx.blip?.({ freq: unit.kind === 'defender' ? 180 : 320, dur: 0.05, type: 'square', vol: 0.03, slide: -40 });
+    }
   }
 
   fireCar(unit) {
@@ -1129,7 +1130,6 @@ export class GroundBattle {
     if (Math.random() < 0.45) {
       this.sfx.blip?.({ freq: unit.kind === 'foeCar' ? 160 : 240, dur: 0.06, type: 'square', vol: 0.04, slide: -30 });
     }
-  }
   }
 
   updatePhase(dt, pushing) {
