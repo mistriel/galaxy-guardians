@@ -731,10 +731,11 @@ export class Game {
     ny = THREE.MathUtils.clamp(ny, -1, 1);
 
     // Yaw is a rate so heading stays free. Positive rotation.y swings the −Z nose
-    // toward world −X (left), so a rightward stick, mouse, or arrow must decrease yaw.
-    // Pitch springs back to level when the cursor is centered. Touch uses a slower rate.
-    this.yawVel = axis(nx) * turn;
-    this.yaw -= this.yawVel * dt;
+    // toward world −X (left), so stick X is negated once here — mouse, arrows, and
+    // the touch stick. Pitch springs back to level when the cursor is centered.
+    // Touch uses a slower rate.
+    this.yawVel = axis(-nx) * turn;
+    this.yaw += this.yawVel * dt;
     const targetPitch = THREE.MathUtils.clamp(axis(-ny) * 0.9, -0.95, 0.95);
     this.pitch = THREE.MathUtils.damp(this.pitch, targetPitch, 6, dt);
     this.bank = THREE.MathUtils.damp(this.bank, THREE.MathUtils.clamp(-this.yawVel * 0.48, -0.7, 0.7), 6, dt);
