@@ -317,7 +317,7 @@ export class Game {
     this.bubble = new THREE.Mesh(
       new THREE.SphereGeometry(2.35, 24, 18),
       new THREE.MeshBasicMaterial({
-        color: 0x8ef6ff,
+        color: 0x8eb6ff,
         transparent: true,
         opacity: 0.12,
         depthWrite: false,
