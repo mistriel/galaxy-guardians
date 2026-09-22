@@ -294,106 +294,147 @@ function makeGunCar(accent) {
   return root;
 }
 
-/** Original toy-like person. Round limbs, a smile, no borrowed costume. */
+function squadTint(accent, foe) {
+  const color = new THREE.Color(accent);
+  if (foe && color.r + color.g + color.b < 1.15) color.offsetHSL(0, 0.08, 0.2);
+  return color;
+}
+
+/** Original toy soldier. Tunic, pants, and a rifle read at battle distance. */
 function makeInfantry(accent, foe = false) {
   const root = new THREE.Group();
-  const cloth = mat(accent, accent, foe ? 0.28 : 0.48);
-  const skin = mat(0xffd2b0, 0x5a3020, 0.12);
-  const boot = mat(0x2a3344, 0x101820, 0.22);
-  const helm = mat(foe ? 0x5a3058 : 0xf7fbff, accent, 0.4);
-  const sashMat = mat(foe ? 0xff8ab8 : 0xffe08a, foe ? 0xff8ab8 : 0xffe08a, 0.55);
+  const tunicColor = squadTint(accent, foe);
+  const cloth = mat(tunicColor, tunicColor, foe ? 0.32 : 0.5);
+  const pants = mat(foe ? 0x2a2236 : 0xf4efe2, foe ? 0x120c18 : 0xc8b89a, 0.12);
+  const skin = mat(0xffd2b0, 0x5a3020, 0.1);
+  const boot = mat(foe ? 0x1a1422 : 0x3a2a22, 0x100c0a, 0.16);
+  const helm = mat(foe ? 0x4a2848 : 0xf7fbff, accent, 0.42);
+  const sashMat = mat(foe ? 0xff8ab8 : 0xffd56a, foe ? 0xff8ab8 : 0xffe08a, 0.6);
+  const steel = mat(0x2a3442, 0x101820, 0.35);
 
   const pivotLimb = (x, y, material, radius, length) => {
     const pivot = new THREE.Group();
     pivot.position.set(x, y, 0);
     const limbMesh = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 3, 8), material);
-    limbMesh.position.y = -(length * 0.5 + radius * 0.15);
+    limbMesh.position.y = -(length * 0.5 + radius * 0.2);
     pivot.add(limbMesh);
     root.add(pivot);
     return pivot;
   };
 
-  const legL = pivotLimb(-0.15, 0.72, boot, 0.085, 0.38);
-  const legR = pivotLimb(0.15, 0.72, boot, 0.085, 0.38);
-  const hips = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), cloth);
-  hips.scale.set(1.2, 0.72, 0.9);
-  hips.position.set(0, 0.78, 0);
+  const legL = pivotLimb(-0.14, 0.64, pants, 0.08, 0.36);
+  const legR = pivotLimb(0.14, 0.64, pants, 0.08, 0.36);
+  for (const x of [-0.14, 0.14]) {
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), boot);
+    foot.scale.set(1, 0.5, 1.35);
+    foot.position.set(x, 0.05, 0.03);
+    root.add(foot);
+  }
+  const hips = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), pants);
+  hips.scale.set(1.25, 0.7, 0.9);
+  hips.position.set(0, 0.66, 0);
   root.add(hips);
-  const chest = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.26, 4, 10), cloth);
-  chest.position.set(0, 1.16, 0);
+  const chest = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.32, 4, 10), cloth);
+  chest.position.set(0, 1.08, 0);
+  chest.userData.baseY = 1.08;
   root.add(chest);
-  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.032, 6, 14), sashMat);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.08), sashMat);
+  stripe.position.set(0, 1.12, -0.16);
+  root.add(stripe);
+  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.028, 6, 14), sashMat);
   belt.rotation.x = Math.PI / 2;
-  belt.position.set(0, 1.0, 0);
+  belt.position.set(0, 0.9, 0);
   root.add(belt);
-  const cape = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.28, 3, 8), sashMat);
-  cape.scale.set(1.5, 1, 0.35);
-  cape.position.set(0, 1.12, 0.16);
+  const cape = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.32, 3, 6), sashMat);
+  cape.scale.set(1.6, 1, 0.28);
+  cape.position.set(0, 1.05, 0.16);
   root.add(cape);
 
-  const armL = pivotLimb(-0.34, 1.28, cloth, 0.06, 0.26);
-  const armR = pivotLimb(0.34, 1.28, cloth, 0.06, 0.24);
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), skin);
-  hand.position.set(0, -0.38, 0);
+  const armL = pivotLimb(-0.32, 1.22, cloth, 0.055, 0.28);
+  const armR = pivotLimb(0.32, 1.22, cloth, 0.055, 0.26);
+  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), skin);
+  hand.position.set(0, -0.36, 0);
   armL.add(hand);
-  const rifle = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.5, 2, 6), boot);
-  rifle.rotation.x = Math.PI / 2.35;
-  rifle.position.set(0.02, -0.28, -0.16);
+  const rifle = new THREE.Group();
+  rifle.position.set(0.02, -0.4, -0.02);
+  const barrel = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.72, 3, 6), steel);
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.z = -0.22;
+  const tip = new THREE.Mesh(
+    new THREE.SphereGeometry(0.045, 6, 5),
+    mat(foe ? 0xffd0ea : 0xfff1a8, foe ? 0xffd0ea : 0xffe08a, 0.9),
+  );
+  tip.position.z = -0.58;
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 8, 6),
+    new THREE.MeshBasicMaterial({
+      color: foe ? 0xffd0ea : 0xfff6c8,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    }),
+  );
+  flash.position.z = -0.64;
+  const muzzle = new THREE.Object3D();
+  muzzle.position.z = -0.68;
+  rifle.add(barrel, tip, flash, muzzle);
   armR.add(rifle);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 12), skin);
-  head.position.set(0, 1.66, 0);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), skin);
+  head.position.set(0, 1.52, 0);
   root.add(head);
   const eyeWhite = mat(0xfff8f2, 0x000000, 0);
   const pupil = mat(0x2a211c, 0x000000, 0);
-  for (const x of [-0.09, 0.09]) {
-    const white = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 6), eyeWhite);
-    white.position.set(x, 1.7, -0.23);
-    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 5), pupil);
-    dot.position.set(x, 1.7, -0.262);
+  for (const x of [-0.075, 0.075]) {
+    const white = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 6), eyeWhite);
+    white.position.set(x, 1.55, -0.19);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 5), pupil);
+    dot.position.set(x, 1.55, -0.22);
     root.add(white, dot);
   }
-  const cheekMat = mat(0xff9a8a, 0xff9a8a, 0.3);
-  for (const x of [-0.12, 0.12]) {
-    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 5), cheekMat);
-    cheek.position.set(x, 1.58, -0.2);
+  const cheekMat = mat(0xff9a8a, 0xff9a8a, 0.28);
+  for (const x of [-0.11, 0.11]) {
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 5), cheekMat);
+    cheek.position.set(x, 1.46, -0.17);
     root.add(cheek);
   }
   const smile = new THREE.Mesh(
-    new THREE.TorusGeometry(0.06, 0.012, 6, 12, Math.PI),
+    new THREE.TorusGeometry(0.05, 0.011, 6, 10, Math.PI),
     mat(0x6a3030, 0x000000, 0),
   );
-  smile.position.set(0, 1.54, -0.22);
+  smile.position.set(0, 1.42, -0.19);
   smile.rotation.z = Math.PI;
   root.add(smile);
 
   if (foe) {
-    for (const x of [-0.32, 0.32]) {
-      const pad = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), helm);
-      pad.scale.y = 0.55;
-      pad.position.set(x, 1.34, 0);
+    for (const x of [-0.3, 0.3]) {
+      const pad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), helm);
+      pad.scale.y = 0.5;
+      pad.position.set(x, 1.26, 0);
       root.add(pad);
     }
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 8), helm);
-    cap.scale.set(1.05, 0.42, 1.05);
-    cap.position.set(0, 1.84, 0);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 8), helm);
+    cap.scale.set(1.05, 0.45, 1.05);
+    cap.position.set(0, 1.66, 0);
     root.add(cap);
-    const crest = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.2, 2, 6), sashMat);
-    crest.position.set(0, 1.98, 0);
+    const crest = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.18, 2, 6), sashMat);
+    crest.position.set(0, 1.8, 0);
     root.add(crest);
   } else {
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 8), helm);
-    cap.scale.y = 0.46;
-    cap.position.set(0, 1.82, 0.01);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), helm);
+    cap.scale.y = 0.48;
+    cap.position.set(0, 1.66, 0.01);
     root.add(cap);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.46, 6), boot);
-    pole.position.set(-0.28, 1.42, 0);
-    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.02), mat(0xf7fbff, accent, 0.45));
-    flag.position.set(-0.4, 1.58, 0);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.42, 6), boot);
+    pole.position.set(0.3, 1.35, 0);
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.02), mat(0xf7fbff, accent, 0.5));
+    flag.position.set(0.42, 1.5, 0);
     root.add(pole, flag);
     root.userData.flag = flag;
   }
-  root.userData.swing = { legL, legR, armL, armR };
+  root.userData.swing = { legL, legR, armL, armR, chest, rifle };
+  root.userData.flash = flash;
+  root.userData.muzzle = muzzle;
   return root;
 }
 
@@ -743,12 +784,23 @@ export class GroundBattle {
     this.shake = 0;
     this.active = true;
     this.buildField();
-    [-8, 0, 8].forEach((x, i) => this.spawn('artillery', x, 0.2 + i * 0.32, { speed: 0, laneFollow: 0.2, bob: 0 }));
-    for (let i = 0; i < 10; i += 1) {
-      this.spawn('infantry', (i - 4.5) * 2.8, 0, { speed: 0, garrison: true, z: 7 - (i % 2) });
+    [-11, 0, 11].forEach((x, i) => this.spawn('artillery', x, 0.05 + i * 0.08, { speed: 0, laneFollow: 0.15, bob: 0, z: 9 }));
+    [[-6, 8], [6, 10]].forEach(([x, z], i) => this.spawn('tank', x, 0.1 + i * 0.2, { z, speed: 6.5 }));
+    [[-2, 6.5], [3.5, 7.5]].forEach(([x, z], i) => this.spawn('gunCar', x, 0.12 + i * 0.15, { z, speed: 8 }));
+    for (let i = 0; i < 18; i += 1) {
+      const col = (i % 9) - 4;
+      const row = Math.floor(i / 9);
+      this.spawn('infantry', col * 2.15, 0.04 * (i % 5), {
+        z: 1.2 + row * 2.6,
+        speed: 3.2,
+        shotCd: 0.08 + (i % 6) * 0.14,
+      });
     }
-    for (let i = 0; i < 12; i += 1) {
-      this.spawn('defender', (i - 5.5) * 2.6, 0, { z: -22 - (i % 2) * 1.4 });
+    for (let i = 0; i < 16; i += 1) {
+      this.spawn('defender', (i - 7.5) * 1.7, 0.03 * (i % 4), {
+        z: -11 - (i % 3) * 1.5,
+        shotCd: 0.12 + (i % 5) * 0.16,
+      });
     }
     this.syncHud();
     this.sfx.wave?.();
@@ -839,11 +891,11 @@ export class GroundBattle {
         mat(0xc48a55, world.accent, 0.2),
       );
       const x = (i - 3) * 4.2;
-      box.position.set(x, 0.65, -32);
+      box.position.set(x, 0.65, -20);
       box.castShadow = true;
       box.receiveShadow = true;
       this.root.add(box);
-      this.barricades.push({ mesh: box, x, z: -32, popped: false, crack: 0 });
+      this.barricades.push({ mesh: box, x, z: -20, popped: false, crack: 0 });
     }
 
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.2, 8), mat(FRIENDLY));
@@ -867,6 +919,8 @@ export class GroundBattle {
     else if (kind === 'destroyer') mesh = makeDestroyer();
     else mesh = makeSpecial(kind, this.world);
     mesh.visible = false;
+    if (kind === 'defender') mesh.rotation.y = Math.PI - 0.42;
+    else if (kind === 'infantry') mesh.rotation.y = 0.48;
     mesh.traverse((obj) => {
       if (obj.isMesh) {
         obj.castShadow = true;
@@ -889,6 +943,8 @@ export class GroundBattle {
       bob: extra.bob ?? bobs[kind] ?? 0.04,
       laneFollow: extra.laneFollow ?? follows[kind] ?? 1,
       special: kind === 'destroyer' || kind === 'lantern' || kind === 'drum' || kind === 'crown',
+      shotCd: extra.shotCd ?? 0.4 + Math.random() * 0.5,
+      attackT: 0,
     };
     this.units.push(unit);
     if (kind === 'artillery' && mesh.userData.tube) this.tubes.push(mesh.userData.tube);
@@ -905,13 +961,13 @@ export class GroundBattle {
       for (const unit of this.units) {
         if (unit.garrison && unit.kind === 'infantry') unit.speed = 12;
       }
-      for (let i = 0; i < 24; i += 1) {
+      for (let i = 0; i < 12; i += 1) {
         const col = (i % 6) - 2.5;
         const row = Math.floor(i / 6);
-        this.spawn('infantry', col * 3.6, row * 0.34 + (i % 6) * 0.06);
+        this.spawn('infantry', col * 2.4, row * 0.2, { z: 12 + row * 2.2, speed: 6 });
       }
-      for (let i = 0; i < 10; i += 1) {
-        this.spawn('defender', (i - 4.5) * 3.1, 0.08 + (i % 3) * 0.06);
+      for (let i = 0; i < 8; i += 1) {
+        this.spawn('defender', (i - 3.5) * 2.2, 0.08, { z: -16 - (i % 2) });
       }
     } else if (id === 'special') {
       this.spawn('destroyer', 0, 0.18);
@@ -975,17 +1031,54 @@ export class GroundBattle {
     this.syncHud();
   }
 
+  fireRifle(unit) {
+    const muzzle = unit.mesh.userData.muzzle;
+    const from = new THREE.Vector3();
+    if (muzzle) {
+      unit.mesh.updateMatrixWorld(true);
+      muzzle.getWorldPosition(from);
+    } else {
+      from.set(unit.mesh.position.x, 2.2, unit.mesh.position.z);
+    }
+    const forward = unit.kind === 'defender' ? 1 : -1;
+    const color = unit.kind === 'defender' ? this.world.enemy : this.world.accent;
+    this.launchShell({
+      from,
+      to: new THREE.Vector3(
+        unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 3.2,
+        1.15,
+        unit.z + forward * (8 + Math.random() * 5),
+      ),
+      color,
+      radius: 0.14,
+      dur: 0.34,
+      holdHit: unit.kind === 'defender' ? 0 : 0.12,
+      splash: 2.4,
+      arc: 0.85,
+      silentTubes: true,
+    });
+    const flash = unit.mesh.userData.flash;
+    if (flash) flash.material.opacity = 1;
+    if (Math.random() < 0.22) {
+      this.sfx.blip?.({ freq: unit.kind === 'defender' ? 180 : 320, dur: 0.05, type: 'square', vol: 0.03, slide: -40 });
+    }
+  }
+
   updatePhase(dt, pushing) {
     const pace = pushing ? 1.35 : 1;
-    if (this.phase === 'artillery') {
-      this.hold = Math.max(0, this.hold - 4.2 * pace * dt);
+    if (this.phase === 'artillery' || this.phase === 'armor') {
+      this.hold = Math.max(0, this.hold - (this.phase === 'artillery' ? 4.2 : 3.2) * pace * dt);
       this.shellCd -= dt * pace;
       if (this.shellCd <= 0) {
-        this.shellCd = pushing ? 0.32 : 0.52;
-        this.launchShell();
+        this.shellCd = pushing ? 0.38 : 0.62;
+        const guns = this.units.filter((unit) => unit.kind === 'artillery' && unit.mesh.visible);
+        const gun = guns[Math.floor(Math.random() * guns.length)];
+        this.launchShell(gun ? {
+          from: new THREE.Vector3(gun.mesh.position.x, 2.4, gun.mesh.position.z - 0.6),
+          to: new THREE.Vector3((Math.random() - 0.5) * 12, 0.4, -14 - Math.random() * 8),
+          arc: 6,
+        } : { arc: 6 });
       }
-    } else if (this.phase === 'armor') {
-      this.hold = Math.max(0, this.hold - 3.2 * pace * dt);
     } else if (this.phase === 'infantry') {
       this.capture = Math.min(100, this.capture + 7 * pace * dt);
       this.hold = Math.max(0, this.hold - 1.4 * pace * dt);
@@ -1017,6 +1110,7 @@ export class GroundBattle {
       color,
       holdHit: spec.holdHit ?? 3.1,
       splash: spec.splash ?? 7,
+      arc: spec.arc ?? 9,
     });
     if (spec.silentTubes) return;
     for (const tube of this.tubes) {
@@ -1071,7 +1165,7 @@ export class GroundBattle {
       shell.t += dt / shell.dur;
       const p = Math.min(1, shell.t);
       shell.mesh.position.lerpVectors(shell.from, shell.to, p);
-      shell.mesh.position.y += Math.sin(p * Math.PI) * 9;
+      shell.mesh.position.y += Math.sin(p * Math.PI) * (shell.arc ?? 9);
       if (p < 1) continue;
       this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7);
       this.hold = Math.max(0, this.hold - (shell.holdHit ?? 3.1));
@@ -1113,7 +1207,7 @@ export class GroundBattle {
       unit.age += dt;
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
       const people = unit.kind === 'infantry' || unit.kind === 'defender';
-      const pop = unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : unit.kind === 'gunCar' ? 1.05 : unit.kind === 'artillery' ? 1.15 : people ? 2.65 : 0.85;
+      const pop = unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : unit.kind === 'gunCar' ? 1.05 : unit.kind === 'artillery' ? 1.15 : people ? 2.5 : 0.85;
       unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro));
       if (fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
       else if (this.phase !== 'resolve') unit.z -= unit.speed * pace * dt;
@@ -1123,12 +1217,37 @@ export class GroundBattle {
       const drop = unit.special ? (1 - intro) * 14 : (1 - intro) * 0.8;
       unit.mesh.position.set(unit.x + this.lane * unit.laneFollow, yBob + drop, unit.z);
       const swing = unit.mesh.userData.swing;
+      const flash = unit.mesh.userData.flash;
+      if (flash) flash.material.opacity = Math.max(0, flash.material.opacity - dt * 5);
+      if (people && this.outcome !== 'retreat' && unit.age > 0.25) {
+        unit.shotCd -= dt * (pushing ? 1.15 : 1);
+        if (unit.shotCd <= 0) {
+          unit.shotCd = (unit.kind === 'defender' ? 1.15 : 0.9) + (Math.abs(unit.x) % 0.35);
+          unit.attackT = 0.34;
+          this.fireRifle(unit);
+        }
+      }
+      if (unit.attackT > 0) unit.attackT -= dt;
       if (swing) {
-        const step = Math.sin(unit.age * (unit.kind === 'defender' ? 6 : 10)) * 0.65;
-        swing.legL.rotation.x = step;
-        swing.legR.rotation.x = -step;
-        swing.armL.rotation.x = -step * 0.75;
-        swing.armR.rotation.x = step * 0.28;
+        const moving = Math.abs(unit.speed) > 0.4 && this.phase !== 'resolve';
+        const attacking = unit.attackT > 0;
+        const step = Math.sin(unit.age * (moving ? 9 : 1.7) + unit.x);
+        const legAmp = moving ? 0.95 : 0.05;
+        swing.legL.rotation.x = step * legAmp;
+        swing.legR.rotation.x = -step * legAmp;
+        if (attacking) {
+          swing.armR.rotation.x = -0.85;
+          swing.armL.rotation.x = -0.28;
+          if (swing.rifle) swing.rifle.rotation.x = -0.35;
+        } else {
+          const armAmp = moving ? 0.62 : 0.1;
+          swing.armL.rotation.x = -step * armAmp;
+          swing.armR.rotation.x = step * armAmp;
+          if (swing.rifle) swing.rifle.rotation.x = 0;
+        }
+        if (swing.chest) {
+          swing.chest.position.y = swing.chest.userData.baseY + Math.sin(unit.age * 1.7) * (moving ? 0.012 : 0.028);
+        }
       }
       if (unit.kind === 'infantry' && unit.z < -40 && !unit.scored && !fallingBack) {
         unit.scored = true;
@@ -1212,9 +1331,9 @@ export class GroundBattle {
 
   updateCamera(dt) {
     const aims = {
-      artillery: { pos: [0, 9, 18], look: [0, 2.4, -6] },
-      armor: { pos: [5, 12, 20], look: [0, 2, -14] },
-      infantry: { pos: [0, 7, 8], look: [0, 1.8, -8] },
+      artillery: { pos: [8.5, 6.1, 10.5], look: [0, 1.35, -5] },
+      armor: { pos: [7, 7.2, 12], look: [0, 1.5, -10] },
+      infantry: { pos: [5, 5.6, 8.5], look: [0, 1.35, -4] },
       special: { pos: [-6, 12, 18], look: [0, 2.2, -6] },
       resolve: { pos: [0, 12, 22], look: [0, 2, -10] },
     };
