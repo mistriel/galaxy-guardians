@@ -8,7 +8,7 @@ The menu shows שומרת and offers both יציאה לסיור and קרבות �
 
 1. Artillery lobs light shells and softens the line.
 2. Tanks and gun-cars (קרון ירי) roll in, staggered, and break the barricades.
-3. People flood through and capture the flag. Friendly soldiers wear the world color, a pale helmet, and a small flag. A line of original defenders in the enemy color holds the far side, then walks back when the line breaks. No gore.
+3. People flood through and capture the flag. Friendly soldiers wear the world color, a pale helmet, and a small flag. Warriors in the enemy color, with shoulder pads and a helm crest, already hold the far side, then walk back when the line breaks. No gore. The field is dressed before the first shell: grass across the ground, trees and plants down both flanks (glowing canopies, dry shrubs, or ice ferns, depending on the world).
 4. **משמיד** drops in for the climax. It is a turquoise tank wearing heavy cannons, a rack of artillery tubes, and fat glowing nuclear guns — the joke is every gun in the world on one hull. It slams onto the field, lobs a ground barrage (no space trails), and flattens a wide stretch of barricades. The world landmark (אורן הנוצץ, תוף המדבר, or כתר הקרח) still arrives off to the side. The Hebrew label is משמיד.
 5. The beat ends in ניצחון, or נסיגה if you choose to pull back.
 

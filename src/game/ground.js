@@ -16,7 +16,7 @@ export const GROUND_WORLDS = [
   {
     id: 'forest',
     name: 'יער זוהר',
-    blurb: 'עצים מאירים וקרקע רכה.',
+    blurb: 'עצים, דשא וצמחים מאירים.',
     sky: 0x0c2420,
     fog: 0x12352c,
     ground: 0x184232,
@@ -31,7 +31,7 @@ export const GROUND_WORLDS = [
   {
     id: 'desert',
     name: 'מדבר אדום',
-    blurb: 'חול אדום וסלעים חמים.',
+    blurb: 'שיחים יבשים, עשב חול וסלעים.',
     sky: 0x3a140c,
     fog: 0x5a2414,
     ground: 0x8a3a22,
@@ -46,7 +46,7 @@ export const GROUND_WORLDS = [
   {
     id: 'ice',
     name: 'קרח כחול',
-    blurb: 'קרח כחול וגבישים.',
+    blurb: 'צמחי קרח, דשא כחול וגבישים.',
     sky: 0x0c1830,
     fog: 0x163048,
     ground: 0x1a3a55,
@@ -244,7 +244,11 @@ function makeInfantry(accent, foe = false) {
   addBox(armR, 0.07, 0.07, 0.72, boot, 0.02, -0.28, -0.22);
   addCyl(root, 0.16, 0.17, 0.24, skin, 0, 1.5, 0);
   addBox(root, 0.34, 0.14, 0.32, helm, 0, 1.68, 0.02);
-  if (!foe) {
+  if (foe) {
+    addBox(root, 0.24, 0.1, 0.22, helm, -0.3, 1.32, 0);
+    addBox(root, 0.24, 0.1, 0.22, helm, 0.3, 1.32, 0);
+    addBox(root, 0.08, 0.32, 0.08, helm, 0, 1.9, 0);
+  } else {
     root.userData.flag = addBox(root, 0.04, 0.42, 0.24, mat(FRIENDLY, accent, 0.35), -0.4, 1.4, 0);
   }
   root.userData.swing = { legL, legR, armL, armR };
@@ -276,6 +280,65 @@ function makeSpecial(kind, world) {
     }
   }
   return root;
+}
+
+function makeTree(world, i) {
+  const root = new THREE.Group();
+  const trunk = mat(0x4a2c18, 0x1a0c08, 0.25);
+  const h = 2.2 + (i % 4) * 0.65;
+  if (world.id === 'desert') {
+    const dry = mat(world.prop, world.glow, 0.28);
+    addCyl(root, 0.22, 0.3, h * 0.85, dry, 0, h * 0.4, 0);
+    const arm = addCyl(root, 0.1, 0.14, h * 0.4, dry, 0.34, h * 0.55, 0);
+    arm.rotation.z = 0.7;
+    addCyl(root, 0.08, 0.12, h * 0.32, dry, -0.28, h * 0.48, 0.08).rotation.z = -0.8;
+  } else if (world.id === 'ice') {
+    addCyl(root, 0.08, 0.16, h * 0.7, trunk, 0, h * 0.35, 0);
+    addCyl(root, 0.04, 0.62, h * 0.85, mat(world.prop, world.glow, 0.5), 0, h * 0.75, 0);
+    addCyl(root, 0.02, 0.28, 0.7, mat(world.glow, world.glow, 0.45), 0.35, 0.45, 0).rotation.z = 0.4;
+  } else {
+    addCyl(root, 0.14, 0.26, h, trunk, 0, h * 0.5, 0);
+    const crown = addCyl(root, 0.12, 1.15, 1.55, mat(world.prop, world.glow, 0.4), 0, h * 0.82, 0);
+    crown.rotation.y = i * 0.4;
+    addCyl(root, 0.04, 0.62, 1.05, mat(world.glow, world.glow, 0.32), 0, h * 1.15, 0);
+  }
+  return root;
+}
+
+function makePlant(world, i) {
+  const root = new THREE.Group();
+  const stemColor = world.id === 'desert' ? 0x8a5a28 : world.id === 'ice' ? 0x8ec8ea : 0x1f8a4c;
+  const stem = mat(stemColor, world.glow, 0.2);
+  const bloom = mat(world.glow, world.glow, 0.75);
+  addCyl(root, 0.03, 0.045, 0.42, stem, 0, 0.21, 0);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.11 + (i % 3) * 0.03, 8, 6), bloom);
+  head.position.y = 0.48;
+  root.add(head);
+  if (i % 2 === 0) {
+    const side = addCyl(root, 0.02, 0.03, 0.32, stem, 0.1, 0.16, 0);
+    side.rotation.z = -0.45;
+  }
+  return root;
+}
+
+function addGrass(root, world) {
+  const geo = new THREE.ConeGeometry(0.08, 0.55, 4);
+  geo.translate(0, 0.28, 0);
+  const color = world.id === 'desert' ? 0xd98a45 : world.id === 'ice' ? 0xb7e4ff : 0x3dce6a;
+  const mesh = new THREE.InstancedMesh(geo, mat(color, world.glow, 0.32), 220);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < 220; i += 1) {
+    const x = (Math.random() - 0.5) * 150;
+    const z = -70 + Math.random() * 120;
+    dummy.position.set(x, 0, z);
+    dummy.rotation.y = Math.random() * Math.PI * 2;
+    const s = 0.65 + Math.random() * 1.15;
+    dummy.scale.set(s, 0.55 + Math.random() * 1.35, s);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  root.add(mesh);
 }
 
 function makeProp(world, i) {
@@ -367,6 +430,12 @@ export class GroundBattle {
     this.active = true;
     this.buildField();
     [-8, 0, 8].forEach((x, i) => this.spawn('artillery', x, 0.2 + i * 0.32, { speed: 0, laneFollow: 0.2, bob: 0 }));
+    for (let i = 0; i < 10; i += 1) {
+      this.spawn('infantry', (i - 4.5) * 2.8, 0, { speed: 0, garrison: true, z: 7 - (i % 2) });
+    }
+    for (let i = 0; i < 12; i += 1) {
+      this.spawn('defender', (i - 5.5) * 2.6, 0, { z: -22 - (i % 2) * 1.4 });
+    }
     this.syncHud();
     this.sfx.wave?.();
   }
@@ -392,11 +461,26 @@ export class GroundBattle {
     lane.position.z = -12;
     this.root.add(lane);
 
-    for (let i = 0; i < 16; i += 1) {
+    addGrass(this.root, world);
+    for (let i = 0; i < 28; i += 1) {
+      const tree = makeTree(world, i);
+      const side = i % 2 === 0 ? -1 : 1;
+      tree.position.set(side * (24 + (i % 5) * 8 + (i % 3)), 0, -62 + (i % 14) * 7);
+      tree.scale.setScalar(0.85 + (i % 4) * 0.28);
+      this.root.add(tree);
+    }
+    for (let i = 0; i < 42; i += 1) {
+      const plant = makePlant(world, i);
+      const side = i % 2 === 0 ? -1 : 1;
+      plant.position.set(side * (8 + (i % 7) * 7), 0, -58 + (i % 12) * 8);
+      plant.scale.setScalar(0.8 + (i % 3) * 0.35);
+      this.root.add(plant);
+    }
+    for (let i = 0; i < 10; i += 1) {
       const prop = makeProp(world, i);
       const side = i % 2 === 0 ? -1 : 1;
-      prop.position.set(side * (26 + (i % 4) * 4), 0, -40 + (i % 8) * 10);
-      prop.scale.setScalar(0.8 + (i % 3) * 0.35);
+      prop.position.set(side * (48 + (i % 3) * 6), 0, -36 + (i % 5) * 12);
+      prop.scale.setScalar(0.9 + (i % 3) * 0.3);
       this.root.add(prop);
     }
 
@@ -440,7 +524,8 @@ export class GroundBattle {
       kind,
       mesh,
       x,
-      z: kind === 'defender' ? -20 : kind === 'infantry' ? 14 : kind === 'artillery' ? 18 : kind === 'destroyer' ? 6 : 12,
+      z: extra.z ?? (kind === 'defender' ? -20 : kind === 'infantry' ? 14 : kind === 'artillery' ? 18 : kind === 'destroyer' ? 6 : 12),
+      garrison: Boolean(extra.garrison),
       delay,
       age: 0,
       speed: extra.speed ?? speeds[kind] ?? 8,
@@ -460,6 +545,9 @@ export class GroundBattle {
       [-12, -2, 8].forEach((x, i) => this.spawn('tank', x, 0.15 + i * 0.45));
       [-8, 3, 13].forEach((x, i) => this.spawn('gunCar', x, 0.28 + i * 0.4));
     } else if (id === 'infantry') {
+      for (const unit of this.units) {
+        if (unit.garrison && unit.kind === 'infantry') unit.speed = 12;
+      }
       for (let i = 0; i < 24; i += 1) {
         const col = (i % 6) - 2.5;
         const row = Math.floor(i / 6);
