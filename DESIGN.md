@@ -133,4 +133,4 @@ All player-facing copy is Hebrew (`src/game/i18n.js`) and rendered in the DOM wi
 
 ## Tech
 
-Three.js and Vite. The production build is a static `dist/` folder with relative asset paths, suitable for GitHub Pages project sites. See README.md.
+Three.js and Vite. The production build is a static `dist/` folder. Asset URLs use the GitHub Pages project-site base `/galaxy-guardians/` (override with `VITE_BASE=/` for a domain root). See README.md.

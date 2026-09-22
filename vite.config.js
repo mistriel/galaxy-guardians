@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
 
-// Relative asset URLs so the production build works on GitHub Pages
-// project sites (https://<user>.github.io/galaxy-guardians/) and local preview.
+// GitHub Pages project site: https://mistriel.github.io/galaxy-guardians/
+// Set VITE_BASE=/ when serving the built files from a domain root instead.
+const base = process.env.VITE_BASE || '/galaxy-guardians/';
+
 export default defineConfig({
-  base: './',
+  base,
   server: {
     host: '0.0.0.0',
     port: 5173,
