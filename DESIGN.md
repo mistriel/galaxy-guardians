@@ -6,15 +6,17 @@ Original 3D arcade flight combat. The fantasy is a ragtag cargo tug punching thr
 
 **Shomeret / שומרת**
 
-A short, blunt freighter with a deliberately lopsided silhouette:
+A plow-jaw guardian freighter. The silhouette is a wide blade and an open cargo jaw, not the old short tug with a side drum:
 
-- Cockpit blister offset to port
-- Round cargo drum bolted to starboard
-- One oversized rear engine and one stub engine
-- Uneven fins and a crooked antenna mast
-- Turquoise hull, white nose, blue port fin and cockpit, green cargo drum, red stripe and starboard fin
+- White plow across the bow, with a red chevron
+- Two forward cargo prongs (the port jaw is longer and blue, the starboard jaw is shorter with a red tip) plus a short turquoise ram underneath
+- Centered white bridge and a blue canopy, not a cockpit stuck on one side
+- Green cargo blocks stepped along the spine
+- Unequal twin tails (blue port, red starboard) tied by a green crossbar
+- Three rear bells: turquoise, red, and green
+- Turquoise keel, white castle and plow, blue port jaw and tail, green cargo, red stripe and starboard tail
 
-The nose points down the mesh's local −Z axis. The whole mesh is scaled by 2.45 so Shomeret reads as a big freighter in the chase view. Nothing about the shape is taken from an existing film or comic vehicle.
+The nose points down the mesh's local −Z axis. The whole mesh is scaled by 2.25. Shots leave the plow tip. Nothing about the shape is taken from an existing film or comic vehicle.
 
 ## Controls
 
@@ -44,7 +46,7 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Shield (מגן) | 80 |
 | Shield regen | 16 per second, after 2.5s without a hit |
 | Invulnerability after a hit | 0.7s (ship blinks) |
-| Collision radius | 4.6 |
+| Collision radius | 5.1 |
 | Shot damage | 36 |
 | Shot hit radius | 2.1 |
 | Shot beam | 2.7 thick, about 14 long, with a large muzzle flash |
@@ -52,6 +54,19 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Fire interval | 0.15s (0.075s with rapid fire) |
 
 Shields soak damage first. A translucent bubble shows remaining shield. Boost widens the camera field of view slightly. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
+
+## Wing
+
+Thirteen helpers launch with Shomeret and fight for the whole mission. The HUD counts them as **להק**. If one is destroyed it returns after a few seconds. They ignore the crate alley, including stray shots. They shoot enemies first, then nests, spires, and silos. Their kills score for the player. Player shots pass through them. Enemy shots and rams do not.
+
+| Id | Hebrew | HP | Role |
+| --- | --- | --- | --- |
+| Escort | ליווי | 64 | Three ships. Two hold wide of the bow, one rides high. Shots deal 15. |
+| Drone | רחפן | 24 | Six turquoise rings orbiting the freighter. Light shots deal 8. |
+| Mend | רתך | 46 | Two green welders trail behind and restore 3 hull every 1.35s while inside 28 units. They also fire. |
+| Ward | מגןית | 50 | Two discs. They shoot, catch enemy bolts that pass within 4.6 units, and pulse +10 shield every 6.5s. |
+
+Chase and kite enemies peel onto a nearby helper when that helper is closer than the freighter. Slabs sometimes shoot the wing. Nests and spires aim at whichever of the freighter or the wing is closer. Judge Vorak still hunts the player.
 
 ## Enemies
 
@@ -84,10 +99,10 @@ Structures are already in the sector when the mission starts, including a crate 
 
 | Id | Hebrew | HP | Score | Notes |
 | --- | --- | --- | --- | --- |
-| Crate | ארגז | 16 | 80 | One shot. Small pop. |
-| Echo spire | צריח הד | 48 | 220 | Tall mast, blinking lamp. |
-| Flare silo | ממגורת להבה | 32 | 400 | Explodes. See chain reaction below. |
-| Spit nest | קן ירי | 96 | 520 | Turret. Tracks the player out to 100 units and fires shots that deal 11. |
+| Crate | ארגז | 16 | 80 | Drifts and tumbles around its spot. The opening tunnel still reads as an alley. Destroying one throws shrapnel (radius 13, damage 16) into nearby enemies. |
+| Echo spire | צריח הד | 48 | 220 | Spins and tracks the nearest ship. Fires a slow cyan bolt (damage 10) out to 120 units. |
+| Flare silo | ממגורת להבה | 32 | 400 | Spins. Every 2.45s it vents flame in radius 11 (damage 8) at ships inside it, then chain-blasts when it dies. |
+| Spit nest | קן ירי | 96 | 520 | Bobs and tracks the nearest ship out to 100 units. Shots deal 11. |
 
 ### Silo blast
 
@@ -128,7 +143,7 @@ After wave 6 the counts climb but stay capped (Nib 16, Glint 10, Howler 8, Slab 
 
 ## Game flow
 
-- **Menu:** Shomeret (שומרת) spins in front of the sector. Enter, Space, or יציאה לסיור starts. The same name stays on the HUD during flight.
+- **Menu:** Shomeret (שומרת) spins in front of the sector with the wing orbiting it. Enter, Space, or יציאה לסיור starts. The same name stays on the HUD during flight, next to the living wing count.
 - **Play:** cruise, shoot, radar in the corner (forward is up).
 - **Pause:** simulation freezes. Resume, restart, or return to the menu.
 - **Game over:** hull at 0. Restart or menu. Enter restarts.

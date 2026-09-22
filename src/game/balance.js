@@ -12,8 +12,8 @@ export const PLAYER = {
   shieldRegen: 16,
   shieldDelay: 2.5,
   invuln: 0.7,
-  visualScale: 2.45,
-  radius: 4.6,
+  visualScale: 2.25,
+  radius: 5.1,
   cruise: 24,
   boost: 48,
   brake: 8,
@@ -125,8 +125,26 @@ export const ENEMIES = {
 };
 
 export const TOWERS = {
-  crate: { hp: 16, radius: 3.5, score: 80, color: 0xf0b45a },
-  spire: { hp: 48, radius: 4.2, score: 220, color: 0x7ad7ff },
+  crate: {
+    hp: 16,
+    radius: 3.5,
+    score: 80,
+    color: 0xf0b45a,
+    drift: 1.75,
+    shrapnel: 16,
+    shrapnelRadius: 13,
+  },
+  spire: {
+    hp: 48,
+    radius: 4.2,
+    score: 220,
+    color: 0x7ad7ff,
+    range: 120,
+    fireEvery: 1.65,
+    shotSpeed: 50,
+    shotDamage: 10,
+    shotScale: 1.45,
+  },
   silo: {
     hp: 32,
     radius: 4,
@@ -135,6 +153,9 @@ export const TOWERS = {
     blast: 30,
     blastDamage: 58,
     playerBlast: 16,
+    ventEvery: 2.45,
+    ventRadius: 11,
+    ventDamage: 8,
   },
   nest: {
     hp: 96,
@@ -148,6 +169,71 @@ export const TOWERS = {
     shotScale: 1.2,
   },
 };
+
+/** Fighting wing. They spawn with the player and come back if shot down. */
+export const ALLIES = {
+  escort: {
+    hp: 64,
+    speed: 40,
+    radius: 1.7,
+    fireEvery: 0.48,
+    shotSpeed: 128,
+    shotDamage: 15,
+    shotScale: 1.65,
+    range: 145,
+    color: 0x7eb2ff,
+    respawn: 8,
+  },
+  drone: {
+    hp: 24,
+    speed: 48,
+    radius: 1.05,
+    fireEvery: 0.72,
+    shotSpeed: 138,
+    shotDamage: 8,
+    shotScale: 1.15,
+    range: 115,
+    color: 0x3ee0d4,
+    respawn: 5.5,
+  },
+  mend: {
+    hp: 46,
+    speed: 36,
+    radius: 1.3,
+    fireEvery: 0.95,
+    shotSpeed: 102,
+    shotDamage: 6,
+    shotScale: 1.2,
+    range: 85,
+    heal: 3,
+    healEvery: 1.35,
+    healRange: 28,
+    color: 0x3dde62,
+    respawn: 7,
+  },
+  ward: {
+    hp: 50,
+    speed: 38,
+    radius: 1.4,
+    fireEvery: 0.82,
+    shotSpeed: 112,
+    shotDamage: 9,
+    shotScale: 1.3,
+    range: 105,
+    intercept: 4.6,
+    shieldPulse: 10,
+    shieldEvery: 6.5,
+    color: 0xc8fff4,
+    respawn: 7.5,
+  },
+};
+
+export const WING = [
+  'escort', 'escort', 'escort',
+  'drone', 'drone', 'drone', 'drone', 'drone', 'drone',
+  'mend', 'mend',
+  'ward', 'ward',
+];
 
 export const WAVES = [
   { glint: 4 },
@@ -181,7 +267,7 @@ export const POOLS = {
   howler: 8,
   slab: 6,
   vorak: 2,
-  playerBolts: 72,
+  playerBolts: 110,
   enemyBolts: 48,
   pickups: 14,
   sparks: 160,
