@@ -1845,7 +1845,7 @@ export class Game {
     for (const [type, count] of Object.entries(spec)) {
       for (let i = 0; i < count; i += 1) types.push(type);
     }
-    const squadSize = 6;
+    const squadSize = 8;
     this.queue = [];
     let at = this.time + 0.4;
     const playerPos = this.player.mesh.position;
@@ -1854,13 +1854,13 @@ export class Game {
     const lift = new THREE.Vector3(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
     for (let i = 0; i < types.length; i += squadSize) {
       const squad = types.slice(i, i + squadSize);
-      const sway = ((i / squadSize) % 5) - 2;
+      const sway = ((i / squadSize) % 7) - 3;
       const dir = nose.clone()
-        .addScaledVector(right, sway * 0.42)
+        .addScaledVector(right, sway * 0.55)
         .addScaledVector(lift, (Math.random() - 0.45) * 0.22);
       if (dir.lengthSq() < 0.04) dir.copy(nose);
       dir.normalize();
-      const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 96 + Math.random() * 28);
+      const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 54 + Math.random() * 34);
       center.y = THREE.MathUtils.clamp(center.y, -36, 64);
       const lane = new THREE.Vector3().copy(playerPos).addScaledVector(dir, -48).sub(center);
       if (lane.lengthSq() < 0.01) lane.set(0, 0, -1);
@@ -1872,13 +1872,13 @@ export class Game {
         const col = (k % 3) - 1;
         const row = Math.floor(k / 3);
         const pos = center.clone()
-          .addScaledVector(side, col * 11)
+          .addScaledVector(side, col * 8)
           .add(new THREE.Vector3(0, (row - 0.4) * 8, 0))
           .addScaledVector(dir, -row * 8);
         if (pos.length() > WORLD.bounds - 24) pos.setLength(WORLD.bounds - 24);
         this.queue.push({ type, at: at + k * 0.05, pos, lane });
       });
-      at += 0.55;
+      at += 0.32;
     }
     this.supportWave();
     const named = types.includes('vorak') ? ` · ${T.enemyNames.vorak}` : '';
@@ -2092,9 +2092,9 @@ export class Game {
   launchVolley() {
     const carrier = this.carriers.enemy;
     if (!carrier.alive) return;
-    for (let i = 0; i < 8; i += 1) {
+    for (let i = 0; i < 14; i += 1) {
       const pos = carrier.mesh.position.clone();
-      pos.addScaledVector(this.rightV, (i - 2) * 10);
+      pos.addScaledVector(this.rightV, (i - 6.5) * 8);
       pos.addScaledVector(this.nose, 18);
       const lane = this.player.mesh.position.clone().sub(pos);
       if (lane.lengthSq() < 0.01) lane.set(0, 0, -1);
@@ -2111,6 +2111,17 @@ export class Game {
       this.launchAlly(ally);
       if (!all) return;
     }
+  }
+
+  allySlot(index) {
+    const cols = 6;
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    return [
+      (col - (cols - 1) / 2) * 8,
+      ((row % 3) - 1) * 4.2,
+      9 + row * 6,
+    ];
   }
 
   launchAlly(ally) {
@@ -2130,8 +2141,8 @@ export class Game {
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     this.rightV.set(1, 0, 0).applyQuaternion(this.player.mesh.quaternion);
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
-    this.steerCarrier(this.carriers.ally, -46, 8, 34, 58, dt);
-    this.steerCarrier(this.carriers.enemy, 26, 14, 148, 32, dt);
+    this.steerCarrier(this.carriers.ally, -20, 6, 26, 58, dt);
+    this.steerCarrier(this.carriers.enemy, 16, 8, 70, 32, dt);
     const foe = this.carriers.enemy;
     if (foe.alive) {
       foe.fireCd -= dt;
@@ -2149,24 +2160,14 @@ export class Game {
     if (this.carriers.ally.alive) this.updateBar(this.carriers.ally);
     this.allyGap -= dt;
     if (this.allyGap <= 0) {
-      this.allyGap = 1.7;
+      this.allyGap = 0.4;
       this.fillAllies(false);
     }
-    const slots = [
-      [16, 6, 18],
-      [-16, 6, 18],
-      [26, 2, 8],
-      [-26, 2, 8],
-      [10, 11, 28],
-      [-10, 11, 28],
-      [34, 4, 22],
-      [-34, 4, 22],
-    ];
     for (const ally of this.allies) {
       if (!ally.alive) continue;
       ally.invuln = Math.max(0, ally.invuln - dt);
       ally.fireCd -= dt;
-      const slot = slots[ally.slot];
+      const slot = this.allySlot(ally.slot);
       this.slot.copy(this.player.mesh.position)
         .addScaledVector(this.rightV, slot[0])
         .addScaledVector(this.upV, slot[1])
@@ -2202,7 +2203,7 @@ export class Game {
           const dir = aim.clone().sub(origin);
           if (dir.lengthSq() > 0.01) {
             dir.normalize();
-            this.spawnBolt('ally', origin, dir, 130, ALLY.shotDamage, 0x9fffea, 1.6);
+            this.spawnBolt('ally', origin, dir, 130, ALLY.shotDamage, 0x8eb6ff, 1.15);
           }
         }
       } else {
@@ -2331,17 +2332,17 @@ export class Game {
     }
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
-      const mark = enemy.type === 'vorak' ? ['#e7a15a', 9] : ['#ff4d8d', 4];
+      const mark = enemy.type === 'vorak' ? ['#ff1f3a', 8] : ['#ff3a3a', 3];
       plot(enemy.mesh.position.x, enemy.mesh.position.z, mark[0], mark[1]);
     }
     if (this.allies) {
       for (const ally of this.allies) {
         if (!ally.alive) continue;
-        plot(ally.mesh.position.x, ally.mesh.position.z, '#7af6ee', 7);
+        plot(ally.mesh.position.x, ally.mesh.position.z, '#3d7dff', 4);
       }
     }
     if (this.carriers) {
-      if (this.carriers.ally.alive) plot(this.carriers.ally.mesh.position.x, this.carriers.ally.mesh.position.z, '#b8fff4', 12);
+      if (this.carriers.ally.alive) plot(this.carriers.ally.mesh.position.x, this.carriers.ally.mesh.position.z, '#3d7dff', 11);
       if (this.carriers.enemy.alive) plot(this.carriers.enemy.mesh.position.x, this.carriers.enemy.mesh.position.z, '#ff5a3a', 12);
     }
     ctx.fillStyle = '#2ee6c7';
