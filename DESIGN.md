@@ -141,7 +141,7 @@ After wave 6 the counts climb but stay capped (Nib 16, Glint 10, Howler 8, Slab 
 
 ## UI
 
-All player-facing copy is Hebrew (`src/game/i18n.js`) and rendered in the DOM with Heebo, so right-to-left text is native. Code and this document are English.
+All player-facing copy is Hebrew (`src/game/i18n.js`) and rendered in the DOM with Heebo, so right-to-left text is native. That includes the menu, HUD, buttons, pause, game over, the ship name שומרת, and the enemy and structure names listed on the menu. Keyboard letters on the help lines are the keycaps themselves. Code and this document are English.
 
 ## Tech
 

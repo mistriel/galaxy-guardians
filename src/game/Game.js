@@ -142,6 +142,7 @@ export class Game {
       tagline: document.querySelector('#tagline'),
       sector: document.querySelector('#sector'),
       goal: document.querySelector('#goal'),
+      roster: document.querySelector('#roster'),
       controlsTitle: document.querySelector('#controls-title'),
       controls: document.querySelector('#controls'),
     };
@@ -288,6 +289,9 @@ export class Game {
     dom.tagline.textContent = T.tagline;
     dom.sector.textContent = T.sector;
     dom.goal.textContent = T.goal;
+    const enemyList = Object.values(T.enemyNames).join(', ');
+    const towerList = Object.values(T.towerNames).join(', ');
+    dom.roster.textContent = `${T.enemies}: ${enemyList}. ${T.towers}: ${towerList}.`;
     dom.controlsTitle.textContent = T.controlsTitle;
     dom.controls.replaceChildren();
     for (const line of T.controls) {
@@ -643,7 +647,7 @@ export class Game {
     if (enemy.mesh.userData.maulCore) enemy.mesh.userData.maulCore.scale.setScalar(1);
     restoreMaterials(enemy.mesh.userData.mats);
     if (enemy.mesh.userData.bar) enemy.mesh.userData.bar.group.visible = false;
-    if (type === 'vorak') this.showToast(T.vorak);
+    if (type === 'vorak') this.showToast(T.enemyNames.vorak);
   }
 
   spawnAnchor() {
@@ -1166,7 +1170,7 @@ export class Game {
       at += 0.38;
       return job;
     });
-    const named = types.includes('vorak') ? ` · ${T.vorak}` : '';
+    const named = types.includes('vorak') ? ` · ${T.enemyNames.vorak}` : '';
     this.showBanner(`${T.wave} ${this.wave}${named}`);
     this.sfx.wave();
     if (this.wave > 1 && this.wave % 2 === 0) this.spawnBonusStructures();
