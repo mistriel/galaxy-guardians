@@ -144,7 +144,8 @@ body.playing button { cursor: pointer; }
 #wave { color: var(--amber); font-size: 1.35rem; }
 #combo { min-height: 1.2rem; color: var(--pink); font-weight: 800; }
 
-.hud-actions { display: flex; gap: 8px; }
+.hud-actions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 280px; }
+#nuke-btn { flex: 1 0 100%; }
 
 button.tiny, button.ghost, button.primary {
   border-radius: 999px;
@@ -403,18 +404,52 @@ body.touch #flight-row {
   bottom: 168px;
   max-width: calc(100% - 280px);
 }
-#stick, #fire-btn {
+#nuke-btn, #missile-btn {
+  border: 3px solid rgba(255, 236, 190, 0.95);
+  background: rgba(255, 122, 28, 0.96);
+  color: #2a1004;
+  font-weight: 900;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35), 0 0 18px rgba(255, 140, 40, 0.55);
+}
+#nuke-btn {
+  min-height: 48px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+#nuke-btn.cooling, #missile-btn.cooling { filter: grayscale(0.35) brightness(0.72); }
+#missile-btn {
+  position: absolute;
+  right: max(34px, calc(env(safe-area-inset-right) + 20px));
+  bottom: max(162px, calc(env(safe-area-inset-bottom) + 156px));
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  font-size: 0.92rem;
+  line-height: 1.05;
+  padding: 8px;
+}
+#stick, #fire-btn, #missile-btn, #nuke-btn {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-#fire-btn:active { transform: scale(0.96); }
+#fire-btn:active, #missile-btn:active { transform: scale(0.96); }
 
 @media (max-height: 500px) {
   #stick { width: 150px; height: 150px; }
   .stick-base { width: 100px; height: 100px; }
   .stick-knob { width: 54px; height: 54px; }
   #fire-btn { width: 92px; height: 92px; font-size: 1.3rem; bottom: max(12px, env(safe-area-inset-bottom)); }
+  #missile-btn {
+    width: 70px;
+    height: 70px;
+    font-size: 1.05rem;
+    bottom: max(112px, calc(env(safe-area-inset-bottom) + 108px));
+  }
   body.touch #radar { bottom: 166px; width: 64px; height: 64px; }
   body.touch #flight-row { bottom: 112px; max-width: calc(100% - 250px); }
 }
