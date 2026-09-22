@@ -953,7 +953,7 @@ export class Game {
 
   makeMissiles() {
     const missiles = [];
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 4; i += 1) {
       const mesh = createMissile();
       mesh.visible = false;
       this.scene.add(mesh);
@@ -1141,8 +1141,8 @@ export class Game {
     const up = this.v2.set(0, 1, 0);
     burstSparks(this.sparks, origin, 0xfff6d2, 36, 40, up, 4.2, 1.6);
     burstSparks(this.sparks, origin, 0xff8a22, 42, 55, null, 5.5, 1.5);
-    spawnRing(this.rings, origin, 0xfff6d2, { life: 0.9, grow: 980, scale: 2.2 });
-    spawnRing(this.rings, origin, 0xff7a18, { life: 1.15, grow: 1680, scale: 3.2 });
+    spawnRing(this.rings, origin, 0xfff6d2, { life: 1.05, grow: 2200, scale: 4 });
+    spawnRing(this.rings, origin, 0xff7a18, { life: 1.35, grow: 2700, scale: 5 });
     for (let i = 1; i <= 4; i += 1) {
       const stem = origin.clone().addScaledVector(up, i * 10);
       spawnRing(this.rings, stem, i > 2 ? 0xfff2c4 : 0xff9a3c, {

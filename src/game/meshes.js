@@ -512,16 +512,17 @@ export function createPickup(type, softMap) {
 export const boltGeometry = geo('bolt', () => new THREE.BoxGeometry(0.34, 0.34, 3.4));
 
 /**
- * Movie-missile needle. Long body, sharp nose, tiny fins.
- * Local −Z is the nose. Radius stays under 0.14 before MISSILE.visualScale.
+ * Movie-missile needle. Slender body, sharp nose, small tail fins, axial plume.
+ * Local −Z is the nose. Body radius stays under 0.08 before MISSILE.visualScale.
+ * The plume is a cone, not a billboard, so the chase view stays a thin dart.
  */
 export function createMissile() {
   const root = new THREE.Group();
   const hull = new THREE.MeshBasicMaterial({ color: 0xfff6e4, fog: false, toneMapped: false });
   const hot = new THREE.MeshBasicMaterial({ color: 0xff3b12, fog: false, toneMapped: false });
   const finMat = new THREE.MeshBasicMaterial({ color: 0xffc14a, fog: false, toneMapped: false });
-  const stripe = new THREE.MeshBasicMaterial({ color: 0xffe08a, fog: false, toneMapped: false });
-  const flameMat = new THREE.SpriteMaterial({
+  const bandMat = new THREE.MeshBasicMaterial({ color: 0x3a2418, fog: false, toneMapped: false });
+  const plumeMat = new THREE.MeshBasicMaterial({
     color: 0xff6a1a,
     transparent: true,
     opacity: 0.92,
@@ -531,33 +532,34 @@ export function createMissile() {
     toneMapped: false,
   });
 
-  const bodyLen = 22;
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, bodyLen, 8), hull);
+  const bodyLen = 16;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.034, bodyLen, 8), hull);
   body.rotation.x = Math.PI / 2;
   root.add(body);
 
-  const band = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, bodyLen * 0.78), stripe);
-  band.position.y = 0.1;
-  root.add(band);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.28, 8), bandMat);
+  collar.rotation.x = Math.PI / 2;
+  collar.position.z = bodyLen * 0.12;
+  root.add(collar);
 
-  const noseLen = 3.6;
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.1, noseLen, 8), hot);
+  const noseLen = 3.8;
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.036, noseLen, 8), hot);
   nose.rotation.x = -Math.PI / 2;
-  nose.position.z = -(bodyLen / 2 + noseLen / 2) + 0.04;
+  nose.position.z = -(bodyLen / 2 + noseLen / 2) + 0.02;
   root.add(nose);
 
   for (let i = 0; i < 4; i += 1) {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.22, 0.62), finMat);
-    const angle = (i / 4) * Math.PI * 2;
-    blade.position.set(Math.cos(angle) * 0.2, Math.sin(angle) * 0.2, bodyLen / 2 - 0.9);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.16, 0.85), finMat);
+    const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    blade.position.set(Math.cos(angle) * 0.11, Math.sin(angle) * 0.11, bodyLen / 2 - 0.55);
     blade.rotation.z = angle;
     root.add(blade);
   }
 
-  const flame = new THREE.Sprite(flameMat);
-  flame.position.z = bodyLen / 2 + 0.55;
-  flame.scale.set(0.42, 1.7, 1);
-  root.add(flame);
+  const plume = new THREE.Mesh(new THREE.ConeGeometry(0.04, 4.8, 6), plumeMat);
+  plume.rotation.x = Math.PI / 2;
+  plume.position.z = bodyLen / 2 + 2.2;
+  root.add(plume);
 
   root.frustumCulled = false;
   root.traverse((obj) => {
