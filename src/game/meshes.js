@@ -88,14 +88,14 @@ function addMesh(parent, geometry, material, x, y, z) {
 }
 
 /**
- * Dustlark — original chunky freighter.
+ * Shomeret (playerShip) — original chunky freighter.
  * Blunt nose, cockpit blister offset to port, a cargo drum bolted to
  * starboard, one oversized engine and one stub engine, uneven fins.
  * The nose points down local -Z.
  */
-export function createDustlark(softMap) {
+export function createPlayerShip(softMap) {
   const root = new THREE.Group();
-  root.name = 'dustlark';
+  root.name = 'playerShip';
 
   const hull = makeStandard(0x148f86, { emissive: 0x083833, emissiveIntensity: 0.45, roughness: 0.4 });
   const cream = makeStandard(0xf3e2c4, { emissive: 0x3a2c18, emissiveIntensity: 0.15, roughness: 0.62 });

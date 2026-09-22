@@ -17,7 +17,7 @@ import { Sfx } from './audio.js';
 import { bonusHome, buildLayout } from './layout.js';
 import {
   boltGeometry,
-  createDustlark,
+  createPlayerShip,
   createEnemy,
   createPickup,
   createTower,
@@ -138,6 +138,7 @@ export class Game {
       title: document.querySelector('#title'),
       subtitle: document.querySelector('#subtitle'),
       shipName: document.querySelector('#ship-name'),
+      hudShip: document.querySelector('#hud-ship'),
       tagline: document.querySelector('#tagline'),
       sector: document.querySelector('#sector'),
       goal: document.querySelector('#goal'),
@@ -200,7 +201,7 @@ export class Game {
     this.rings = createRings(this.scene, POOLS.rings);
 
     this.player = {
-      mesh: createDustlark(this.soft),
+      mesh: createPlayerShip(this.soft),
     };
     this.scene.add(this.player.mesh);
     this.bubble = new THREE.Mesh(
@@ -283,6 +284,7 @@ export class Game {
     dom.title.textContent = T.title;
     dom.subtitle.textContent = T.subtitle;
     dom.shipName.textContent = T.ship;
+    dom.hudShip.textContent = T.ship;
     dom.tagline.textContent = T.tagline;
     dom.sector.textContent = T.sector;
     dom.goal.textContent = T.goal;

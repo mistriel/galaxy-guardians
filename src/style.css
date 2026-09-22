@@ -108,6 +108,12 @@ body.playing button { cursor: pointer; }
 }
 
 .meters, .stats { display: flex; flex-direction: column; gap: 6px; }
+.hud-ship {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
 
 .meter { display: flex; align-items: center; gap: 8px; min-width: 220px; }
 .meter span { width: 3.2rem; color: var(--muted); font-size: 0.95rem; }

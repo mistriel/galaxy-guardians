@@ -4,7 +4,7 @@ Original 3D arcade flight combat. The fantasy is a ragtag cargo tug punching thr
 
 ## Ship
 
-**Dustlark / עפרוני־אבק**
+**Shomeret / שומרת**
 
 A short, blunt freighter with a deliberately lopsided silhouette:
 
@@ -126,7 +126,7 @@ After wave 6 the counts climb but stay capped (Nib 16, Glint 10, Howler 8, Slab 
 
 ## Game flow
 
-- **Menu:** Dustlark spins in front of the sector. Enter, Space, or יציאה לסיור starts.
+- **Menu:** Shomeret (שומרת) spins in front of the sector. Enter, Space, or יציאה לסיור starts. The same name stays on the HUD during flight.
 - **Play:** cruise, shoot, radar in the corner (forward is up).
 - **Pause:** simulation freezes. Resume, restart, or return to the menu.
 - **Game over:** hull at 0. Restart or menu. Enter restarts.
