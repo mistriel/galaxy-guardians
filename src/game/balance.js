@@ -101,7 +101,7 @@ export const ENEMIES = {
 };
 
 export const TOWERS = {
-  crate: { hp: 16, radius: 2.7, score: 80, color: 0xf0b45a },
+  crate: { hp: 16, radius: 3.5, score: 80, color: 0xf0b45a },
   spire: { hp: 48, radius: 4.2, score: 220, color: 0x7ad7ff },
   silo: {
     hp: 32,

@@ -46,8 +46,10 @@ const PICKUP_TEXT = {
 
 function steerAxis(v) {
   const amount = Math.abs(v);
-  if (amount < 0.05) return 0;
-  return Math.sign(v) * (Math.min(1, amount) ** 1.2);
+  // Wide center deadzone so resting near the crosshair flies straight.
+  if (amount < 0.16) return 0;
+  const scaled = (amount - 0.16) / 0.84;
+  return Math.sign(v) * (Math.min(1, scaled) ** 1.25);
 }
 
 export class Game {
@@ -55,7 +57,7 @@ export class Game {
     this.canvas = canvas;
     this.sfx = new Sfx();
     this.keys = new Set();
-    this.pointer = { x: 0, y: 0, ready: false, fire: false };
+    this.pointer = { x: 0, y: 0, ready: false, armed: false, fire: false };
     this.state = 'menu';
     this.time = 0;
     this.score = 0;
@@ -323,9 +325,15 @@ export class Game {
       this.pointer.x = THREE.MathUtils.clamp(nx, -1, 1);
       this.pointer.y = THREE.MathUtils.clamp(ny, -1, 1);
       this.pointer.ready = true;
+      if (!this.pointer.armed && Math.abs(this.pointer.x) < 0.22 && Math.abs(this.pointer.y) < 0.22) {
+        this.pointer.armed = true;
+      }
     });
-    this.canvas.addEventListener('pointerdown', (event) => {
-      if (event.button === 0) this.pointer.fire = true;
+    window.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      if (event.target instanceof Element && event.target.closest('button')) return;
+      this.pointer.fire = true;
+      this.shoot();
     });
     window.addEventListener('pointerup', () => {
       this.pointer.fire = false;
@@ -352,6 +360,11 @@ export class Game {
     }
     if (event.code === 'Space' && this.state === 'menu') {
       this.startMission();
+      return;
+    }
+    if (event.code === 'Space' && this.state === 'play') {
+      this.keys.add(event.code);
+      this.shoot();
       return;
     }
     if (event.code === 'KeyR' && (this.state === 'dead' || this.state === 'paused')) {
@@ -392,13 +405,26 @@ export class Game {
   makeBolts(count) {
     const bolts = [];
     for (let i = 0; i < count; i += 1) {
-      const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, toneMapped: false });
       const mesh = new THREE.Mesh(boltGeometry, material);
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: this.soft,
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
+        toneMapped: false,
+      }));
+      glow.scale.set(2.4, 2.4, 1);
+      mesh.add(glow);
       mesh.visible = false;
       mesh.frustumCulled = false;
       this.scene.add(mesh);
       bolts.push({
         mesh,
+        glow,
         alive: false,
         pos: new THREE.Vector3(),
         vel: new THREE.Vector3(),
@@ -480,8 +506,9 @@ export class Game {
   }
 
   updatePlayer(dt) {
-    let nx = this.pointer.ready ? this.pointer.x : 0;
-    let ny = this.pointer.ready ? this.pointer.y : 0;
+    const mouseSteer = this.pointer.ready && this.pointer.armed;
+    let nx = mouseSteer ? this.pointer.x : 0;
+    let ny = mouseSteer ? this.pointer.y : 0;
     if (this.keys.has('ArrowLeft')) nx -= 0.9;
     if (this.keys.has('ArrowRight')) nx += 0.9;
     if (this.keys.has('ArrowUp')) ny -= 0.9;
@@ -489,12 +516,13 @@ export class Game {
     nx = THREE.MathUtils.clamp(nx, -1, 1);
     ny = THREE.MathUtils.clamp(ny, -1, 1);
 
-    const targetYawVel = steerAxis(nx) * PLAYER.turn;
-    const targetPitchVel = steerAxis(-ny) * PLAYER.turn;
-    this.yawVel = THREE.MathUtils.damp(this.yawVel, targetYawVel, 5, dt);
-    this.pitchVel = THREE.MathUtils.damp(this.pitchVel, targetPitchVel, 5, dt);
+    // Yaw is a rate so heading stays free. Pitch springs back to level when the
+    // cursor is centered, so traveling the pointer onto the crosshair does not
+    // leave the nose stuck high or low.
+    this.yawVel = steerAxis(nx) * PLAYER.turn;
     this.yaw += this.yawVel * dt;
-    this.pitch = THREE.MathUtils.clamp(this.pitch + this.pitchVel * dt, -1.05, 1.05);
+    const targetPitch = THREE.MathUtils.clamp(steerAxis(-ny) * 0.9, -0.95, 0.95);
+    this.pitch = THREE.MathUtils.damp(this.pitch, targetPitch, 6, dt);
     this.bank = THREE.MathUtils.damp(this.bank, THREE.MathUtils.clamp(-this.yawVel * 0.48, -0.7, 0.7), 6, dt);
     this.applyAttitude();
 
@@ -521,10 +549,7 @@ export class Game {
     this.edge = Math.max(0, this.edge - dt);
 
     this.fireCd = Math.max(0, this.fireCd - dt);
-    const firing = this.pointer.fire || this.keys.has('Space');
-    if (firing && this.fireCd <= 0 && this.time >= this.fireLock) {
-      this.shoot();
-    }
+    if (this.pointer.fire || this.keys.has('Space')) this.shoot();
 
     if (this.time - this.lastHit > PLAYER.shieldDelay && this.shield < PLAYER.shield && this.invuln <= 0) {
       this.shield = Math.min(PLAYER.shield, this.shield + PLAYER.shieldRegen * dt);
@@ -553,6 +578,9 @@ export class Game {
   }
 
   shoot() {
+    if (this.state !== 'play') return;
+    if (this.fireCd > 0 || this.time < this.fireLock) return;
+    this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     const rapid = this.time < this.rapidUntil;
     const spread = this.time < this.spreadUntil;
     this.fireCd = rapid ? PLAYER.rapidDelay : PLAYER.fireDelay;
@@ -560,9 +588,9 @@ export class Game {
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
     for (const angle of angles) {
       const dir = this.v1.copy(this.nose).applyAxisAngle(this.upV, angle).normalize();
-      const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.5);
-      this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xd9fff8, 1);
-      burstSparks(this.sparks, origin, 0xd9fff8, 3, 8, dir);
+      const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.6);
+      this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1);
+      burstSparks(this.sparks, origin, 0xe8fff8, 8, 14, dir);
     }
     this.sfx.shoot();
   }
@@ -826,6 +854,7 @@ export class Game {
     bolt.mesh.visible = true;
     bolt.mesh.scale.setScalar(scale || 1);
     bolt.mesh.material.color.setHex(color);
+    if (bolt.glow) bolt.glow.material.color.setHex(color);
     bolt.mesh.position.copy(origin);
     return bolt;
   }
@@ -1396,6 +1425,7 @@ export class Game {
     this.boosting = false;
     this.braking = false;
     this.pointer.ready = next !== 'play';
+    this.pointer.armed = false;
     this.pointer.fire = false;
     this.dom.banner.classList.remove('show');
     this.dom.toast.classList.remove('show');

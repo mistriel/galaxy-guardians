@@ -310,4 +310,4 @@ export function createPickup(type, softMap) {
   return root;
 }
 
-export const boltGeometry = geo('bolt', () => new THREE.BoxGeometry(0.16, 0.16, 1.7));
+export const boltGeometry = geo('bolt', () => new THREE.BoxGeometry(0.34, 0.34, 3.4));

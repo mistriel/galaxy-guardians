@@ -32,7 +32,7 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Mute | `M` or the קול button |
 | Restart | משימה חדשה, Enter, or `R` on the game-over / pause panel |
 
-Full stick turn rate is 1.75 rad/s. Pitch is clamped so the ship cannot loop. Banking is cosmetic and follows yaw rate. There is a small deadzone at the center of the mouse.
+Full-stick yaw rate is 1.75 rad/s. Pitch follows the cursor and eases back to level when the cursor is centered, so the nose cannot get stuck off the horizon. Banking is cosmetic and follows yaw rate. There is a small deadzone at the center of the mouse. Mouse steering arms only after the cursor has visited that center, so leaving the start button does not yank the ship.
 
 The play space is a sphere of radius **430**. Hitting the edge shows **קצה הגזרה** and slides the ship back inside.
 

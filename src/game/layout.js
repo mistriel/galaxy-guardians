@@ -36,25 +36,19 @@ export function buildLayout() {
     });
   };
 
-  // Welcome alley down local -Z, the direction the ship faces at spawn.
-  const alley = [
-    [-14, 2, -38],
-    [0, -2, -46],
-    [12, 6, -50],
-    [-8, 8, -62],
-    [16, -4, -68],
-    [-18, 0, -74],
-    [4, 4, -84],
-    [-6, -6, -96],
-    [10, 2, -108],
-  ];
-  for (const [x, y, z] of alley) push('crate', x, y, z);
-
-  push('spire', 22, 8, -58);
-  push('spire', -24, -6, -92);
-  push('silo', 0, 0, -78);
-  push('crate', -8, 1, -78);
-  push('crate', 9, 2, -80);
+  // Long welcome tunnel down local -Z. Cruise is fast, so the gallery
+  // has to stay ahead of a player who takes a moment to start shooting.
+  for (let i = 0; i < 11; i += 1) {
+    const z = -48 - i * 18;
+    push('crate', 0, 0, z);
+    push('crate', -14, 3, z - 8);
+    push('crate', 14, -3, z - 8);
+  }
+  push('spire', 26, 10, -70);
+  push('spire', -28, -8, -120);
+  push('silo', 0, 6, -160);
+  push('crate', -10, 2, -160);
+  push('crate', 10, -2, -168);
 
   const depots = [
     [170, 18, -30],

@@ -120,9 +120,12 @@ body.playing button { cursor: pointer; }
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .track > div { height: 100%; width: 100%; border-radius: inherit; }
-#hull-bar { background: linear-gradient(90deg, #ff5d6e, #ffd0d6); }
+#hull-bar { background: linear-gradient(90deg, #1fbf78, #d8ffe9); }
 #shield-bar { background: linear-gradient(90deg, #14b8a6, #b8fff4); }
-.track.low #hull-bar { animation: pulse 0.6s ease-in-out infinite; }
+.track.low #hull-bar {
+  background: linear-gradient(90deg, #ff5d6e, #ffd0d6);
+  animation: pulse 0.6s ease-in-out infinite;
+}
 
 .stats { align-items: flex-start; min-width: 140px; }
 .stats strong {
