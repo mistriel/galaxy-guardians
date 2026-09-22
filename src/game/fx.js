@@ -201,9 +201,9 @@ export function createSpeedTunnel(count = 42) {
   group.name = 'speedTunnel';
   group.frustumCulled = false;
   const geos = [
-    new THREE.BoxGeometry(0.055, 0.055, 9),
-    new THREE.BoxGeometry(0.04, 0.07, 16),
-    new THREE.BoxGeometry(0.08, 0.035, 24),
+    new THREE.BoxGeometry(0.22, 0.22, 11),
+    new THREE.BoxGeometry(0.16, 0.34, 18),
+    new THREE.BoxGeometry(0.38, 0.14, 26),
   ];
   const streaks = [];
   for (let i = 0; i < count; i += 1) {
