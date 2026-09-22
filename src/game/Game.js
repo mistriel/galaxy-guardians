@@ -337,6 +337,7 @@ export class Game {
     }
 
     this.ground = new GroundBattle(this.sfx);
+    this.startGround('forest');
     this.syncVisibility();
     this.syncHud();
     this.updateMenuBest();
@@ -388,7 +389,7 @@ export class Game {
     dom.groundClose.textContent = T.groundClose;
     dom.groundPushBtn.textContent = T.groundPush;
     dom.groundRetreat.textContent = T.groundRetreat;
-    dom.groundBack.textContent = T.menu;
+    dom.groundBack.textContent = T.groundWorlds;
     dom.groundHoldLabel.textContent = T.groundHold;
     dom.groundCaptureLabel.textContent = T.groundCapture;
     dom.groundLeftBtn.textContent = T.groundLeft;
@@ -417,7 +418,7 @@ export class Game {
     dom.restartBtn.addEventListener('click', () => this.startMission());
     dom.menuBtn.addEventListener('click', () => this.showMenu());
     dom.groundMenu.addEventListener('click', () => this.openGroundPick());
-    dom.groundClose.addEventListener('click', () => this.closeGroundPick());
+    dom.groundClose.addEventListener('click', () => this.startGround(this.ground?.world?.id || 'forest'));
     dom.groundBack.addEventListener('click', () => this.exitGround());
     dom.groundRetreat.addEventListener('click', () => this.ground?.retreat());
     dom.groundPushBtn.addEventListener('pointerdown', (event) => {
@@ -473,7 +474,7 @@ export class Game {
       }
     });
     window.addEventListener('pointerdown', (event) => {
-      if (this.state === 'ground') return;
+      if (this.state === 'ground' || this.state === 'ground-pick') return;
       if (event.button === 2) {
         this.launchMissile();
         return;
@@ -683,6 +684,10 @@ export class Game {
       event.preventDefault();
     }
     if (event.repeat) return;
+    if (this.state === 'ground-pick') {
+      if (event.code === 'KeyM') this.toggleMute();
+      return;
+    }
     if (this.state === 'ground') {
       if (event.code === 'KeyM') {
         this.toggleMute();
@@ -737,6 +742,7 @@ export class Game {
   }
 
   onConfirm() {
+    if (this.state === 'ground' || this.state === 'ground-pick') return;
     if (this.state === 'menu' || this.state === 'dead') this.startMission();
     else if (this.state === 'paused') this.togglePause();
   }
@@ -915,6 +921,10 @@ export class Game {
   }
 
   frame(dt) {
+    if (this.state === 'ground-pick') {
+      this.render();
+      return;
+    }
     if (this.state === 'ground') {
       this.ground?.update(dt, {
         left: this.groundLeft || this.keys.has('KeyA') || this.keys.has('ArrowLeft'),
@@ -2311,16 +2321,17 @@ export class Game {
   }
 
   syncVisibility() {
-    const menu = this.state === 'menu';
     const playing = this.state === 'play';
     const ground = this.state === 'ground';
-    this.dom.menu.hidden = !menu;
-    this.dom.hud.hidden = menu || ground;
-    this.dom.radar.hidden = menu || ground;
-    document.querySelector('#flight-row').hidden = menu || ground;
+    const picking = this.state === 'ground-pick';
+    const spaceHud = playing || this.state === 'paused' || this.state === 'dead';
+    this.dom.menu.hidden = true;
+    this.dom.hud.hidden = !spaceHud;
+    this.dom.radar.hidden = !spaceHud;
+    document.querySelector('#flight-row').hidden = !spaceHud;
     this.dom.groundHud.hidden = !ground;
     this.dom.groundTouch.hidden = !(ground && this.coarse);
-    if (!ground) this.dom.groundPick.hidden = this.state === 'play' || this.state === 'paused' || this.state === 'dead' ? true : this.dom.groundPick.hidden;
+    this.dom.groundPick.hidden = !picking;
     this.dom.crosshair.hidden = !playing;
     this.dom.overlay.hidden = this.state !== 'paused' && this.state !== 'dead';
     document.body.classList.toggle('playing', playing);
@@ -2571,17 +2582,15 @@ export class Game {
   }
 
   exitGround() {
-    this.ground?.stop();
     this.groundPush = false;
     this.groundLeft = false;
     this.groundRight = false;
-    this.state = 'menu';
-    this.closeGroundPick();
+    this.state = 'ground-pick';
     this.syncVisibility();
   }
 
   render() {
-    if (this.state === 'ground' && this.ground) {
+    if ((this.state === 'ground' || this.state === 'ground-pick') && this.ground) {
       this.renderer.render(this.ground.scene, this.ground.camera);
       return;
     }

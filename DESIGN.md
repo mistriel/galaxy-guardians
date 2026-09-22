@@ -4,7 +4,7 @@ Original 3D arcade flight combat. The fantasy is a ragtag cargo tug punching thr
 
 ## Ground battles
 
-**קרבות קרקע** on the menu opens three fields: יער זוהר, מדבר אדום, קרח כחול. Each fight is the same easy push, staged so the units do not all appear at once:
+The site opens straight into a ground fight (יער זוהר). Space sortie stays in the code and off the first screen. **עולמות** switches fields. **קרבות קרקע** on the menu opens three fields: יער זוהר, מדבר אדום, קרח כחול. Each fight is the same easy push, staged so the units do not all appear at once:
 
 1. Artillery lobs light shells and softens the line.
 2. Tanks and gun-cars (קרון ירי) roll in, staggered, and break the barricades.
