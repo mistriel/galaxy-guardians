@@ -15,7 +15,7 @@ export const PLAYER = {
   visualScale: 2.45,
   radius: 4.6,
   cruise: 24,
-  boost: 48,
+  boost: 240,
   brake: 8,
   strafe: 20,
   turn: 1.75,

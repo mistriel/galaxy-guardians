@@ -73,6 +73,8 @@ export class Game {
     document.body.classList.toggle('touch', this.coarse);
     this.stick = { id: null, originX: 0, originY: 0, x: 0, y: 0, tx: 0, ty: 0, px: 0, py: 0 };
     this.firePointer = null;
+    this.boostPointer = null;
+    this.boostHeld = false;
     this.nudgeX = 0;
     this.nudgeY = 0;
     this.state = 'menu';
@@ -172,6 +174,8 @@ export class Game {
       fireBtn: document.querySelector('#fire-btn'),
       missileBtn: document.querySelector('#missile-btn'),
       nukeBtn: document.querySelector('#nuke-btn'),
+      boostBtn: document.querySelector('#boost-btn'),
+      boostTouch: document.querySelector('#boost-touch'),
     };
 
     this.fillText();
@@ -344,6 +348,8 @@ export class Game {
     dom.fireBtn.textContent = T.fire;
     dom.missileBtn.textContent = T.missile;
     dom.nukeBtn.textContent = T.missile;
+    dom.boostBtn.textContent = T.boost;
+    dom.boostTouch.textContent = T.boost;
     dom.muteBtn.textContent = T.sound;
     dom.resumeBtn.textContent = T.resume;
     dom.restartBtn.textContent = T.restart;
@@ -368,6 +374,7 @@ export class Game {
       this.keys.clear();
       this.releaseStick(true);
       this.releaseFire();
+      this.releaseBoost();
     });
     window.addEventListener('pointermove', (event) => {
       if (!this.renderer || this.coarse) return;
@@ -403,6 +410,11 @@ export class Game {
     dom.fireBtn.addEventListener('pointercancel', (event) => this.onFireUp(event));
     dom.missileBtn.addEventListener('pointerdown', (event) => this.onMissileDown(event));
     dom.nukeBtn.addEventListener('pointerdown', (event) => this.onMissileDown(event));
+    for (const button of [dom.boostBtn, dom.boostTouch]) {
+      button.addEventListener('pointerdown', (event) => this.onBoostDown(event));
+      button.addEventListener('pointerup', (event) => this.onBoostUp(event));
+      button.addEventListener('pointercancel', (event) => this.onBoostUp(event));
+    }
     this.canvas.addEventListener('contextmenu', (event) => event.preventDefault());
   }
 
@@ -412,6 +424,7 @@ export class Game {
       this.releaseFire();
       return;
     }
+    if (this.boostPointer === event.pointerId) this.releaseBoost();
     if (!this.coarse && this.firePointer == null) this.pointer.fire = false;
   }
 
@@ -504,6 +517,25 @@ export class Game {
   releaseFire() {
     this.firePointer = null;
     this.pointer.fire = false;
+  }
+
+  onBoostDown(event) {
+    if (this.state !== 'play') return;
+    event.preventDefault();
+    event.stopPropagation();
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch (err) { /* already released */ }
+    this.boostPointer = event.pointerId;
+    this.boostHeld = true;
+  }
+
+  onBoostUp(event) {
+    if (this.boostPointer != null && event.pointerId !== this.boostPointer) return;
+    this.releaseBoost();
+  }
+
+  releaseBoost() {
+    this.boostPointer = null;
+    this.boostHeld = false;
   }
 
   onMissileDown(event) {
@@ -889,12 +921,16 @@ export class Game {
     this.bank = THREE.MathUtils.damp(this.bank, THREE.MathUtils.clamp(-this.yawVel * 0.48, -0.7, 0.7), 6, dt);
     this.applyAttitude();
 
-    this.boosting = this.keys.has('KeyW') || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+    this.boosting = this.boostHeld
+      || this.keys.has('KeyW')
+      || this.keys.has('ShiftLeft')
+      || this.keys.has('ShiftRight');
     this.braking = this.keys.has('KeyS');
     let targetSpeed = PLAYER.cruise;
     if (this.boosting) targetSpeed = PLAYER.boost;
     if (this.braking) targetSpeed = PLAYER.brake;
-    this.speed = THREE.MathUtils.damp(this.speed, targetSpeed, 2.4, dt);
+    const accel = this.boosting ? 8.5 : 2.6;
+    this.speed = THREE.MathUtils.damp(this.speed, targetSpeed, accel, dt);
 
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     this.rightV.set(1, 0, 0).applyQuaternion(this.player.mesh.quaternion);
@@ -943,8 +979,9 @@ export class Game {
       const glows = this.player.mesh.userData.glows;
       glows[0].getWorldPosition(this.v1);
       this.v2.copy(this.nose).multiplyScalar(-1);
-      if (Math.random() < dt * 28) {
-        burstSparks(this.sparks, this.v1, 0xff8a3a, 1, 10, this.v2);
+      const spray = this.boosting ? dt * 90 : dt * 28;
+      if (Math.random() < spray) {
+        burstSparks(this.sparks, this.v1, this.boosting ? 0xfff2a0 : 0xff8a3a, this.boosting ? 3 : 1, this.boosting ? 28 : 10, this.v2);
       }
     }
   }
@@ -1688,7 +1725,7 @@ export class Game {
       this.camera.position.y += (Math.random() - 0.5) * mag * 0.7;
       this.shakeAmp = Math.max(0, this.shakeAmp - dt * 1.7);
     }
-    this.dampFov(this.boosting && this.state === 'play' ? 78 : 66);
+    this.dampFov(this.boosting && this.state === 'play' ? 98 : 66);
   }
 
   dampFov(target) {
@@ -1840,6 +1877,10 @@ export class Game {
       button.textContent = missileLabel;
     }
     this.dom.flight.textContent = this.boosting ? T.boost : this.braking ? T.brake : T.cruise;
+    for (const button of [this.dom.boostBtn, this.dom.boostTouch]) {
+      if (!button) continue;
+      button.classList.toggle('on', this.boosting);
+    }
     this.dom.edge.classList.toggle('show', this.edge > 0);
   }
 
@@ -1856,6 +1897,7 @@ export class Game {
     document.body.classList.toggle('touch', this.coarse);
     this.dom.touch.hidden = !(this.coarse && playing);
     this.dom.nukeBtn.hidden = !playing;
+    this.dom.boostBtn.hidden = !playing;
   }
 
   openOverlay(mode) {
@@ -1921,6 +1963,7 @@ export class Game {
     if (this.state === 'play') {
       this.releaseStick(true);
       this.releaseFire();
+      this.releaseBoost();
       this.state = 'paused';
       this.sfx.ui();
       this.openOverlay('paused');
@@ -1987,6 +2030,7 @@ export class Game {
     this.pointer.armed = false;
     this.releaseStick(true);
     this.releaseFire();
+    this.releaseBoost();
     this.dom.banner.classList.remove('show');
     this.dom.toast.classList.remove('show');
     this.shakeAmp = 0;

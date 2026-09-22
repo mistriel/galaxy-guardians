@@ -23,7 +23,7 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Action | Input |
 | --- | --- |
 | Steer yaw / pitch | Mouse offset from center, or arrow keys |
-| Boost | `W` or Shift (48 u/s) |
+| Turbo | Hold `W`, Shift, the טורבו button on the HUD, or the phone טורבו button (240 u/s) |
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
@@ -55,7 +55,7 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Fire interval | 0.15s (0.075s with rapid fire) |
 | Missile | Speed 210. It stays in flight for at least 0.38s so the rocket reads, then detonates by 0.72s. Blast radius 220 erases everything inside it. Cooldown 4s |
 
-Shields soak damage first. A translucent bubble shows remaining shield. Boost widens the camera field of view slightly. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
+Shields soak damage first. A translucent bubble shows remaining shield. Holding טורבו jumps the ship to 240 and opens the view so the rush reads. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
 
 Primary fire is a thick beam. The nuclear missile is the power-fantasy button, labeled **טיל גרעיני** on the HUD and on the phone pad. It is a fat glowing rocket. It stays visible for a short flight, then the blast deletes every enemy and tower inside a huge radius. Kills pop in a quick cascade so the wipe reads as about a second of explosions. It does not hurt Shomeret. After firing, the button shows the remaining cooldown.
 
