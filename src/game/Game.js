@@ -156,12 +156,18 @@ export class Game {
         antialias: true,
         alpha: false,
         powerPreference: 'high-performance',
+        failIfMajorPerformanceCaveat: false,
       });
+      if (!this.renderer.getContext()) throw new Error('WebGL context missing');
     } catch (err) {
       this.renderer = null;
       this.dom.bootError.hidden = false;
       return;
     }
+    canvas.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault();
+      this.dom.bootError.hidden = false;
+    });
 
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;

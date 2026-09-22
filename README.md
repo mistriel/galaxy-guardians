@@ -34,8 +34,8 @@ GitHub Pages is the primary way to put the game online. The workflow is `.github
 
 1. Push this repo to GitHub (`main`).
 2. Open **Settings → Pages → Build and deployment**.
-3. Set **Source** to **GitHub Actions**.
-4. The workflow checks out the repo, runs `npm ci` and `npm run build`, uploads `dist/` with `actions/upload-pages-artifact`, and publishes it with `actions/deploy-pages`.
+3. Set **Source** to **GitHub Actions**. Do not use **Deploy from a branch**. That path runs Jekyll on the repository root and publishes the dev `index.html`, whose script is `/src/main.js` and 404s on Pages.
+4. The workflow checks out the repo, runs `npm ci` and `npm run build`, checks that `dist/index.html` points at `/galaxy-guardians/assets/`, uploads only `dist/` with `actions/upload-pages-artifact`, and publishes it with `actions/deploy-pages`.
 5. When the **Deploy GitHub Pages** workflow succeeds, the game is at:
 
    **https://mistriel.github.io/galaxy-guardians/**
