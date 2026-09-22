@@ -192,3 +192,75 @@ export function updateRings(rings, camera, dt) {
     ring.lookAt(camera.position);
   }
 }
+
+const STREAK_COLORS = [0xe8f4ff, 0xfff6c2, 0xffd4ea, 0xffffff, 0xb9dcff];
+
+/** Thin additive streaks in camera space. They frame the ship and leave the center clear. */
+export function createSpeedTunnel(count = 42) {
+  const group = new THREE.Group();
+  group.name = 'speedTunnel';
+  group.frustumCulled = false;
+  const geos = [
+    new THREE.BoxGeometry(0.055, 0.055, 9),
+    new THREE.BoxGeometry(0.04, 0.07, 16),
+    new THREE.BoxGeometry(0.08, 0.035, 24),
+  ];
+  const streaks = [];
+  for (let i = 0; i < count; i += 1) {
+    const mat = new THREE.MeshBasicMaterial({
+      color: STREAK_COLORS[i % STREAK_COLORS.length],
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geos[i % geos.length], mat);
+    mesh.frustumCulled = false;
+    const radius = 4.2 + Math.random() * 8.6;
+    const ang = (i / count) * Math.PI * 2 + Math.random() * 0.35;
+    const baseZ = -8 - Math.random() * 44;
+    mesh.userData = {
+      radius,
+      ang,
+      baseZ,
+      drift: 0.25 + Math.random() * 0.55,
+    };
+    mesh.position.set(Math.cos(ang) * radius, Math.sin(ang) * radius, baseZ);
+    mesh.visible = false;
+    group.add(mesh);
+    streaks.push(mesh);
+  }
+  group.userData.streaks = streaks;
+  group.userData.rush = 0;
+  return group;
+}
+
+export function updateSpeedTunnel(group, camera, dt, { active, reduceMotion }) {
+  if (!group) return;
+  group.position.copy(camera.position);
+  group.quaternion.copy(camera.quaternion);
+  const rush = THREE.MathUtils.damp(group.userData.rush, active ? 1 : 0, active ? 7 : 5, dt);
+  group.userData.rush = rush;
+  const show = rush > 0.03;
+  const travel = (90 + rush * 220) * dt;
+  const opacityCap = reduceMotion ? 0.22 : 0.82;
+  for (const mesh of group.userData.streaks) {
+    mesh.visible = show;
+    if (!show) continue;
+    const data = mesh.userData;
+    data.baseZ += travel * (0.65 + data.drift);
+    if (data.baseZ > -5) {
+      data.baseZ = -50 - Math.random() * 6;
+      data.ang += 0.55;
+    }
+    data.ang += data.drift * dt * rush;
+    const radius = data.radius;
+    mesh.position.set(Math.cos(data.ang) * radius, Math.sin(data.ang) * radius, data.baseZ);
+    mesh.scale.set(1, 1, 0.55 + rush * 2.6);
+    const near = THREE.MathUtils.smoothstep(data.baseZ, -6, -14);
+    const far = 1 - THREE.MathUtils.smoothstep(data.baseZ, -40, -56);
+    mesh.material.opacity = rush * opacityCap * near * far;
+  }
+}
