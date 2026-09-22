@@ -29,6 +29,16 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+        env:
+          VITE_BASE: /galaxy-guardians/
+      - name: Check dist is the production site
+        run: |
+          if grep -q '/src/main.js' dist/index.html; then
+            echo "dist/index.html still references the dev module /src/main.js"
+            exit 1
+          fi
+          grep -q '/galaxy-guardians/assets/' dist/index.html
+          test -f dist/.nojekyll
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

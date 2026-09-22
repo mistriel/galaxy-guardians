@@ -2,9 +2,12 @@
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>שומרי הגלקסיה</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      html, body { margin: 0; background: #070b16; color: #eef5fb; }
+    </style>
   </head>
   <body>
     <div id="app"></div>
@@ -84,7 +87,16 @@
       </section>
     </div>
     <div id="popups"></div>
-    <div id="boot-error" hidden></div>
+    <div id="boot-error" hidden>הדפדפן לא הצליח לפתוח גרפיקת תלת־ממד.</div>
+    <script>
+      document.addEventListener('error', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLScriptElement) || target.type !== 'module') return;
+        const box = document.querySelector('#boot-error');
+        if (!box) return;
+        box.hidden = false;
+      }, true);
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
