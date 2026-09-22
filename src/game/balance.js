@@ -109,16 +109,16 @@ export const MISSILE = {
   visualScale: 1,
 };
 
-/** Friendly escorts. One shared scale, clearly larger than Shomeret. */
+/** Blue triangle army. Many small fighters, not a handful of giants. */
 export const ALLY = {
-  count: 8,
-  hp: 220,
-  speed: 70,
-  radius: 6.4,
-  visualScale: 6.8,
-  fireEvery: 0.42,
-  shotDamage: 30,
-  color: 0x2ee6c7,
+  count: 32,
+  hp: 80,
+  speed: 78,
+  radius: 2.3,
+  visualScale: 2.5,
+  fireEvery: 0.72,
+  shotDamage: 22,
+  color: 0x2f6dff,
 };
 
 /** Capitals. Both sides use the same huge scale. */
@@ -128,7 +128,7 @@ export const CARRIER = {
   radius: 16,
   visualScale: 3.8,
   score: 2400,
-  colorAlly: 0x7af6ee,
+  colorAlly: 0x6aa2ff,
   colorEnemy: 0xff4d3a,
 };
 
@@ -153,7 +153,7 @@ export const ENEMIES = {
     shotSpeed: 0,
     shotDamage: 0,
     shotScale: 1,
-    color: 0xff4d8d,
+    color: 0xff2d2d,
   },
   nib: {
     hp: 12,
@@ -169,7 +169,7 @@ export const ENEMIES = {
     shotSpeed: 0,
     shotDamage: 0,
     shotScale: 1,
-    color: 0xc084fc,
+    color: 0xff4a4a,
   },
   howler: {
     hp: 54,
@@ -202,7 +202,7 @@ export const ENEMIES = {
     shotSpeed: 42,
     shotDamage: 16,
     shotScale: 1.8,
-    color: 0x8b5cf6,
+    color: 0xd01212,
   },
   vorak: {
     hp: 420,
@@ -223,7 +223,7 @@ export const ENEMIES = {
     arcSpeed: 56,
     arcDamage: 12,
     arcScale: 1.55,
-    color: 0xc45132,
+    color: 0xff1f3a,
   },
 };
 
@@ -253,21 +253,21 @@ export const TOWERS = {
 };
 
 export const WAVES = [
-  { glint: 16, nib: 20 },
-  { nib: 22, glint: 14, howler: 8 },
-  { nib: 24, glint: 16, howler: 10, slab: 4 },
-  { nib: 26, glint: 16, howler: 10, slab: 5, vorak: 1 },
-  { nib: 28, glint: 18, howler: 12, slab: 6, vorak: 2 },
-  { nib: 30, glint: 18, howler: 12, slab: 6, vorak: 2 },
+  { nib: 28, glint: 22 },
+  { nib: 32, glint: 18, howler: 10 },
+  { nib: 36, glint: 20, howler: 12, slab: 4 },
+  { nib: 38, glint: 22, howler: 12, slab: 5, vorak: 1 },
+  { nib: 40, glint: 22, howler: 14, slab: 6, vorak: 2 },
+  { nib: 42, glint: 24, howler: 14, slab: 6, vorak: 2 },
 ];
 
 export function waveSpec(n) {
   if (n <= WAVES.length) return WAVES[n - 1];
   const extra = n - WAVES.length;
   return {
-    nib: Math.min(36, 30 + extra * 2),
-    glint: Math.min(24, 18 + extra),
-    howler: Math.min(16, 12 + Math.floor(extra * 0.5)),
+    nib: Math.min(48, 42 + extra * 2),
+    glint: Math.min(28, 24 + extra),
+    howler: Math.min(16, 14 + Math.floor(extra * 0.5)),
     slab: Math.min(8, 6 + Math.floor(extra * 0.4)),
     vorak: 2,
   };
@@ -279,13 +279,13 @@ export const COMBO_STEP = 0.25;
 export const COMBO_MAX = 4;
 
 export const POOLS = {
-  glint: 26,
-  nib: 40,
-  howler: 16,
+  glint: 36,
+  nib: 56,
+  howler: 18,
   slab: 8,
   vorak: 2,
-  playerBolts: 72,
-  enemyBolts: 72,
+  playerBolts: 80,
+  enemyBolts: 180,
   pickups: 14,
   sparks: 240,
   rings: 18,

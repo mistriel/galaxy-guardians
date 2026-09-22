@@ -73,7 +73,7 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Strafe | `A` / `D` |
 | Lasers | Space or left click. Thick beams. On a phone, hold ירי |
 | Nuclear missile | Orange טיל גרעיני button, `F`, or right click. Thin dart, flies across the sector, then wipes. Waits 4s |
-| Allies | Eight large escorts fight with you. נושאת מטוסים relaunches them. נושאת האויב launches triangle fighters |
+| Factions | Blues are triangles (your army). Reds are circles (enemy swarms). The menu says כחולים: משולשים · אדומים: עיגולים |
 | Phone | Left stick moves (up turbo, down brake, sideways strafe). Right stick aims |
 | Hangar | מספנה spends נקודות on נץ, עוגן, מניפה, and מחט. שומרת and the thick laser stay free |
 | Ground battles | קרבות קרקע, then a world. Artillery, armor and gun-cars, infantry, then משמיד — a turquoise tank with every gun on it. נסיגה pulls back |

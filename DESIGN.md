@@ -76,30 +76,30 @@ Primary fire is a thick beam. The nuclear missile is the power-fantasy button, l
 
 ## Enemies
 
-Eight allied escorts (עוזרים) fly with Shomeret. They share one scale, 6.8, so each escort is clearly larger than the freighter. A friendly carrier (נושאת מטוסים) keeps launching them. An enemy carrier (נושאת האויב) is a giant triangle that launches more triangle fighters at the start of each wave. Destroyed ships throw a wide ring into the void.
+Two factions fill the sector. Blues are triangles and fight with שומרת: 32 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the five-color freighter at scale 2.1.
 
-Every enemy ship is a three-sided wedge. The point faces the direction of flight, so the silhouette stays a triangle. שומרת is still the blunt freighter. Waves arrive as squads of six, about 100–120 units ahead, so the sector fills with fleets instead of a handful of loners. Contact damage respects the player's invulnerability window.
+Waves arrive as squads of eight, spread across the forward sector, and each wave is larger than the last. The first wave is 50 red circles. Later waves climb toward the pool caps (nib 56, glint 36, howler 18, slab 8, vorak 2) so a second wave can still spawn. Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage respects the player's invulnerability window.
 
 | Id | Hebrew | HP | Speed | Score | Behavior |
 | --- | --- | --- | --- | --- | --- |
-| Glint | גלינט | 30 | 34 | 120 | Pink triangle fighter. Straight lane, never a circle. Contact 10. |
-| Nib | ניב | 12 | 44 | 50 | Small purple triangle. Straight lane. Contact 7. Dies in one shot. |
-| Howler | מיילל | 54 | 22 | 280 | Wider orange triangle. Straight lane, fires while passing. Shots deal 9. Contact 12. |
-| Slab | לוח | 140 | 13 | 700 | Large purple triangle. Heavy shots deal 16. Contact 18. |
-| Judge Vorak | הדיין ווראק | 420 | 10 | 1800 | Biggest slate triangle. See below. |
+| Glint | גלינט | 30 | 34 | 120 | Red circle. Straight lane. Contact 10. |
+| Nib | ניב | 12 | 44 | 50 | Small red circle. Straight lane. Contact 7. Dies in one shot. |
+| Howler | מיילל | 54 | 22 | 280 | Larger red-orange circle. Straight lane, fires while passing. Shots deal 9. Contact 12. |
+| Slab | לוח | 140 | 13 | 700 | Heavy dark-red circle. Shots deal 16. Contact 18. |
+| Judge Vorak | הדיין ווראק | 420 | 10 | 1800 | Biggest red circle. See below. |
 
 Drop chances: Glint 22%, Nib 16%, Howler 42%, Slab 70%, Judge Vorak 100%.
 
 ### Judge Vorak
 
-An original capital triangle, much larger than a Slab (collision radius 6.2). The hull is slate green with a bone-colored second wedge. It keeps about 54 units away.
+The largest red circle (collision radius 6.2), still on the red team. It keeps about 54 units away.
 
 Attacks alternate after a 0.72s windup:
 
 1. **Maul bolt** — one slow amber shot (34 u/s, damage 24, large silhouette).
 2. **Arc** — three faster shots in a wide fan (56 u/s, damage 12 each).
 
-The next swing waits 2.35s. Contact damage is 28. A kill is a full explosion and always drops a powerup. The Hebrew name **הדיין ווראק** appears on the wave banner and again as a toast when the escort arrives. The radar draws it as a larger amber blip.
+The next swing waits 2.35s. Contact damage is 28. A kill is a full explosion and always drops a powerup. The Hebrew name **הדיין ווראק** appears on the wave banner and again as a toast when the escort arrives. The radar draws it as a larger red blip.
 
 ## Towers
 

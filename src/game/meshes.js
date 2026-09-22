@@ -310,7 +310,7 @@ export function createOgenShip(softMap) {
   return root;
 }
 
-/** Three-sided wedge. Tip points down local −Z so the ship reads as a triangle. */
+/** Three-sided wedge. Tip points along local +Z, the axis lookAt aims forward. */
 function addWedge(parent, radius, length, material, z = 0) {
   const mesh = addMesh(
     parent,
@@ -320,8 +320,30 @@ function addWedge(parent, radius, length, material, z = 0) {
     0,
     z,
   );
-  mesh.rotation.x = -Math.PI / 2;
+  mesh.rotation.x = Math.PI / 2;
   return mesh;
+}
+
+/** Red-team mark. A sphere plus a ring so the silhouette stays a circle. */
+function addCircle(parent, radius, material) {
+  addMesh(
+    parent,
+    geo(`circle:${radius}`, () => new THREE.SphereGeometry(radius, 10, 8)),
+    material,
+    0,
+    0,
+    0,
+  );
+  const ring = addMesh(
+    parent,
+    geo(`halo:${radius}`, () => new THREE.TorusGeometry(radius * 1.28, Math.max(0.05, radius * 0.1), 6, 14)),
+    material,
+    0,
+    0,
+    0,
+  );
+  ring.rotation.y = Math.PI / 2;
+  return ring;
 }
 
 export function createEnemy(type) {
@@ -329,38 +351,17 @@ export function createEnemy(type) {
   root.name = `enemy-${type}`;
 
   const kinds = {
-    nib: { color: 0xc084fc, emissive: 0x4c1d95, radius: 0.62, length: 1.95, scale: 2.35, bar: 1.15 },
-    glint: { color: 0xff4d8d, emissive: 0x6a1238, radius: 0.82, length: 2.25, scale: 2.55, bar: 1.25 },
-    howler: { color: 0xff5a36, emissive: 0x6a1c0c, radius: 1.05, length: 2.55, scale: 2.75, bar: 1.45, wing: 1.7 },
-    slab: { color: 0x7c5cbf, emissive: 0x2a1860, radius: 1.28, length: 2.9, scale: 2.65, bar: 2.15 },
-    vorak: { color: 0x4e5b54, emissive: 0x14201c, radius: 1.55, length: 3.7, scale: 3.35, bar: 2.7, bone: true },
+    nib: { color: 0xff4a4a, emissive: 0x6a1010, radius: 0.42, scale: 2.15, bar: 0.85 },
+    glint: { color: 0xff2d2d, emissive: 0x7a1218, radius: 0.55, scale: 2.35, bar: 1.05 },
+    howler: { color: 0xff5a32, emissive: 0x6a1c0c, radius: 0.7, scale: 2.55, bar: 1.25 },
+    slab: { color: 0xd01212, emissive: 0x4a0808, radius: 0.95, scale: 2.7, bar: 1.6 },
+    vorak: { color: 0xff1f3a, emissive: 0x5a0818, radius: 1.25, scale: 3.15, bar: 2.1 },
   };
   const kind = kinds[type] || kinds.glint;
   const hull = makeStandard(kind.color, { emissive: kind.emissive, emissiveIntensity: 0.55, roughness: 0.36 });
-  addWedge(root, kind.radius, kind.length, hull);
-  const edge = makeStandard(0xfff6ea, { emissive: kind.emissive, emissiveIntensity: 0.7, roughness: 0.3 });
-  const nose = addWedge(root, kind.radius * 0.38, kind.length * 0.72, edge, -kind.length * 0.22);
-  nose.scale.set(1, 0.55, 1);
-  if (kind.wing) {
-    const wing = addWedge(
-      root,
-      kind.wing,
-      kind.length * 0.42,
-      makeStandard(0xffe08a, { emissive: 0x8a5a10, emissiveIntensity: 0.45 }),
-      kind.length * 0.12,
-    );
-    wing.scale.set(1, 0.28, 1);
-  }
-  if (kind.bone) {
-    const plate = addWedge(
-      root,
-      kind.radius * 0.72,
-      kind.length * 0.55,
-      makeStandard(0xe7d8c4, { emissive: 0x3a3024, emissiveIntensity: 0.2, roughness: 0.5 }),
-      kind.length * 0.08,
-    );
-    plate.scale.set(1.15, 0.35, 1);
-  }
+  addCircle(root, kind.radius, hull);
+  const core = makeStandard(0xfff1e4, { emissive: kind.emissive, emissiveIntensity: 0.8, roughness: 0.28 });
+  addMesh(root, geo(`pupil:${kind.radius}`, () => new THREE.SphereGeometry(kind.radius * 0.38, 8, 6)), core, 0, 0, -kind.radius * 0.2);
 
   root.scale.setScalar(kind.scale);
   root.userData.bar = attachHealthBar(root, kind.bar);
@@ -369,54 +370,44 @@ export function createEnemy(type) {
   return root;
 }
 
-/** Friendly escort. Rounded hull, not a triangle, so it never reads as an enemy. */
+/** Blue-team fighter. A three-sided wedge, tip along local −Z. */
 export function createAlly() {
   const root = new THREE.Group();
   root.name = 'ally';
-  const teal = makeStandard(0x14c8bc, { emissive: 0x084240, emissiveIntensity: 0.55, roughness: 0.34 });
-  const white = makeStandard(0xf4f7fb, { emissive: 0xb7c4d0, emissiveIntensity: 0.35, roughness: 0.3 });
-  const blue = makeStandard(0x2f6dff, { emissive: 0x10215f, emissiveIntensity: 0.45 });
-  const hull = addMesh(root, geo('ally-hull', () => new THREE.CapsuleGeometry(0.58, 1.7, 5, 10)), teal, 0, 0, 0);
-  hull.rotation.x = Math.PI / 2;
-  addMesh(root, box(0.85, 0.32, 1.05), white, 0, 0.42, -0.15);
-  addMesh(root, box(0.55, 0.28, 0.9), blue, -1.05, 0.05, 0.2);
-  addMesh(root, box(0.55, 0.28, 0.9), blue, 1.05, 0.05, 0.2);
-  addMesh(root, box(0.62, 0.36, 0.8), white, 0, 0.02, -1.45);
-  root.userData.bar = attachHealthBar(root, 1.25);
+  const blue = makeStandard(0x2f6dff, { emissive: 0x10215f, emissiveIntensity: 0.55, roughness: 0.36 });
+  const light = makeStandard(0xd7e4ff, { emissive: 0x1a3a88, emissiveIntensity: 0.45, roughness: 0.32 });
+  addWedge(root, 0.72, 2.15, blue);
+  const nose = addWedge(root, 0.28, 0.9, light, 0.85);
+  nose.scale.set(1, 0.5, 1);
+  root.userData.bar = attachHealthBar(root, 1.15);
   root.userData.mats = captureMaterials(root);
   return root;
 }
 
-/** Capital ship. Allies are a flat deck. The enemy carrier stays a giant triangle. */
+/** Capitals. Friendly side is a giant blue triangle. Enemy side is a giant red circle. */
 export function createCarrier(side) {
   const root = new THREE.Group();
   root.name = `carrier-${side}`;
   if (side === 'enemy') {
-    const hull = makeStandard(0xc4322a, { emissive: 0x5a120c, emissiveIntensity: 0.5, roughness: 0.38 });
-    const body = addMesh(root, geo('carrier-wedge', () => new THREE.ConeGeometry(2.5, 8.6, 3)), hull, 0, 0, 0);
-    body.rotation.x = -Math.PI / 2;
-    const edge = addMesh(
+    const hull = makeStandard(0xe42323, { emissive: 0x5a0c0c, emissiveIntensity: 0.55, roughness: 0.34 });
+    addCircle(root, 2.7, hull);
+    addMesh(
       root,
-      geo('carrier-edge', () => new THREE.ConeGeometry(0.85, 3.4, 3)),
-      makeStandard(0xffe08a, { emissive: 0x8a3a10, emissiveIntensity: 0.55 }),
+      geo('carrier-core', () => new THREE.SphereGeometry(0.9, 10, 8)),
+      makeStandard(0xffe08a, { emissive: 0x8a3a10, emissiveIntensity: 0.6 }),
       0,
-      0.15,
-      -2.4,
+      0,
+      -0.4,
     );
-    edge.rotation.x = -Math.PI / 2;
   } else {
-    const deck = makeStandard(0x1a5560, { emissive: 0x083038, emissiveIntensity: 0.4, metalness: 0.35, roughness: 0.42 });
-    const white = makeStandard(0xe7eef4, { emissive: 0x9aabba, emissiveIntensity: 0.25, roughness: 0.35 });
-    const teal = makeStandard(0x14c8bc, { emissive: 0x084240, emissiveIntensity: 0.45 });
-    addMesh(root, box(3.4, 0.5, 8.8), deck, 0, 0, 0);
-    addMesh(root, box(1.05, 1.15, 1.7), white, 0.85, 0.75, 1.5);
-    addMesh(root, box(2.2, 0.18, 6.2), teal, 0, 0.34, -0.3);
-    const lampMat = new THREE.MeshBasicMaterial({ color: 0x7af6ee });
-    for (let i = 0; i < 5; i += 1) {
-      addMesh(root, geo('runway-lamp', () => new THREE.SphereGeometry(0.12, 8, 6)), lampMat, -0.55, 0.4, -3.1 + i * 1.45);
-    }
+    const blue = makeStandard(0x2a62ff, { emissive: 0x0c1e66, emissiveIntensity: 0.5, roughness: 0.36 });
+    const light = makeStandard(0xe7f0ff, { emissive: 0x2040a0, emissiveIntensity: 0.4 });
+    const body = addMesh(root, geo('ally-carrier', () => new THREE.ConeGeometry(2.6, 8.4, 3)), blue, 0, 0, 0);
+    body.rotation.x = Math.PI / 2;
+    const nose = addMesh(root, geo('ally-carrier-nose', () => new THREE.ConeGeometry(0.9, 2.8, 3)), light, 0, 0.1, 2.5);
+    nose.rotation.x = Math.PI / 2;
   }
-  root.userData.bar = attachHealthBar(root, side === 'enemy' ? 2.4 : 1.5);
+  root.userData.bar = attachHealthBar(root, side === 'enemy' ? 3.4 : 2.6);
   root.userData.mats = captureMaterials(root);
   return root;
 }
