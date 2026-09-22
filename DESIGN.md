@@ -24,7 +24,7 @@ A long cargo freighter, scaled to 3 so she reads large in the chase view. Lopsid
 - Round cargo drum bolted to starboard
 - One oversized rear engine and one stub engine
 - Uneven fins and a crooked antenna mast
-- Turquoise hull, white nose, blue port fin and cockpit, green cargo drum, red stripe and starboard fin
+- Full blue paint: deep hull, pale nose and panels, brighter fins and cargo, blue-black engines
 
 The nose points down the mesh's local −Z axis. The whole mesh is scaled by 3. Nothing about the shape is taken from an existing film or comic vehicle.
 
@@ -83,7 +83,7 @@ A separate heavy cycle sits beside those two. **E** or the חימוש button fir
 
 ## Enemies
 
-Two factions fill the sector. Blues are triangles and fight with שומרת: 32 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the five-color freighter at scale 3.
+Two factions fill the sector. Blues are triangles and fight with שומרת: 32 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the all-blue freighter at scale 3.
 
 Waves arrive as squads of eight. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is 50 red circles. Later waves climb toward the pool caps (nib 56, glint 36, howler 18, slab 8, vorak 2) so a second wave can still spawn. Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
 
