@@ -14,7 +14,7 @@ A short, blunt freighter with a deliberately lopsided silhouette:
 - Uneven fins and a crooked antenna mast
 - Turquoise hull, white nose, blue port fin and cockpit, green cargo drum, red stripe and starboard fin
 
-The nose points down the mesh's local −Z axis. Nothing about the shape is taken from an existing film or comic vehicle.
+The nose points down the mesh's local −Z axis. The whole mesh is scaled by 2.45 so Shomeret reads as a big freighter in the chase view. Nothing about the shape is taken from an existing film or comic vehicle.
 
 ## Controls
 
@@ -44,12 +44,13 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Shield (מגן) | 80 |
 | Shield regen | 16 per second, after 2.5s without a hit |
 | Invulnerability after a hit | 0.7s (ship blinks) |
-| Collision radius | 2 |
-| Shot damage | 16 |
+| Collision radius | 4.6 |
+| Shot damage | 36 |
+| Shot visual scale | 1.7 |
 | Shot speed / life | 145 u/s, 1.15s |
 | Fire interval | 0.15s (0.075s with rapid fire) |
 
-Shields soak damage first. A translucent bubble shows remaining shield. Boost widens the camera field of view slightly.
+Shields soak damage first. A translucent bubble shows remaining shield. Boost widens the camera field of view slightly. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
 
 ## Enemies
 

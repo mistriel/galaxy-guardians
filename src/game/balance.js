@@ -12,7 +12,8 @@ export const PLAYER = {
   shieldRegen: 16,
   shieldDelay: 2.5,
   invuln: 0.7,
-  radius: 2,
+  visualScale: 2.45,
+  radius: 4.6,
   cruise: 24,
   boost: 48,
   brake: 8,
@@ -22,8 +23,8 @@ export const PLAYER = {
   rapidDelay: 0.075,
   bulletSpeed: 145,
   bulletLife: 1.15,
-  bulletDamage: 16,
-  bulletRadius: 0.75,
+  bulletDamage: 36,
+  bulletRadius: 1.15,
 };
 
 export const POWER = {
