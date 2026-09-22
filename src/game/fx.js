@@ -125,7 +125,7 @@ export function createRings(scene, count) {
   return rings;
 }
 
-export function burstSparks(sprites, position, color, count, speed, bias, sizeScale = 1) {
+export function burstSparks(sprites, position, color, count, speed, bias, sizeScale = 1, lifeScale = 1) {
   let spawned = 0;
   for (const sprite of sprites) {
     if (sprite.visible) continue;
@@ -141,7 +141,7 @@ export function burstSparks(sprites, position, color, count, speed, bias, sizeSc
     const size = (0.45 + Math.random() * 0.9) * sizeScale;
     sprite.scale.setScalar(size);
     sprite.userData.vel = vel;
-    sprite.userData.life = 0.28 + Math.random() * 0.35;
+    sprite.userData.life = (0.28 + Math.random() * 0.35) * lifeScale;
     sprite.userData.max = sprite.userData.life;
     sprite.userData.size = size;
     spawned += 1;
@@ -165,17 +165,18 @@ export function updateSparks(sprites, dt) {
   }
 }
 
-export function spawnRing(rings, position, color) {
+export function spawnRing(rings, position, color, options) {
   const ring = rings.find((item) => !item.visible);
   if (!ring) return;
+  const life = options?.life ?? 0.45;
   ring.visible = true;
   ring.position.copy(position);
   ring.material.color.setHex(color);
   ring.material.opacity = 0.9;
-  ring.scale.setScalar(1.2);
-  ring.userData.life = 0.45;
-  ring.userData.max = 0.45;
-  ring.userData.grow = 46;
+  ring.scale.setScalar(options?.scale ?? 1.2);
+  ring.userData.life = life;
+  ring.userData.max = life;
+  ring.userData.grow = options?.grow ?? 46;
 }
 
 export function updateRings(rings, camera, dt) {
