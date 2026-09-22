@@ -278,19 +278,41 @@ function makeDestroyer() {
   return root;
 }
 
-/** Faster, lower cousin of the tank. Same push, different silhouette. */
-function makeGunCar(accent) {
+/** Combat car: cabin, four wheels, and a roof gun that fires soft light. */
+function makeGunCar(accent, foe = false) {
   const root = new THREE.Group();
-  const bed = mat(accent, accent, 0.35);
-  const cab = mat(FRIENDLY, 0x243040, 0.25);
-  addBox(root, 1.7, 0.32, 2.8, bed, 0, 0.32, 0);
-  addBox(root, 1.15, 0.7, 0.95, cab, 0, 0.78, 0.7);
-  const barrel = addCyl(root, 0.06, 0.08, 1.5, cab, 0, 0.7, -1.35);
+  const paint = foe ? squadTint(accent, true) : accent;
+  const bed = mat(paint, paint, foe ? 0.28 : 0.42);
+  const cab = mat(foe ? 0x2a2236 : FRIENDLY, foe ? 0x120c18 : 0x243040, 0.22);
+  const dark = mat(0x1b2430, 0x080c12, 0.15);
+  const glass = mat(0xc5dcff, 0x1a4ea8, 0.55);
+  addBox(root, 1.85, 0.28, 3.15, bed, 0, 0.36, 0);
+  addBox(root, 1.2, 0.62, 1.05, cab, 0, 0.78, 0.72);
+  addBox(root, 0.72, 0.26, 0.5, glass, 0, 0.96, 0.28);
+  const turret = new THREE.Group();
+  turret.position.set(0, 0.7, -0.45);
+  root.add(turret);
+  const barrel = addCyl(turret, 0.07, 0.1, 1.35, cab, 0, 0.14, -0.55);
   barrel.rotation.x = Math.PI / 2;
-  for (const [x, z] of [[-0.7, 0.9], [0.7, 0.9], [-0.7, -0.9], [0.7, -0.9]]) {
-    const wheel = addCyl(root, 0.28, 0.28, 0.18, mat(0x1b2430), x, 0.28, z);
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.14, -1.35);
+  turret.add(muzzle);
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 8, 6),
+    new THREE.MeshBasicMaterial({ color: foe ? paint : 0xfff1b8, transparent: true, opacity: 0 }),
+  );
+  flash.position.copy(muzzle.position);
+  turret.add(flash);
+  const wheels = [];
+  for (const [x, z] of [[-0.78, 1.05], [0.78, 1.05], [-0.78, -1.05], [0.78, -1.05]]) {
+    const wheel = addCyl(root, 0.32, 0.32, 0.2, dark, x, 0.32, z);
     wheel.rotation.z = Math.PI / 2;
+    wheels.push(wheel);
   }
+  root.userData.turret = turret;
+  root.userData.muzzle = muzzle;
+  root.userData.flash = flash;
+  root.userData.wheels = wheels;
   return root;
 }
 
@@ -786,7 +808,16 @@ export class GroundBattle {
     this.buildField();
     [-11, 0, 11].forEach((x, i) => this.spawn('artillery', x, 0.05 + i * 0.08, { speed: 0, laneFollow: 0.15, bob: 0, z: 9 }));
     [[-6, 8], [6, 10]].forEach(([x, z], i) => this.spawn('tank', x, 0.1 + i * 0.2, { z, speed: 6.5 }));
-    [[-2, 6.5], [3.5, 7.5]].forEach(([x, z], i) => this.spawn('gunCar', x, 0.12 + i * 0.15, { z, speed: 8 }));
+    [[-8, 5.4], [-2, 6.5], [3.5, 7.5], [8.2, 5.8]].forEach(([x, z], i) => this.spawn('gunCar', x, 0.08 + i * 0.1, {
+      z,
+      speed: 7.2,
+      shotCd: 0.15 + i * 0.18,
+    }));
+    [[-5.2, -13.2], [5.4, -12.4]].forEach(([x, z], i) => this.spawn('foeCar', x, 0.16 + i * 0.12, {
+      z,
+      speed: -2.6,
+      shotCd: 0.22 + i * 0.2,
+    }));
     for (let i = 0; i < 18; i += 1) {
       const col = (i % 9) - 4;
       const row = Math.floor(i / 9);
@@ -913,13 +944,15 @@ export class GroundBattle {
     let mesh;
     if (kind === 'artillery') mesh = makeArtillery(this.world.accent);
     else if (kind === 'tank') mesh = makeTank(this.world.accent);
-    else if (kind === 'gunCar') mesh = makeGunCar(this.world.accent);
+    else if (kind === 'gunCar') mesh = makeGunCar(this.world.accent, false);
+    else if (kind === 'foeCar') mesh = makeGunCar(this.world.enemy, true);
     else if (kind === 'infantry') mesh = makeInfantry(this.world.accent, false);
     else if (kind === 'defender') mesh = makeInfantry(this.world.enemy, true);
     else if (kind === 'destroyer') mesh = makeDestroyer();
     else mesh = makeSpecial(kind, this.world);
     mesh.visible = false;
     if (kind === 'defender') mesh.rotation.y = Math.PI - 0.42;
+    else if (kind === 'foeCar') mesh.rotation.y = Math.PI;
     else if (kind === 'infantry') mesh.rotation.y = 0.48;
     mesh.traverse((obj) => {
       if (obj.isMesh) {
@@ -928,9 +961,9 @@ export class GroundBattle {
       }
     });
     this.root.add(mesh);
-    const speeds = { artillery: 0, tank: 8, gunCar: 13, infantry: 12, defender: 0, lantern: 9, drum: 9, crown: 9, destroyer: 7 };
-    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, infantry: 0.08, defender: 0.04, lantern: 0.08, drum: 0.04, crown: 0.05, destroyer: 0.05 };
-    const follows = { artillery: 0.15, tank: 1, gunCar: 1, infantry: 1, defender: 0.15, lantern: 0.35, drum: 0.35, crown: 0.35, destroyer: 0.45 };
+    const speeds = { artillery: 0, tank: 8, gunCar: 13, foeCar: -2.6, infantry: 12, defender: 0, lantern: 9, drum: 9, crown: 9, destroyer: 7 };
+    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, foeCar: 0.05, infantry: 0.08, defender: 0.04, lantern: 0.08, drum: 0.04, crown: 0.05, destroyer: 0.05 };
+    const follows = { artillery: 0.15, tank: 1, gunCar: 1, foeCar: 0.35, infantry: 1, defender: 0.15, lantern: 0.35, drum: 0.35, crown: 0.35, destroyer: 0.45 };
     const unit = {
       kind,
       mesh,
@@ -1061,6 +1094,41 @@ export class GroundBattle {
     if (flash) flash.material.opacity = 1;
     if (Math.random() < 0.22) {
       this.sfx.blip?.({ freq: unit.kind === 'defender' ? 180 : 320, dur: 0.05, type: 'square', vol: 0.03, slide: -40 });
+    }
+  }
+
+  fireCar(unit) {
+    const muzzle = unit.mesh.userData.muzzle;
+    const from = new THREE.Vector3();
+    if (muzzle) {
+      unit.mesh.updateMatrixWorld(true);
+      muzzle.getWorldPosition(from);
+    } else {
+      from.set(unit.mesh.position.x, 1.2, unit.mesh.position.z);
+    }
+    const forward = unit.kind === 'foeCar' ? 1 : -1;
+    const color = unit.kind === 'foeCar' ? this.world.enemy : this.world.accent;
+    this.launchShell({
+      from,
+      to: new THREE.Vector3(
+        unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 2.4,
+        0.95,
+        unit.z + forward * (11 + Math.random() * 6),
+      ),
+      color,
+      radius: 0.22,
+      dur: 0.28,
+      holdHit: unit.kind === 'foeCar' ? 0 : 0.35,
+      splash: 3.2,
+      arc: 0.35,
+      silentTubes: true,
+    });
+    const flash = unit.mesh.userData.flash;
+    if (flash) flash.material.opacity = 1;
+    const turret = unit.mesh.userData.turret;
+    if (turret) turret.rotation.x = -0.16;
+    if (Math.random() < 0.45) {
+      this.sfx.blip?.({ freq: unit.kind === 'foeCar' ? 160 : 240, dur: 0.06, type: 'square', vol: 0.04, slide: -30 });
     }
   }
 
@@ -1207,11 +1275,12 @@ export class GroundBattle {
       unit.age += dt;
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
       const people = unit.kind === 'infantry' || unit.kind === 'defender';
-      const pop = unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : unit.kind === 'gunCar' ? 1.05 : unit.kind === 'artillery' ? 1.15 : people ? 2.5 : 0.85;
+      const pop = unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : people ? 2.5 : 0.85;
       unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro));
       if (fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
       else if (this.phase !== 'resolve') unit.z -= unit.speed * pace * dt;
       if (unit.kind === 'defender' && this.capture > 50 && !fallingBack) unit.z += 8 * dt;
+      if (unit.kind === 'foeCar' && !fallingBack) unit.z = Math.min(unit.z, -6.5);
       unit.z = THREE.MathUtils.clamp(unit.z, -50, 22);
       const yBob = Math.sin(unit.age * (unit.kind === 'infantry' ? 10 : 4)) * unit.bob;
       const drop = unit.special ? (1 - intro) * 14 : (1 - intro) * 0.8;
@@ -1219,6 +1288,20 @@ export class GroundBattle {
       const swing = unit.mesh.userData.swing;
       const flash = unit.mesh.userData.flash;
       if (flash) flash.material.opacity = Math.max(0, flash.material.opacity - dt * 5);
+      const car = unit.kind === 'gunCar' || unit.kind === 'foeCar';
+      if (car && this.outcome !== 'retreat' && unit.age > 0.3) {
+        unit.shotCd -= dt * (pushing ? 1.2 : 1);
+        if (unit.shotCd <= 0) {
+          unit.shotCd = 0.48 + (Math.abs(unit.x) % 0.22);
+          this.fireCar(unit);
+        }
+        const turret = unit.mesh.userData.turret;
+        if (turret) turret.rotation.x = THREE.MathUtils.damp(turret.rotation.x, 0, 8, dt);
+        const wheels = unit.mesh.userData.wheels;
+        if (wheels && Math.abs(unit.speed) > 0.4) {
+          for (const wheel of wheels) wheel.rotation.x += unit.speed * dt * 1.6;
+        }
+      }
       if (people && this.outcome !== 'retreat' && unit.age > 0.25) {
         unit.shotCd -= dt * (pushing ? 1.15 : 1);
         if (unit.shotCd <= 0) {
@@ -1259,7 +1342,7 @@ export class GroundBattle {
         this.shake = Math.min(1.5, this.shake + 0.85);
         this.sfx.noise?.(0.22, 0.2, 160);
       }
-      if ((unit.kind === 'tank' || unit.kind === 'gunCar' || unit.kind === 'destroyer') && !fallingBack) this.smashNear(unit);
+      if ((unit.kind === 'tank' || unit.kind === 'gunCar' || unit.kind === 'foeCar' || unit.kind === 'destroyer') && !fallingBack) this.smashNear(unit);
     }
   }
 

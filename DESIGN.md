@@ -4,7 +4,7 @@ Original 3D arcade flight combat. The fantasy is a ragtag cargo tug punching thr
 
 ## Ground battles
 
-The menu shows שומרת and offers both יציאה לסיור and קרבות קרקע. **עולמות** switches fields. **קרבות קרקע** on the menu opens three fields: יער זוהר, מדבר אדום, קרח כחול. In a space sortie, a green ring on the left (about x −36, z −110) opens יער זוהר, and an orange ring on the right (about x 36, z −155) opens מדבר אדום. חזרה לחלל returns to the sortie, or to the menu if the fight was opened from the menu. Each fight is the same easy push. The battle is already on the field when the world opens: friendly soldiers walk and shoot soft light, warriors on the far line brace and shoot back, artillery lobs over them, and tanks plus gun-cars are already rolling. No gore — hits are sparks.
+The menu shows שומרת and offers יציאה לסיור plus two open battles, יער זוהר and מדבר אדום, with no unlock. **קרבות קרקע** still lists all three fields, including קרח כחול. **עולמות** switches fields. In a space sortie, a green ring on the left (about x −36, z −110) opens יער זוהר, and an orange ring on the right (about x 36, z −155) opens מדבר אדום. חזרה לחלל returns to the sortie, or to the menu if the fight was opened from the menu. Each fight is the same easy push. The battle is already on the field when the world opens: friendly soldiers walk and shoot soft light, warriors on the far line brace and shoot back, artillery lobs over them, and tanks plus combat cars are already rolling and firing from their roof guns. Enemy cars on the far line shoot back. No gore — hits are sparks.
 
 1. Artillery keeps lobbing while both infantry lines trade light.
 2. More tanks and gun-cars (קרון ירי) join and break the barricades.
