@@ -1203,10 +1203,10 @@ export class Game {
         tower.mesh.rotation.z = Math.sin(t * 0.5) * 0.14;
       } else if (tower.type === 'nest') {
         tower.mesh.position.y = tower.home.y + Math.sin(this.time * 0.7 + tower.phase) * 1.5;
-        this.aimTower(tower, allowFire, TOWERS.nest);
+        this.aimTower(tower, allowFire, TOWERS.nest, dt);
       } else if (tower.type === 'spire') {
         tower.mesh.rotation.y += dt * 0.35;
-        this.aimTower(tower, allowFire, TOWERS.spire);
+        this.aimTower(tower, allowFire, TOWERS.spire, dt);
       } else if (tower.type === 'silo') {
         tower.mesh.rotation.y += dt * 0.22;
         if (allowFire) this.ventSilo(tower, dt);
@@ -1219,7 +1219,7 @@ export class Game {
     }
   }
 
-  aimTower(tower, allowFire, cfg) {
+  aimTower(tower, allowFire, cfg, dt) {
     const pivot = tower.mesh.userData.barrel || tower.mesh.userData.aim;
     if (!pivot) return;
     const focus = this.combatFocus(tower.mesh.position);
