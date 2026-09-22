@@ -65,6 +65,8 @@ const PICKUP_TEXT = {
   spread: T.pickupSpread,
   shield: T.pickupShield,
   repair: T.pickupRepair,
+  party: T.pickupParty,
+  wing: T.pickupWing,
 };
 
 function steerAxis(v) {
@@ -123,6 +125,7 @@ export class Game {
     this.giantCd = 0;
     this.heavyIndex = 0;
     this.heavyCd = { atoms: 0, shells: 0, ultra: 0 };
+    this.giftAt = 16;
     this.chain = [];
     this.rapidUntil = 0;
     this.spreadUntil = 0;
@@ -384,7 +387,7 @@ export class Game {
     this.buildFleet();
 
     this.pickups = [];
-    const pickupTypes = ['rapid', 'spread', 'shield', 'repair'];
+    const pickupTypes = ['rapid', 'spread', 'shield', 'repair', 'party', 'wing'];
     for (let i = 0; i < POOLS.pickups; i += 1) {
       const type = pickupTypes[i % pickupTypes.length];
       const mesh = createPickup(type, this.soft);
@@ -1847,6 +1850,12 @@ export class Game {
 
   updatePickups(dt) {
     if (this.state !== 'play') return;
+    if (this.time >= this.giftAt) {
+      this.giftAt = this.time + 20;
+      this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
+      const ahead = this.player.mesh.position.clone().addScaledVector(this.nose, 36);
+      this.spawnKind(Math.floor(this.time / 20) % 2 === 0 ? 'party' : 'wing', ahead);
+    }
     for (const pickup of this.pickups) {
       if (!pickup.alive) continue;
       pickup.life -= dt;
@@ -1854,7 +1863,7 @@ export class Game {
       pickup.mesh.userData.spin.rotation.x += dt;
       const offset = this.v1.copy(this.player.mesh.position).sub(pickup.mesh.position);
       const dist = offset.length();
-      if (dist < 18 && dist > 0.001) {
+      if (dist < 26 && dist > 0.001) {
         pickup.mesh.position.addScaledVector(offset.multiplyScalar(1 / dist), (20 + (18 - dist) * 6) * dt);
       }
       const near = pickup.mesh.position.distanceTo(this.player.mesh.position);
@@ -1872,7 +1881,13 @@ export class Game {
   }
 
   spawnPickup(position) {
-    const free = this.pickups.filter((item) => !item.alive);
+    this.spawnKind(null, position);
+  }
+
+  spawnKind(type, position) {
+    const alive = (item) => !item.alive;
+    const typed = type ? this.pickups.filter((item) => alive(item) && item.type === type) : [];
+    const free = typed.length ? typed : this.pickups.filter(alive);
     if (!free.length) return;
     const pickup = free[Math.floor(Math.random() * free.length)];
     pickup.alive = true;
@@ -1888,7 +1903,22 @@ export class Game {
     if (pickup.type === 'rapid') this.rapidUntil = this.time + POWER.duration;
     else if (pickup.type === 'spread') this.spreadUntil = this.time + POWER.duration;
     else if (pickup.type === 'shield') this.shield = Math.min(PLAYER.shield, this.shield + POWER.shield);
-    else this.hull = Math.min(PLAYER.hull, this.hull + POWER.repair);
+    else if (pickup.type === 'party') {
+      this.addScore(POWER.partyScore, this.player.mesh.position.clone(), false);
+      this.shield = Math.min(PLAYER.shield, this.shield + POWER.partyShield);
+      this.invuln = Math.max(this.invuln, 1.6);
+      burstSparks(this.sparks, this.player.mesh.position, 0xfff1a8, 16, 22, null, 1.2, 1);
+    }     else if (pickup.type === 'wing') {
+      let called = 0;
+      if (this.carriers?.ally?.alive) {
+        for (const ally of this.allies || []) {
+          if (ally.alive) continue;
+          this.launchAlly(ally);
+          called += 1;
+          if (called >= POWER.wingCall) break;
+        }
+      }
+    } else this.hull = Math.min(PLAYER.hull, this.hull + POWER.repair);
     this.sfx.pickup();
     this.showToast(PICKUP_TEXT[pickup.type]);
   }
@@ -2367,10 +2397,10 @@ export class Game {
     if (!carrier.alive) return;
     const anchor = carrier.mesh.position.clone().addScaledVector(this.nose, 36);
     if (anchor.length() > WORLD.bounds - 90) anchor.setLength(WORLD.bounds - 90);
-    for (let i = 0; i < 14; i += 1) {
+    for (let i = 0; i < 8; i += 1) {
       const type = i % 2 === 0 ? 'glint' : 'nib';
       const band = ENEMIES[type].band + (i % 5);
-      const ang = (i / 14) * Math.PI * 2;
+      const ang = (i / 8) * Math.PI * 2;
       const pos = anchor.clone();
       pos.x += Math.cos(ang) * band;
       pos.z += Math.sin(ang) * band;
@@ -2423,12 +2453,12 @@ export class Game {
     if (foe.alive) {
       foe.fireCd -= dt;
       if (foe.fireCd <= 0) {
-        foe.fireCd = 2.1;
+        foe.fireCd = 4.2;
         const origin = foe.mesh.position.clone();
         const dir = this.player.mesh.position.clone().sub(origin);
         if (dir.lengthSq() > 0.01) {
           dir.normalize();
-          this.spawnBolt('enemy', origin, dir, 70, 14, 0xff5a36, 2.1);
+          this.spawnBolt('enemy', origin, dir, 58, 8, 0xff5a36, 2.1);
         }
       }
       this.updateBar(foe);
@@ -2436,7 +2466,7 @@ export class Game {
     if (this.carriers.ally.alive) this.updateBar(this.carriers.ally);
     this.allyGap -= dt;
     if (this.allyGap <= 0) {
-      this.allyGap = 0.4;
+      this.allyGap = 0.28;
       this.fillAllies(false);
     }
     for (const ally of this.allies) {
@@ -2965,6 +2995,7 @@ export class Game {
     this.giantCd = 0;
     this.heavyIndex = 0;
     this.heavyCd = { atoms: 0, shells: 0, ultra: 0 };
+    this.giftAt = 16;
     this.chain = [];
     this.rapidUntil = 0;
     this.spreadUntil = 0;

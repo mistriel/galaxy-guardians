@@ -484,6 +484,8 @@ export function createPickup(type, softMap) {
     spread: 0xff8ad4,
     shield: 0x8ef6c8,
     repair: 0xffd36a,
+    party: 0xfff1a8,
+    wing: 0x6aa2ff,
   };
   const color = colors[type];
   const root = new THREE.Group();

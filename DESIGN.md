@@ -71,7 +71,7 @@ The play space is a closed sphere of radius **430** that feels open. Stars and d
 | Fire interval | 0.15s (0.075s with rapid fire) |
 | Missile | Speed 250. Lifetime 6.4s, so it travels about 1600 units before it blooms. No contact fuse and no arena-edge fuse. Blast radius 1900 still clears the sector it crossed. Cooldown 4s |
 
-Shields soak damage first. A translucent bubble shows remaining shield. Holding טורבו jumps the ship to 240 and opens the view so the rush reads. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
+Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding טורבו jumps the ship to 240 and opens the view so the rush reads. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
 
 Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4 bolt, so it reads as a bright streak rather than a slab. Damage stays 36.
 
@@ -83,9 +83,9 @@ A separate heavy cycle sits beside those two. **E** or the חימוש button fir
 
 ## Enemies
 
-Two factions fill the sector. Blues are triangles and fight with שומרת: 32 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the all-blue freighter at scale 3.
+Two factions fill the sector. Blues are triangles and fight with שומרת: 44 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the all-blue freighter at scale 3.
 
-Waves arrive as squads of eight. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is 50 red circles. Later waves climb toward the pool caps (nib 56, glint 36, howler 18, slab 8, vorak 2) so a second wave can still spawn. Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
+Waves arrive as squads of eight. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is 32 red circles. Later waves climb slowly, and Judge Vorak stays at one until well after wave 6. Pool caps still hold a second wave (nib 56, glint 36, howler 18, slab 8, vorak 2). Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
 
 | Id | Hebrew | HP | Loiter | Score | Behavior |
 | --- | --- | --- | --- | --- | --- |
@@ -101,12 +101,12 @@ Drop chances: Glint 22%, Nib 16%, Howler 42%, Slab 70%, Judge Vorak 100%.
 
 The largest red circle (collision radius 6.2), still on the red team. It loiters on a slow ring around its squad anchor (band about 30) and shoots from there. It does not chase שומרת.
 
-Attacks alternate after a 0.72s windup:
+Attacks alternate after a 1.05s windup:
 
-1. **Maul bolt** — one slow amber shot (34 u/s, damage 24, large silhouette).
-2. **Arc** — three faster shots in a wide fan (56 u/s, damage 12 each).
+1. **Maul bolt** — one slow amber shot (28 u/s, damage 12, large silhouette).
+2. **Arc** — three faster shots in a wide fan (46 u/s, damage 6 each).
 
-The next swing waits 2.35s. Contact damage is 28. A kill is a full explosion and always drops a powerup. The Hebrew name **הדיין ווראק** appears on the wave banner and again as a toast when the escort arrives. The radar draws it as a larger red blip.
+The next swing waits 3.6s. Contact damage is 14. A kill is a full explosion and always drops a powerup. The Hebrew name **הדיין ווראק** appears on the wave banner and again as a toast when the escort arrives. The radar draws it as a larger red blip.
 
 ## Towers
 
@@ -117,22 +117,24 @@ Structures are already in the sector when the mission starts, including a crate 
 | Crate | ארגז | 16 | 80 | One shot. Small pop. |
 | Echo spire | צריח הד | 48 | 220 | Tall mast, blinking lamp. |
 | Flare silo | ממגורת להבה | 32 | 400 | Explodes. See chain reaction below. |
-| Spit nest | קן ירי | 96 | 520 | Turret. Tracks the player out to 100 units and fires shots that deal 11. |
+| Spit nest | קן ירי | 60 | 520 | Turret. Tracks the player out to 100 units and fires shots that deal 6. |
 
 ### Silo blast
 
-Radius 30. Deals 58 damage to other enemies and towers in range, so depots chain. The player takes 16 and is shoved back if they are inside about 82% of that radius. One invulnerability window means a chain only hurts the player once.
+Radius 30. Deals 58 damage to other enemies and towers in range, so depots chain. The player takes 8 and is shoved back if they are inside about 82% of that radius. One invulnerability window means a chain only hurts the player once.
 
 ## Powerups
 
-Orbs left by destroyed enemies. They drift toward the ship inside 18 units and last 14 seconds.
+Orbs left by destroyed enemies, plus a gift every 20 seconds ahead of the ship. They drift toward the ship inside 26 units and last 14 seconds.
 
 | Pickup | Effect |
 | --- | --- |
-| Rapid (ירי מהיר) | Fire interval 0.075s for 8s |
-| Spread (ירי מניפה) | Three-shot fan for 8s |
-| Shield (המגן הוטען) | +48 shield, capped at 80 |
-| Repair (השלדה תוקנה) | +30 hull, capped at 100 |
+| Rapid (ירי מהיר) | Fire interval 0.075s for 11s |
+| Spread (ירי מניפה) | Three-shot fan for 11s |
+| Shield (המגן הוטען) | +90 shield, capped at 140 |
+| Repair (השלדה תוקנה) | +60 hull, capped at 160 |
+| Party (חגיגה) | +250 score, +36 shield, a short safe moment |
+| Wing (הלהק חוזר) | Launches up to 6 resting blue triangles |
 
 ## Scoring
 
@@ -147,14 +149,14 @@ Displayed score is `round(base × combo)`.
 
 | Wave | Spawns |
 | --- | --- |
-| 1 | 12 Glint, 12 Nib |
-| 2 | 16 Nib, 10 Glint, 6 Howler |
-| 3 | 18 Nib, 12 Glint, 8 Howler, 3 Slab |
-| 4 | 18 Nib, 12 Glint, 8 Howler, 4 Slab, 1 Judge Vorak |
-| 5 | 20 Nib, 14 Glint, 10 Howler, 4 Slab, 2 Judge Vorak |
-| 6 | 22 Nib, 14 Glint, 10 Howler, 5 Slab, 2 Judge Vorak |
+| 1 | 18 Nib, 14 Glint |
+| 2 | 22 Nib, 14 Glint, 6 Howler |
+| 3 | 24 Nib, 16 Glint, 8 Howler, 2 Slab |
+| 4 | 26 Nib, 16 Glint, 8 Howler, 3 Slab |
+| 5 | 28 Nib, 18 Glint, 8 Howler, 3 Slab, 1 Judge Vorak |
+| 6 | 30 Nib, 18 Glint, 10 Howler, 4 Slab, 1 Judge Vorak |
 
-After wave 6 the counts climb but stay capped (Nib 28, Glint 18, Howler 12, Slab 6, Judge Vorak 2) so the pools can hold them. The next wave begins 2 seconds after the last enemy of the current wave dies. Squads start arriving about 0.4s after the banner.
+After wave 6 the counts climb slowly. A second Vorak waits until three waves past that table. Pools still hold the wave. The next wave begins 2 seconds after the last enemy of the current wave dies. Squads start arriving about 0.4s after the banner.
 
 ## Game flow
 

@@ -3,10 +3,10 @@ import { T } from './i18n.js';
 
 /** Easy arcade timings. A full push resolves in about half a minute. */
 const PHASE_LEN = {
-  artillery: 7,
-  armor: 8,
-  infantry: 7.5,
-  special: 7,
+  artillery: 9,
+  armor: 10,
+  infantry: 9,
+  special: 8,
   resolve: 99,
 };
 
@@ -1340,7 +1340,7 @@ export class GroundBattle {
       if (people && this.outcome !== 'retreat' && unit.age > 0.25) {
         unit.shotCd -= dt * (pushing ? 1.15 : 1);
         if (unit.shotCd <= 0) {
-          unit.shotCd = (unit.kind === 'defender' ? 1.15 : 0.9) + (Math.abs(unit.x) % 0.35);
+          unit.shotCd = (unit.kind === 'defender' ? 1.7 : 0.85) + (Math.abs(unit.x) % 0.35);
           unit.attackT = 0.34;
           this.fireRifle(unit);
         }
