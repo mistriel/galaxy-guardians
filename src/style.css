@@ -144,8 +144,8 @@ body.playing button { cursor: pointer; }
 #wave { color: var(--amber); font-size: 1.35rem; }
 #combo { min-height: 1.2rem; color: var(--pink); font-weight: 800; }
 
-.hud-actions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 280px; }
-#nuke-btn, #boost-btn { flex: 1 0 100%; }
+.hud-actions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 320px; }
+#nuke-btn, #boost-btn, #ordnance-btn { flex: 1 0 100%; }
 
 button.tiny, button.ghost, button.primary {
   border-radius: 999px;
@@ -546,7 +546,55 @@ body.touch #flight-row {
   font-size: 1.15rem;
   padding: 6px 12px;
 }
-.joy, #fire-btn, #missile-btn, #nuke-btn, #giant-btn, #giant-touch, #boost-btn, #boost-touch {
+#ordnance-btn, #ordnance-touch, #ordnance-cycle, #ordnance-cycle-touch {
+  border: 3px solid rgba(220, 255, 255, 0.95);
+  background: rgba(90, 220, 255, 0.96);
+  color: #062028;
+  font-weight: 900;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35), 0 0 16px rgba(90, 220, 255, 0.4);
+}
+#ordnance-btn.kind-shells, #ordnance-touch.kind-shells {
+  background: rgba(240, 193, 74, 0.96);
+  color: #2a1804;
+  border-color: rgba(255, 244, 210, 0.95);
+}
+#ordnance-btn.kind-ultra, #ordnance-touch.kind-ultra {
+  background: rgba(255, 122, 217, 0.96);
+  color: #2a0820;
+  border-color: rgba(255, 230, 250, 0.95);
+}
+#ordnance-btn, #ordnance-cycle {
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 1.02rem;
+}
+#ordnance-cycle { flex: 0 0 auto; }
+#ordnance-btn.cooling, #ordnance-touch.cooling { filter: grayscale(0.35) brightness(0.72); }
+#ordnance-touch {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(286px, calc(env(safe-area-inset-bottom) + 278px));
+  min-width: 108px;
+  height: 52px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  padding: 4px 8px;
+}
+#ordnance-cycle-touch {
+  position: absolute;
+  left: max(126px, calc(env(safe-area-inset-left) + 114px));
+  bottom: max(286px, calc(env(safe-area-inset-bottom) + 278px));
+  width: 40px;
+  min-width: 40px;
+  height: 52px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  padding: 0;
+}
+.joy, #fire-btn, #missile-btn, #nuke-btn, #giant-btn, #giant-touch, #boost-btn, #boost-touch, #ordnance-btn, #ordnance-touch, #ordnance-cycle, #ordnance-cycle-touch {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -575,6 +623,11 @@ body.touch #flight-row {
     height: 44px;
     font-size: 0.85rem;
     bottom: max(136px, calc(env(safe-area-inset-bottom) + 128px));
+  }
+  #ordnance-touch, #ordnance-cycle-touch {
+    height: 40px;
+    font-size: 0.8rem;
+    bottom: max(188px, calc(env(safe-area-inset-bottom) + 180px));
   }
   body.touch #radar { bottom: 250px; width: 64px; height: 64px; }
   body.touch #flight-row { bottom: 210px; max-width: calc(100% - 180px); }
