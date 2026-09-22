@@ -445,6 +445,32 @@ body.touch #flight-row {
   bottom: 292px;
   max-width: calc(100% - 220px);
 }
+#giant-btn, #giant-touch {
+  border: 3px solid rgba(255, 244, 210, 0.95);
+  background: rgba(255, 196, 64, 0.96);
+  color: #2a1804;
+  font-weight: 900;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35), 0 0 16px rgba(255, 196, 64, 0.45);
+}
+#giant-btn {
+  min-height: 48px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 1.05rem;
+}
+#giant-btn.cooling, #giant-touch.cooling { filter: grayscale(0.35) brightness(0.72); }
+#giant-touch {
+  position: absolute;
+  left: max(24px, env(safe-area-inset-left));
+  bottom: max(210px, calc(env(safe-area-inset-bottom) + 202px));
+  min-width: 118px;
+  height: 64px;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  padding: 6px 10px;
+}
 #nuke-btn, #missile-btn {
   border: 3px solid rgba(255, 236, 190, 0.95);
   background: rgba(255, 122, 28, 0.96);
@@ -502,7 +528,7 @@ body.touch #flight-row {
   font-size: 1.15rem;
   padding: 6px 12px;
 }
-.joy, #fire-btn, #missile-btn, #nuke-btn, #boost-btn, #boost-touch {
+.joy, #fire-btn, #missile-btn, #nuke-btn, #giant-btn, #giant-touch, #boost-btn, #boost-touch {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -525,6 +551,12 @@ body.touch #flight-row {
     height: 44px;
     font-size: 0.9rem;
     bottom: max(220px, calc(env(safe-area-inset-bottom) + 212px));
+  }
+  #giant-touch {
+    min-width: 92px;
+    height: 44px;
+    font-size: 0.85rem;
+    bottom: max(136px, calc(env(safe-area-inset-bottom) + 128px));
   }
   body.touch #radar { bottom: 250px; width: 64px; height: 64px; }
   body.touch #flight-row { bottom: 210px; max-width: calc(100% - 180px); }

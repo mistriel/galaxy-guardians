@@ -25,8 +25,8 @@ export const PLAYER = {
   bulletLife: 1.15,
   bulletDamage: 36,
   bulletRadius: 2.1,
-  boltGirth: 8,
-  boltStretch: 4.2,
+  boltGirth: 1.5,
+  boltStretch: 5.8,
 };
 
 /** Hangar catalog. Shomeret and the thick laser are free. */
@@ -37,44 +37,43 @@ export const SHIPS = {
 };
 
 /**
- * Equipped weapon profile. The default laser keeps the thick beam
- * (girth 8, stretch 4.2, muzzle 8). Other weapons store their own scale
- * on each bolt so they do not resize the laser.
+ * Equipped weapon profile. The default laser is a small cinematic tracer.
+ * Other weapons store their own scale on each bolt.
  */
 export const WEAPONS = {
   laser: {
     id: 'laser',
     cost: 0,
-    girth: 8,
-    stretch: 4.2,
-    muzzle: 8,
-    sparks: 28,
-    sparkSpeed: 32,
-    sparkScale: 3.4,
-    delay: 0.15,
-    speed: 145,
+    girth: 1.5,
+    stretch: 5.8,
+    muzzle: 2.2,
+    sparks: 10,
+    sparkSpeed: 24,
+    sparkScale: 1.15,
+    delay: 0.12,
+    speed: 175,
     damage: 36,
-    life: 1.15,
-    radius: 2.1,
+    life: 0.9,
+    radius: 1.15,
     angles: [0],
-    color: 0xe8fff8,
+    color: 0xf4fbff,
   },
   fan: {
     id: 'fan',
     cost: 900,
-    girth: 8,
-    stretch: 4.2,
-    muzzle: 8,
-    sparks: 16,
-    sparkSpeed: 28,
-    sparkScale: 2.8,
-    delay: 0.18,
-    speed: 140,
-    damage: 26,
-    life: 1.05,
-    radius: 1.9,
+    girth: 1.35,
+    stretch: 5.2,
+    muzzle: 2.2,
+    sparks: 8,
+    sparkSpeed: 22,
+    sparkScale: 1,
+    delay: 0.16,
+    speed: 165,
+    damage: 24,
+    life: 0.85,
+    radius: 1.05,
     angles: [-0.16, 0, 0.16],
-    color: 0xe8fff8,
+    color: 0xf4fbff,
   },
   needle: {
     id: 'needle',
@@ -107,6 +106,16 @@ export const MISSILE = {
   blast: 1900,
   damage: 9999,
   visualScale: 1,
+};
+
+/** Fat special missile. Lifetime fuse, blooms in the swarm, not a sector wipe. */
+export const GIANT = {
+  cooldown: 3,
+  speed: 160,
+  life: 1.7,
+  blast: 150,
+  damage: 520,
+  visualScale: 3.4,
 };
 
 /** Blue triangle army. Many small fighters, not a handful of giants. */
@@ -288,7 +297,7 @@ export const POOLS = {
   enemyBolts: 180,
   pickups: 14,
   sparks: 240,
-  rings: 18,
+  rings: 28,
   bonusCrate: 12,
   bonusSpire: 4,
   bonusSilo: 4,

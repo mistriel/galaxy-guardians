@@ -71,8 +71,9 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Steer | Mouse (crosshair stays at screen center) or arrow keys |
 | Turbo / brake | Hold `W`, Shift, or the טורבו button / `S` |
 | Strafe | `A` / `D` |
-| Lasers | Space or left click. Thick beams. On a phone, hold ירי |
-| Nuclear missile | Orange טיל גרעיני button, `F`, or right click. Thin dart, flies across the sector, then wipes. Waits 4s |
+| Lasers | Space, left click, or the red ירי button. Small bright tracers |
+| Giant missile | Gold טיל ענק button or `Q` |
+| Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin dart, then an energy mushroom |
 | Factions | Blues are triangles (your army). Reds are circles (enemy swarms). The menu says כחולים: משולשים · אדומים: עיגולים |
 | Phone | Left stick moves (up turbo, down brake, sideways strafe). Right stick aims |
 | Hangar | מספנה spends נקודות on נץ, עוגן, מניפה, and מחט. שומרת and the thick laser stay free |
