@@ -346,6 +346,9 @@ export class Game {
           strafeT: 1,
           phase: Math.random() * 10,
           lane: new THREE.Vector3(),
+          anchor: new THREE.Vector3(),
+          orbit: 20,
+          spin: 1,
           flash: 0,
         });
       }
@@ -1313,19 +1316,25 @@ export class Game {
     restoreMaterials(enemy.mesh.userData.mats);
     if (enemy.mesh.userData.bar) enemy.mesh.userData.bar.group.visible = false;
     if (type === 'vorak') this.showToast(T.enemyNames.vorak);
-    if (job?.lane) enemy.lane.copy(job.lane);
-    else this.assignLane(enemy);
+    if (job?.anchor) enemy.anchor.copy(job.anchor);
+    else enemy.anchor.copy(pos);
+    enemy.spin = job?.spin ?? enemy.strafe;
+    enemy.orbit = job?.orbit ?? (enemy.cfg.band ?? 22) + (enemy.phase % 5);
   }
 
-  assignLane(enemy) {
-    if (enemy.cfg.ai !== 'lane') return;
-    const side = this.v3.set(Math.random() - 0.5, (Math.random() - 0.5) * 0.3, Math.random() - 0.5);
-    if (side.lengthSq() < 0.01) side.set(1, 0, 0);
-    side.normalize();
-    const aim = this.v2.copy(this.player.mesh.position).addScaledVector(side, 14 + Math.random() * 34);
-    enemy.lane.copy(aim).sub(enemy.mesh.position);
-    if (enemy.lane.lengthSq() < 0.01) enemy.lane.set(0, 0, -1);
-    else enemy.lane.normalize();
+  gallerySteer(enemy, desired) {
+    const pos = enemy.mesh.position;
+    const ax = pos.x - enemy.anchor.x;
+    const az = pos.z - enemy.anchor.z;
+    let radial = Math.hypot(ax, az);
+    if (radial < 0.4) radial = 0.4;
+    const tx = (-az / radial) * enemy.spin;
+    const tz = (ax / radial) * enemy.spin;
+    const error = radial - enemy.orbit;
+    const pull = THREE.MathUtils.clamp(error * 0.12, -1, 1);
+    desired.set(tx - (ax / radial) * pull, 0, tz - (az / radial) * pull);
+    desired.y = THREE.MathUtils.clamp((enemy.anchor.y - pos.y) * 0.05, -0.4, 0.4);
+    if (desired.lengthSq() > 0.0001) desired.normalize();
   }
 
   spawnAnchor() {
@@ -1352,77 +1361,23 @@ export class Game {
       else to.set(0, 0, -1);
 
       enemy.phase += dt;
-      const desired = this.v2.copy(to);
-      if (enemy.cfg.ai === 'lane') {
-        if (enemy.lane.lengthSq() < 0.0001) this.assignLane(enemy);
-        desired.copy(enemy.lane);
-        if (enemy.cfg.range > 0 && dist < enemy.cfg.range) this.tryEnemyShot(enemy);
-      } else if (enemy.cfg.ai === 'chase') {
-        const side = this.v3.set(-to.z, 0, to.x);
-        if (side.lengthSq() < 0.0001) side.set(1, 0, 0);
-        side.normalize();
-        desired.addScaledVector(side, Math.sin(enemy.phase * 2.1) * enemy.cfg.wobble);
-        desired.y += Math.sin(enemy.phase * 1.3) * enemy.cfg.wobble * 0.3;
-        if (desired.lengthSq() > 0.0001) desired.normalize();
-      } else if (enemy.cfg.ai === 'kite') {
-        enemy.strafeT -= dt;
-        if (enemy.strafeT <= 0) {
-          enemy.strafeT = 1.2 + Math.random() * 0.8;
-          enemy.strafe *= -1;
-        }
-        if (dist < enemy.cfg.prefer - 8) desired.negate();
-        else if (dist < enemy.cfg.prefer + 14) {
-          desired.set(-to.z, 0, to.x);
-          if (desired.lengthSq() < 0.0001) desired.set(1, 0, 0);
-          desired.normalize();
-          if (enemy.strafe < 0) desired.negate();
-        }
-        if (dist < enemy.cfg.range) this.tryEnemyShot(enemy);
-      } else if (enemy.cfg.ai === 'maul') {
-        enemy.strafeT -= dt;
-        if (enemy.strafeT <= 0) {
-          enemy.strafeT = 1.8 + Math.random();
-          enemy.strafe *= -1;
-        }
-        if (dist > enemy.cfg.prefer + 16) {
-          desired.copy(to);
-        } else if (dist < enemy.cfg.prefer - 14) {
-          desired.negate();
-        } else {
-          desired.set(-to.z, 0, to.x);
-          if (desired.lengthSq() < 0.0001) desired.set(1, 0, 0);
-          desired.normalize();
-          if (enemy.strafe < 0) desired.negate();
-          desired.y += Math.sin(enemy.phase * 0.6) * 0.08;
-        }
-        if (desired.lengthSq() > 0.0001) desired.normalize();
-        this.updateMaul(enemy, dist, dt);
-      } else {
-        desired.y += Math.sin(enemy.phase) * 0.12;
-        if (desired.lengthSq() > 0.0001) desired.normalize();
-        if (dist < enemy.cfg.range) this.tryEnemyShot(enemy);
-      }
+      const desired = this.v2;
+      this.gallerySteer(enemy, desired);
+      if (enemy.cfg.ai === 'maul') this.updateMaul(enemy, dist, dt);
+      else if (enemy.cfg.range > 0 && dist < enemy.cfg.range) this.tryEnemyShot(enemy);
 
-      if (enemy.cfg.ai === 'lane') {
-        enemy.vel.copy(enemy.lane).multiplyScalar(enemy.cfg.speed);
-        pos.addScaledVector(enemy.vel, dt);
-        if (pos.length() > WORLD.bounds - 20) {
-          enemy.lane.negate();
-          enemy.vel.copy(enemy.lane).multiplyScalar(enemy.cfg.speed);
-          pos.addScaledVector(enemy.lane, 36);
-        }
-      } else {
-        const speed = enemy.cfg.ai === 'maul' && enemy.windup > 0 ? enemy.cfg.speed * 0.22 : enemy.cfg.speed;
-        desired.multiplyScalar(speed);
-        enemy.vel.lerp(desired, 1 - Math.exp(-2.8 * dt));
-        pos.addScaledVector(enemy.vel, dt);
+      const loiter = enemy.cfg.loiter ?? 12;
+      const speed = enemy.cfg.ai === 'maul' && enemy.windup > 0 ? loiter * 0.35 : loiter;
+      desired.multiplyScalar(speed);
+      enemy.vel.lerp(desired, 1 - Math.exp(-2.4 * dt));
+      pos.addScaledVector(enemy.vel, dt);
+      if (pos.length() > WORLD.bounds - 30) {
+        enemy.anchor.multiplyScalar(Math.pow(0.92, dt * 8));
         if (pos.length() > WORLD.bounds - 12) pos.setLength(WORLD.bounds - 12);
       }
       pos.y = THREE.MathUtils.clamp(pos.y, -100, 140);
 
-      if (enemy.cfg.ai === 'maul') {
-        enemy.mesh.lookAt(this.player.mesh.position);
-      } else if (enemy.vel.lengthSq() > 4) {
+      if (enemy.vel.lengthSq() > 1) {
         this.v3.copy(pos).add(enemy.vel);
         enemy.mesh.lookAt(this.v3);
       }
@@ -1958,27 +1913,31 @@ export class Game {
       const squad = types.slice(i, i + squadSize);
       const sway = ((i / squadSize) % 7) - 3;
       const dir = nose.clone()
-        .addScaledVector(right, sway * 0.55)
-        .addScaledVector(lift, (Math.random() - 0.45) * 0.22);
+        .addScaledVector(right, sway * 0.16)
+        .addScaledVector(lift, (Math.random() - 0.45) * 0.1);
       if (dir.lengthSq() < 0.04) dir.copy(nose);
       dir.normalize();
-      const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 54 + Math.random() * 34);
+      const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 102 + Math.random() * 22);
       center.y = THREE.MathUtils.clamp(center.y, -36, 64);
-      const lane = new THREE.Vector3().copy(playerPos).addScaledVector(dir, -48).sub(center);
-      if (lane.lengthSq() < 0.01) lane.set(0, 0, -1);
-      else lane.normalize();
-      const side = new THREE.Vector3(-dir.z, 0, dir.x);
-      if (side.lengthSq() < 0.01) side.set(1, 0, 0);
-      side.normalize();
+      if (center.length() > WORLD.bounds - 90) center.setLength(WORLD.bounds - 90);
+      const spin = (i / squadSize) % 2 === 0 ? 1 : -1;
+      const anchor = center.clone();
       squad.forEach((type, k) => {
-        const col = (k % 3) - 1;
-        const row = Math.floor(k / 3);
-        const pos = center.clone()
-          .addScaledVector(side, col * 8)
-          .add(new THREE.Vector3(0, (row - 0.4) * 8, 0))
-          .addScaledVector(dir, -row * 8);
+        const band = (ENEMIES[type].band ?? 22) + (k % 5);
+        const ang = (k / Math.max(1, squad.length)) * Math.PI * 2 + sway * 0.4;
+        const pos = center.clone();
+        pos.x += Math.cos(ang) * band;
+        pos.z += Math.sin(ang) * band;
+        pos.y += ((k % 3) - 1) * 6;
         if (pos.length() > WORLD.bounds - 24) pos.setLength(WORLD.bounds - 24);
-        this.queue.push({ type, at: at + k * 0.05, pos, lane });
+        this.queue.push({
+          type,
+          at: at + k * 0.05,
+          pos,
+          anchor,
+          orbit: band,
+          spin,
+        });
       });
       at += 0.32;
     }
@@ -2194,14 +2153,17 @@ export class Game {
   launchVolley() {
     const carrier = this.carriers.enemy;
     if (!carrier.alive) return;
+    const anchor = carrier.mesh.position.clone().addScaledVector(this.nose, 36);
+    if (anchor.length() > WORLD.bounds - 90) anchor.setLength(WORLD.bounds - 90);
     for (let i = 0; i < 14; i += 1) {
-      const pos = carrier.mesh.position.clone();
-      pos.addScaledVector(this.rightV, (i - 6.5) * 8);
-      pos.addScaledVector(this.nose, 18);
-      const lane = this.player.mesh.position.clone().sub(pos);
-      if (lane.lengthSq() < 0.01) lane.set(0, 0, -1);
-      else lane.normalize();
-      this.spawnEnemy(i % 2 === 0 ? 'glint' : 'nib', { pos, lane });
+      const type = i % 2 === 0 ? 'glint' : 'nib';
+      const band = ENEMIES[type].band + (i % 5);
+      const ang = (i / 14) * Math.PI * 2;
+      const pos = anchor.clone();
+      pos.x += Math.cos(ang) * band;
+      pos.z += Math.sin(ang) * band;
+      pos.y += ((i % 3) - 1) * 5;
+      this.spawnEnemy(type, { pos, anchor, orbit: band, spin: i < 7 ? 1 : -1 });
       burstSparks(this.sparks, pos, CARRIER.colorEnemy, 6, 12, this.nose, 1.2);
     }
   }
