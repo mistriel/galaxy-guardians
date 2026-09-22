@@ -4,11 +4,11 @@ Original 3D arcade flight combat. The fantasy is a ragtag cargo tug punching thr
 
 ## Ground battles
 
-The menu shows שומרת and offers both יציאה לסיור and קרבות קרקע. **עולמות** switches fields. **קרבות קרקע** on the menu opens three fields: יער זוהר, מדבר אדום, קרח כחול. Each fight is the same easy push, staged so the units do not all appear at once:
+The menu shows שומרת and offers both יציאה לסיור and קרבות קרקע. **עולמות** switches fields. **קרבות קרקע** on the menu opens three fields: יער זוהר, מדבר אדום, קרח כחול. In a space sortie, a green ring on the left (about x −36, z −110) opens יער זוהר, and an orange ring on the right (about x 36, z −155) opens מדבר אדום. חזרה לחלל returns to the sortie, or to the menu if the fight was opened from the menu. Each fight is the same easy push, staged so the units do not all appear at once:
 
 1. Artillery lobs light shells and softens the line.
 2. Tanks and gun-cars (קרון ירי) roll in, staggered, and break the barricades.
-3. Infantry floods through and captures the flag.
+3. People flood through and capture the flag. Friendly soldiers wear the world color, a pale helmet, and a small flag. A line of original defenders in the enemy color holds the far side, then walks back when the line breaks. No gore.
 4. **משמיד** drops in for the climax. It is a turquoise tank wearing heavy cannons, a rack of artillery tubes, and fat glowing nuclear guns — the joke is every gun in the world on one hull. It slams onto the field, lobs a ground barrage (no space trails), and flattens a wide stretch of barricades. The world landmark (אורן הנוצץ, תוף המדבר, or כתר הקרח) still arrives off to the side. The Hebrew label is משמיד.
 5. The beat ends in ניצחון, or נסיגה if you choose to pull back.
 

@@ -221,14 +221,33 @@ function makeGunCar(accent) {
   return root;
 }
 
-function makeInfantry(accent) {
+/** Original low-poly person. No borrowed costume. foe holds the far line. */
+function makeInfantry(accent, foe = false) {
   const root = new THREE.Group();
-  const cloth = mat(accent, accent, 0.4);
-  const skin = mat(0xffe0c2, 0x000000, 0);
-  addCyl(root, 0.22, 0.28, 0.7, cloth, 0, 0.5, 0);
-  addCyl(root, 0.2, 0.2, 0.28, skin, 0, 1.05, 0);
-  const flag = addBox(root, 0.05, 0.55, 0.32, mat(FRIENDLY, accent, 0.3), 0.28, 1.15, 0);
-  root.userData.flag = flag;
+  const cloth = mat(accent, accent, foe ? 0.22 : 0.42);
+  const skin = mat(0xffd2b0, 0x5a3020, 0.12);
+  const boot = mat(0x243044, 0x101820, 0.3);
+  const helm = mat(foe ? 0x4a2848 : FRIENDLY, accent, 0.35);
+
+  const limb = (x, y, color, w, h, d) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, y, 0);
+    addBox(pivot, w, h, d, color, 0, -h * 0.5, 0);
+    root.add(pivot);
+    return pivot;
+  };
+  const legL = limb(-0.16, 0.78, boot, 0.16, 0.74, 0.18);
+  const legR = limb(0.16, 0.78, boot, 0.16, 0.74, 0.18);
+  addBox(root, 0.48, 0.58, 0.28, cloth, 0, 1.08, 0);
+  const armL = limb(-0.34, 1.28, cloth, 0.12, 0.5, 0.12);
+  const armR = limb(0.34, 1.28, cloth, 0.12, 0.46, 0.12);
+  addBox(armR, 0.07, 0.07, 0.72, boot, 0.02, -0.28, -0.22);
+  addCyl(root, 0.16, 0.17, 0.24, skin, 0, 1.5, 0);
+  addBox(root, 0.34, 0.14, 0.32, helm, 0, 1.68, 0.02);
+  if (!foe) {
+    root.userData.flag = addBox(root, 0.04, 0.42, 0.24, mat(FRIENDLY, accent, 0.35), -0.4, 1.4, 0);
+  }
+  root.userData.swing = { legL, legR, armL, armR };
   return root;
 }
 
@@ -408,19 +427,20 @@ export class GroundBattle {
     if (kind === 'artillery') mesh = makeArtillery(this.world.accent);
     else if (kind === 'tank') mesh = makeTank(this.world.accent);
     else if (kind === 'gunCar') mesh = makeGunCar(this.world.accent);
-    else if (kind === 'infantry') mesh = makeInfantry(this.world.accent);
+    else if (kind === 'infantry') mesh = makeInfantry(this.world.accent, false);
+    else if (kind === 'defender') mesh = makeInfantry(this.world.enemy, true);
     else if (kind === 'destroyer') mesh = makeDestroyer();
     else mesh = makeSpecial(kind, this.world);
     mesh.visible = false;
     this.root.add(mesh);
-    const speeds = { artillery: 0, tank: 8, gunCar: 13, infantry: 12, lantern: 9, drum: 9, crown: 9, destroyer: 7 };
-    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, infantry: 0.12, lantern: 0.08, drum: 0.04, crown: 0.05, destroyer: 0.05 };
-    const follows = { artillery: 0.15, tank: 1, gunCar: 1, infantry: 1, lantern: 0.35, drum: 0.35, crown: 0.35, destroyer: 0.45 };
+    const speeds = { artillery: 0, tank: 8, gunCar: 13, infantry: 12, defender: 0, lantern: 9, drum: 9, crown: 9, destroyer: 7 };
+    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, infantry: 0.08, defender: 0.04, lantern: 0.08, drum: 0.04, crown: 0.05, destroyer: 0.05 };
+    const follows = { artillery: 0.15, tank: 1, gunCar: 1, infantry: 1, defender: 0.15, lantern: 0.35, drum: 0.35, crown: 0.35, destroyer: 0.45 };
     const unit = {
       kind,
       mesh,
       x,
-      z: kind === 'infantry' ? 14 : kind === 'artillery' ? 18 : kind === 'destroyer' ? 6 : 12,
+      z: kind === 'defender' ? -20 : kind === 'infantry' ? 14 : kind === 'artillery' ? 18 : kind === 'destroyer' ? 6 : 12,
       delay,
       age: 0,
       speed: extra.speed ?? speeds[kind] ?? 8,
@@ -444,6 +464,9 @@ export class GroundBattle {
         const col = (i % 6) - 2.5;
         const row = Math.floor(i / 6);
         this.spawn('infantry', col * 3.6, row * 0.34 + (i % 6) * 0.06);
+      }
+      for (let i = 0; i < 10; i += 1) {
+        this.spawn('defender', (i - 4.5) * 3.1, 0.08 + (i % 3) * 0.06);
       }
     } else if (id === 'special') {
       this.spawn('destroyer', 0, 0.18);
@@ -644,14 +667,24 @@ export class GroundBattle {
       unit.mesh.visible = true;
       unit.age += dt;
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
-      const pop = unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : unit.kind === 'gunCar' ? 1.05 : unit.kind === 'artillery' ? 1.15 : 0.85;
+      const people = unit.kind === 'infantry' || unit.kind === 'defender';
+      const pop = unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : unit.kind === 'gunCar' ? 1.05 : unit.kind === 'artillery' ? 1.15 : people ? 2.15 : 0.85;
       unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro));
       if (fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
       else if (this.phase !== 'resolve') unit.z -= unit.speed * pace * dt;
+      if (unit.kind === 'defender' && this.capture > 50 && !fallingBack) unit.z += 8 * dt;
       unit.z = THREE.MathUtils.clamp(unit.z, -50, 22);
       const yBob = Math.sin(unit.age * (unit.kind === 'infantry' ? 10 : 4)) * unit.bob;
       const drop = unit.special ? (1 - intro) * 14 : (1 - intro) * 0.8;
       unit.mesh.position.set(unit.x + this.lane * unit.laneFollow, yBob + drop, unit.z);
+      const swing = unit.mesh.userData.swing;
+      if (swing) {
+        const step = Math.sin(unit.age * (unit.kind === 'defender' ? 6 : 10)) * 0.65;
+        swing.legL.rotation.x = step;
+        swing.legR.rotation.x = -step;
+        swing.armL.rotation.x = -step * 0.75;
+        swing.armR.rotation.x = step * 0.28;
+      }
       if (unit.kind === 'infantry' && unit.z < -40 && !unit.scored && !fallingBack) {
         unit.scored = true;
         this.capture = Math.min(100, this.capture + 3.5);
@@ -736,7 +769,7 @@ export class GroundBattle {
     const aims = {
       artillery: { pos: [0, 24, 34], look: [0, 1, -10] },
       armor: { pos: [7, 16, 26], look: [0, 1.2, -18] },
-      infantry: { pos: [0, 20, 28], look: [0, 0.8, -26] },
+      infantry: { pos: [0, 8, 6], look: [0, 1.4, -10] },
       special: { pos: [-6, 14, 24], look: [0, 2, -8] },
       resolve: { pos: [0, 22, 36], look: [0, 1, -16] },
     };

@@ -216,6 +216,7 @@ export class Game {
       groundPushBtn: document.querySelector('#ground-push'),
       groundRetreat: document.querySelector('#ground-retreat'),
       groundBack: document.querySelector('#ground-back'),
+      groundSpace: document.querySelector('#ground-space'),
       groundHoldLabel: document.querySelector('#ground-hold-label'),
       groundCaptureLabel: document.querySelector('#ground-capture-label'),
       groundTouch: document.querySelector('#ground-touch'),
@@ -312,6 +313,8 @@ export class Game {
     for (const spot of buildLayout()) {
       this.towers.push(this.makeTower(spot.type, spot.position, false));
     }
+    this.portals = this.buildPortals();
+    this.spaceLive = false;
     const bonusPlan = [
       ['crate', POOLS.bonusCrate],
       ['spire', POOLS.bonusSpire],
@@ -429,6 +432,7 @@ export class Game {
     dom.groundPushBtn.textContent = T.groundPush;
     dom.groundRetreat.textContent = T.groundRetreat;
     dom.groundBack.textContent = T.groundWorlds;
+    dom.groundSpace.textContent = T.groundSpace;
     dom.groundHoldLabel.textContent = T.groundHold;
     dom.groundCaptureLabel.textContent = T.groundCapture;
     dom.groundLeftBtn.textContent = T.groundLeft;
@@ -460,6 +464,7 @@ export class Game {
     dom.groundMenu.addEventListener('click', () => this.openGroundPick());
     dom.groundClose.addEventListener('click', () => this.startGround(this.ground?.world?.id || 'forest'));
     dom.groundBack.addEventListener('click', () => this.exitGround());
+    dom.groundSpace.addEventListener('click', () => this.returnToSpace());
     dom.groundRetreat.addEventListener('click', () => this.ground?.retreat());
     dom.groundPushBtn.addEventListener('pointerdown', (event) => {
       event.preventDefault();
@@ -1111,6 +1116,7 @@ export class Game {
     }
 
     this.updatePlayer(dt);
+    this.updatePortals(dt);
     this.updateQueue();
     this.updateEnemies(dt);
     this.updateFleet(dt);
@@ -2409,6 +2415,11 @@ export class Game {
       if (this.carriers.ally.alive) plot(this.carriers.ally.mesh.position.x, this.carriers.ally.mesh.position.z, '#3d7dff', 11);
       if (this.carriers.enemy.alive) plot(this.carriers.enemy.mesh.position.x, this.carriers.enemy.mesh.position.z, '#ff5a3a', 12);
     }
+    if (this.portals) {
+      for (const portal of this.portals) {
+        plot(portal.position.x, portal.position.z, portal.id === 'forest' ? '#3dffa2' : '#ffb15a', 9);
+      }
+    }
     ctx.fillStyle = '#2ee6c7';
     ctx.beginPath();
     ctx.moveTo(cx, cy - 7);
@@ -2862,11 +2873,76 @@ export class Game {
 
   startGround(worldId) {
     if (!this.renderer || !this.ground) return;
+    if (this.state === 'play') this.spaceLive = true;
+    else if (this.state === 'menu') this.spaceLive = false;
     this.sfx.unlock();
     this.closeGroundPick();
     this.state = 'ground';
     this.ground.start(worldId);
     this.syncVisibility();
+  }
+
+  returnToSpace() {
+    this.groundPush = false;
+    this.groundLeft = false;
+    this.groundRight = false;
+    this.ground?.stop();
+    this.closeGroundPick();
+    if (this.portals) {
+      for (const portal of this.portals) portal.armed = false;
+    }
+    this.state = this.spaceLive ? 'play' : 'menu';
+    this.syncVisibility();
+  }
+
+  buildPortals() {
+    const specs = [
+      { id: 'forest', color: 0x3dffa2, position: new THREE.Vector3(-36, 4, -110) },
+      { id: 'desert', color: 0xffb15a, position: new THREE.Vector3(36, 4, -155) },
+    ];
+    return specs.map((spec) => {
+      const mesh = new THREE.Group();
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(13, 1.35, 12, 32),
+        new THREE.MeshBasicMaterial({ color: spec.color }),
+      );
+      const inner = new THREE.Mesh(
+        new THREE.TorusGeometry(9.2, 0.28, 8, 28),
+        new THREE.MeshBasicMaterial({ color: 0xfff6d8 }),
+      );
+      const glow = new THREE.Mesh(
+        new THREE.SphereGeometry(11.2, 18, 14),
+        new THREE.MeshBasicMaterial({
+          color: spec.color,
+          transparent: true,
+          opacity: 0.16,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+      );
+      mesh.add(ring, inner, glow);
+      mesh.position.copy(spec.position);
+      this.scene.add(mesh);
+      return { ...spec, mesh, glow, armed: true };
+    });
+  }
+
+  updatePortals(dt) {
+    if (this.state !== 'play' || !this.portals) return;
+    const pos = this.player.mesh.position;
+    for (const portal of this.portals) {
+      portal.mesh.rotation.z += dt * 0.35;
+      const dist = pos.distanceTo(portal.position);
+      portal.glow.material.opacity = dist < 48 ? 0.28 : 0.14;
+      if (dist > 26) portal.armed = true;
+      if (dist < 12 && portal.armed) {
+        portal.armed = false;
+        const world = GROUND_WORLDS.find((item) => item.id === portal.id);
+        if (world) this.showBanner(world.name);
+        this.startGround(portal.id);
+        return;
+      }
+    }
   }
 
   exitGround() {
