@@ -6,7 +6,7 @@ const PHASE_LEN = {
   artillery: 7,
   armor: 8,
   infantry: 7.5,
-  special: 5.5,
+  special: 7,
   resolve: 99,
 };
 
@@ -86,6 +86,28 @@ function addCyl(parent, rt, rb, h, material, x, y, z) {
   return mesh;
 }
 
+/** Barrel points down local −Z. pitch > 0 raises the muzzle. yaw > 0 swings toward −X. */
+function addGun(parent, radius, length, material, x, y, z, yaw = 0, pitch = 0) {
+  const mount = new THREE.Group();
+  mount.position.set(x, y, z);
+  mount.rotation.order = 'YXZ';
+  mount.rotation.y = yaw;
+  mount.rotation.x = pitch;
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.82, radius, length, 8), material);
+  tube.rotation.x = Math.PI / 2;
+  tube.position.z = -length * 0.5;
+  mount.add(tube);
+  const lip = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 1.35, radius * 0.9, Math.max(0.12, length * 0.14), 8),
+    material,
+  );
+  lip.rotation.x = Math.PI / 2;
+  lip.position.z = -length;
+  mount.add(lip);
+  parent.add(mount);
+  return mount;
+}
+
 function makeArtillery(accent) {
   const root = new THREE.Group();
   const dark = mat(0x243044, 0x101820, 0.3);
@@ -109,6 +131,77 @@ function makeTank(accent) {
   const barrel = addCyl(root, 0.1, 0.12, 1.7, body, 0, 1.2, -1.35);
   barrel.rotation.x = Math.PI / 2;
   root.userData.turret = turret;
+  return root;
+}
+
+/**
+ * משמיד — one turquoise hull wearing every gun.
+ * Heavy cannons, an artillery rack, and fat nuclear tubes. Ground lob only.
+ */
+function makeDestroyer() {
+  const root = new THREE.Group();
+  const hull = mat(0x1ad4c8, 0x0a4e48, 0.48);
+  const dark = mat(0x102028, 0x041014, 0.2);
+  const white = mat(0xf7fbff, 0x9aabba, 0.28);
+  const steel = mat(0x2a3644, 0x121820, 0.4);
+  const brass = mat(0xd4a017, 0x6a4808, 0.45);
+  const nuke = mat(0xff7a1c, 0xff4a00, 0.85);
+  const coreMat = mat(0xfff1b0, 0xff6a00, 1.15);
+  const cores = [];
+
+  const track = (x) => {
+    addBox(root, 0.78, 0.58, 5.6, dark, x, 0.34, 0);
+    for (let i = 0; i < 6; i += 1) {
+      const wheel = addCyl(root, 0.26, 0.26, 0.2, steel, x, 0.26, -2.15 + i * 0.86);
+      wheel.rotation.z = Math.PI / 2;
+    }
+  };
+  track(-2.05);
+  track(2.05);
+
+  addBox(root, 3.5, 0.95, 4.7, hull, 0, 0.95, 0.05);
+  addBox(root, 3.7, 0.16, 4.95, white, 0, 0.52, 0.05);
+  addBox(root, 2.4, 0.38, 2.2, hull, 0, 1.58, 0.2);
+  addBox(root, 1.5, 0.62, 1.7, hull, 0, 2.05, -0.2);
+  addCyl(root, 0.78, 0.9, 0.22, steel, 0, 1.78, -0.15);
+
+  const gun = (radius, length, material, x, y, z, yaw, pitch, nuclear) => {
+    const mount = addGun(root, radius, length, material, x, y, z, yaw, pitch);
+    if (!nuclear) return mount;
+    const core = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.12, radius * 0.55), 8, 8), coreMat);
+    core.position.z = -length - 0.08;
+    mount.add(core);
+    cores.push(core);
+    return mount;
+  };
+
+  gun(0.22, 3.3, steel, 0, 2.15, -1.15, 0, 0.05, false);
+  gun(0.13, 2.5, steel, -0.48, 2.28, -1.05, 0, 0.08, false);
+  gun(0.13, 2.5, steel, 0.48, 2.28, -1.05, 0, 0.02, false);
+  gun(0.32, 1.7, nuke, -1.15, 1.25, -1.7, 0.12, 0.04, true);
+  gun(0.32, 1.7, nuke, 1.15, 1.25, -1.7, -0.12, 0.04, true);
+  gun(0.16, 2.05, brass, -1.7, 1.05, -0.4, 0.55, 0.05, false);
+  gun(0.16, 2.05, brass, 1.7, 1.05, -0.4, -0.55, 0.05, false);
+  for (let i = 0; i < 10; i += 1) {
+    const col = i % 5;
+    const row = Math.floor(i / 5);
+    gun(0.08, 1.55, brass, -0.72 + col * 0.36, 2.45 + row * 0.28, 0.85, 0, 0.85 + (i % 2) * 0.12, false);
+  }
+  for (let i = 0; i < 6; i += 1) {
+    gun(0.045, 0.85, white, -0.75 + i * 0.3, 2.55, -0.55, (i - 2.5) * 0.08, 0.2, false);
+  }
+  gun(0.07, 1.15, steel, -1.85, 1.55, 0.4, 1.15, 0.1, false);
+  gun(0.07, 1.15, steel, 1.85, 1.55, 0.4, -1.15, 0.1, false);
+  gun(0.07, 1.05, steel, -1.85, 0.95, 1.1, 1.35, 0, false);
+  gun(0.07, 1.05, steel, 1.85, 0.95, 1.1, -1.35, 0, false);
+  gun(0.1, 1.25, steel, -0.45, 1.45, 2.15, Math.PI, 0.12, false);
+  gun(0.1, 1.25, steel, 0.45, 1.45, 2.15, Math.PI, 0.2, false);
+  gun(0.26, 1.15, nuke, 0.15, 2.7, 0.15, 0, 1.15, true);
+
+  addBox(root, 0.85, 0.4, 0.7, dark, 1.15, 1.55, 1.35);
+  addBox(root, 0.6, 0.32, 0.55, white, -1.2, 1.5, 1.15);
+
+  root.userData.cores = cores;
   return root;
 }
 
@@ -213,6 +306,7 @@ export class GroundBattle {
     this.retreating = false;
     this.outcome = null;
     this.shellCd = 1;
+    this.destroyerCd = 1;
     this.shake = 0;
     this.active = false;
     this.flagCloth = null;
@@ -249,6 +343,7 @@ export class GroundBattle {
     this.retreating = false;
     this.outcome = null;
     this.shellCd = 1.05;
+    this.destroyerCd = 1;
     this.shake = 0;
     this.active = true;
     this.buildField();
@@ -314,23 +409,24 @@ export class GroundBattle {
     else if (kind === 'tank') mesh = makeTank(this.world.accent);
     else if (kind === 'gunCar') mesh = makeGunCar(this.world.accent);
     else if (kind === 'infantry') mesh = makeInfantry(this.world.accent);
+    else if (kind === 'destroyer') mesh = makeDestroyer();
     else mesh = makeSpecial(kind, this.world);
     mesh.visible = false;
     this.root.add(mesh);
-    const speeds = { artillery: 0, tank: 8, gunCar: 13, infantry: 12, lantern: 9, drum: 9, crown: 9 };
-    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, infantry: 0.12, lantern: 0.08, drum: 0.04, crown: 0.05 };
-    const follows = { artillery: 0.15, tank: 1, gunCar: 1, infantry: 1, lantern: 0.35, drum: 0.35, crown: 0.35 };
+    const speeds = { artillery: 0, tank: 8, gunCar: 13, infantry: 12, lantern: 9, drum: 9, crown: 9, destroyer: 7 };
+    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, infantry: 0.12, lantern: 0.08, drum: 0.04, crown: 0.05, destroyer: 0.05 };
+    const follows = { artillery: 0.15, tank: 1, gunCar: 1, infantry: 1, lantern: 0.35, drum: 0.35, crown: 0.35, destroyer: 0.45 };
     const unit = {
       kind,
       mesh,
       x,
-      z: kind === 'infantry' ? 14 : kind === 'artillery' ? 18 : 12,
+      z: kind === 'infantry' ? 14 : kind === 'artillery' ? 18 : kind === 'destroyer' ? 6 : 12,
       delay,
       age: 0,
       speed: extra.speed ?? speeds[kind] ?? 8,
       bob: extra.bob ?? bobs[kind] ?? 0.04,
       laneFollow: extra.laneFollow ?? follows[kind] ?? 1,
-      special: kind === 'lantern' || kind === 'drum' || kind === 'crown',
+      special: kind === 'destroyer' || kind === 'lantern' || kind === 'drum' || kind === 'crown',
     };
     this.units.push(unit);
     if (kind === 'artillery' && mesh.userData.tube) this.tubes.push(mesh.userData.tube);
@@ -350,9 +446,11 @@ export class GroundBattle {
         this.spawn('infantry', col * 3.6, row * 0.34 + (i % 6) * 0.06);
       }
     } else if (id === 'special') {
-      this.spawn(this.world.special, 0, 0.25);
-      this.splash(0, -6, this.world.glow, 14);
-      this.shake = Math.min(1.2, this.shake + 0.7);
+      this.spawn('destroyer', 0, 0.18);
+      this.spawn(this.world.special, 20, 0.45);
+      this.splash(0, 6, 0x1ad4c8, 18);
+      this.shake = Math.min(1.6, this.shake + 0.9);
+      this.destroyerCd = 0.85;
       this.sfx.wave?.();
     } else if (id === 'resolve') {
       if (!this.retreating) this.outcome = 'win';
@@ -397,6 +495,7 @@ export class GroundBattle {
 
     this.updatePhase(dt, pushing);
     this.updateUnits(dt, pushing);
+    this.updateDestroyer(dt, pushing);
     this.updateShells(dt);
     this.updateBits(dt);
     this.updateCamera(dt);
@@ -431,20 +530,68 @@ export class GroundBattle {
     }
   }
 
-  launchShell() {
-    const from = new THREE.Vector3((Math.random() - 0.5) * 10, 1.4, 18);
-    const to = new THREE.Vector3(this.lane + (Math.random() - 0.5) * 16, 0.4, -26 - Math.random() * 14);
+  launchShell(spec = {}) {
+    const from = spec.from || new THREE.Vector3((Math.random() - 0.5) * 10, 1.4, 18);
+    const to = spec.to || new THREE.Vector3(this.lane + (Math.random() - 0.5) * 16, 0.4, -26 - Math.random() * 14);
+    const color = spec.color ?? this.world.glow;
     const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.35, 10, 8),
-      mat(this.world.glow, this.world.glow, 0.9),
+      new THREE.SphereGeometry(spec.radius ?? 0.35, 10, 8),
+      mat(color, color, 0.9),
     );
     mesh.position.copy(from);
     this.root.add(mesh);
-    this.shells.push({ mesh, from, to, t: 0, dur: 0.7 });
+    this.shells.push({
+      mesh,
+      from,
+      to,
+      t: 0,
+      dur: spec.dur ?? 0.7,
+      color,
+      holdHit: spec.holdHit ?? 3.1,
+      splash: spec.splash ?? 7,
+    });
+    if (spec.silentTubes) return;
     for (const tube of this.tubes) {
       tube.material.emissiveIntensity = 1.4;
     }
     this.sfx.blip?.({ freq: 220, dur: 0.09, type: 'sine', vol: 0.05, slide: -80 });
+  }
+
+  fireDestroyer(unit) {
+    const origin = unit.mesh.position;
+    const shots = 7;
+    for (let i = 0; i < shots; i += 1) {
+      const nuclear = i % 3 === 0;
+      const spread = (i - (shots - 1) / 2) * 2.4;
+      this.launchShell({
+        from: new THREE.Vector3(origin.x + spread * 0.28, 3.4, origin.z - 2.2),
+        to: new THREE.Vector3(origin.x + spread, 0.4, origin.z - 16 - (i % 3) * 3.5),
+        color: nuclear ? 0xff7a1c : 0x7af6ee,
+        radius: nuclear ? 0.58 : 0.26,
+        dur: nuclear ? 0.58 : 0.46,
+        holdHit: nuclear ? 2.2 : 1,
+        splash: nuclear ? 10 : 5.5,
+        silentTubes: true,
+      });
+    }
+    this.shake = Math.min(1.3, this.shake + 0.24);
+    this.sfx.blip?.({ freq: 130, dur: 0.12, type: 'sawtooth', vol: 0.06, slide: -60 });
+    this.sfx.noise?.(0.14, 0.16, 380);
+  }
+
+  updateDestroyer(dt, pushing) {
+    const unit = this.units.find((item) => item.kind === 'destroyer' && item.mesh.visible);
+    if (!unit) return;
+    const pulse = 0.7 + Math.sin(unit.age * 10) * 0.35;
+    for (const core of unit.mesh.userData.cores || []) {
+      core.material.emissiveIntensity = pulse;
+      core.scale.setScalar(0.9 + Math.sin(unit.age * 10) * 0.18);
+    }
+    if (this.phase !== 'special' || this.outcome === 'retreat' || unit.age < 0.7) return;
+    this.destroyerCd -= dt * (pushing ? 1.25 : 1);
+    if (this.destroyerCd > 0) return;
+    this.destroyerCd = 0.72;
+    this.fireDestroyer(unit);
   }
 
   updateShells(dt) {
@@ -458,8 +605,8 @@ export class GroundBattle {
       shell.mesh.position.lerpVectors(shell.from, shell.to, p);
       shell.mesh.position.y += Math.sin(p * Math.PI) * 9;
       if (p < 1) continue;
-      this.splash(shell.to.x, shell.to.z, this.world.glow, 7);
-      this.hold = Math.max(0, this.hold - 3.1);
+      this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7);
+      this.hold = Math.max(0, this.hold - (shell.holdHit ?? 3.1));
       this.crackNearest(shell.to.x, shell.to.z);
       this.shake = Math.min(0.8, this.shake + 0.18);
       this.root.remove(shell.mesh);
@@ -497,7 +644,7 @@ export class GroundBattle {
       unit.mesh.visible = true;
       unit.age += dt;
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
-      const pop = unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : unit.kind === 'gunCar' ? 1.05 : unit.kind === 'artillery' ? 1.15 : 0.85;
+      const pop = unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : unit.kind === 'gunCar' ? 1.05 : unit.kind === 'artillery' ? 1.15 : 0.85;
       unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro));
       if (fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
       else if (this.phase !== 'resolve') unit.z -= unit.speed * pace * dt;
@@ -509,7 +656,13 @@ export class GroundBattle {
         unit.scored = true;
         this.capture = Math.min(100, this.capture + 3.5);
       }
-      if ((unit.kind === 'tank' || unit.kind === 'gunCar') && !fallingBack) this.smashNear(unit);
+      if (unit.kind === 'destroyer' && !unit.boomed && unit.age >= 0.62 && !fallingBack) {
+        unit.boomed = true;
+        this.splash(unit.mesh.position.x, unit.mesh.position.z, 0x1ad4c8, 16);
+        this.shake = Math.min(1.5, this.shake + 0.85);
+        this.sfx.noise?.(0.22, 0.2, 160);
+      }
+      if ((unit.kind === 'tank' || unit.kind === 'gunCar' || unit.kind === 'destroyer') && !fallingBack) this.smashNear(unit);
     }
   }
 
@@ -518,11 +671,12 @@ export class GroundBattle {
     for (const block of this.barricades) {
       if (block.popped) continue;
       if (unit.z > block.z + 1.5) continue;
-      if (Math.abs(x - block.x) > 3.4) continue;
+      const reach = unit.kind === 'destroyer' ? 8 : 3.4;
+      if (Math.abs(x - block.x) > reach) continue;
       block.popped = true;
-      this.splash(block.x, block.z, this.world.enemy, 9);
+      this.splash(block.x, block.z, unit.kind === 'destroyer' ? 0x1ad4c8 : this.world.enemy, unit.kind === 'destroyer' ? 12 : 9);
       this.root.remove(block.mesh);
-      this.hold = Math.max(0, this.hold - 6);
+      this.hold = Math.max(0, this.hold - (unit.kind === 'destroyer' ? 10 : 6));
       this.capture = Math.min(100, this.capture + 4);
       this.shake = Math.min(1, this.shake + 0.28);
     }
@@ -586,7 +740,17 @@ export class GroundBattle {
       special: { pos: [-6, 14, 24], look: [0, 2, -8] },
       resolve: { pos: [0, 22, 36], look: [0, 1, -16] },
     };
-    const aim = aims[this.phase] || aims.artillery;
+    let aim = aims[this.phase] || aims.artillery;
+    if (this.phase === 'special') {
+      const hero = this.units.find((unit) => unit.kind === 'destroyer' && unit.mesh.visible);
+      if (hero) {
+        const spot = hero.mesh.position;
+        aim = {
+          pos: [spot.x - 12, 15, spot.z + 18],
+          look: [spot.x + 1, 2.8, spot.z - 2],
+        };
+      }
+    }
     const desired = new THREE.Vector3(...aim.pos);
     this.camera.position.lerp(desired, 1 - Math.exp(-1.6 * dt));
     this.look.lerp(new THREE.Vector3(...aim.look), 1 - Math.exp(-1.6 * dt));
@@ -611,7 +775,7 @@ export class GroundBattle {
     const { dom, world } = this;
     if (!dom.phase) return;
     dom.world.textContent = world.name;
-    dom.phase.textContent = this.phase === 'special' ? `${T.groundSpecial} · ${world.specialName}` : this.phaseLabel();
+    dom.phase.textContent = this.phase === 'special' ? `${T.groundSpecial} · ${T.groundDestroyer}` : this.phaseLabel();
     if (dom.hold) dom.hold.style.width = `${Math.max(0, this.hold)}%`;
     if (dom.capture) dom.capture.style.width = `${Math.min(100, this.capture)}%`;
     if (dom.note) {
@@ -619,7 +783,7 @@ export class GroundBattle {
         artillery: T.groundArtilleryNote,
         armor: T.groundArmorNote,
         infantry: T.groundInfantryNote,
-        special: world.specialName,
+        special: T.groundDestroyerNote,
         resolve: this.outcome === 'retreat' ? T.groundRetreatNote : T.groundWinNote,
       }[this.phase] || '';
     }
