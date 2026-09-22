@@ -27,7 +27,8 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
-| Shoot | Space or left click. On a phone, hold the round ירי button |
+| Shoot | Space or left click. Thin movie lasers. On a phone, hold the round ירי button |
+| Nuclear missile | The orange טיל גרעיני button (desktop HUD and phone), `F`, or right click. One wipe, then a 4s cooldown |
 | Steer on a phone | Large left joystick. Deadzone is wide, and the stick eases instead of jumping |
 | Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
 | Pause | `Esc` or `P`, or the השהיה button |
@@ -49,11 +50,14 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Collision radius | 4.6 |
 | Shot damage | 36 |
 | Shot hit radius | 2.1 |
-| Shot beam | 2.7 thick, about 14 long, with a large muzzle flash |
+| Shot beam | Thin movie laser, about 0.5 thick and 18 long, with a small muzzle flash |
 | Shot speed / life | 145 u/s, 1.15s |
 | Fire interval | 0.15s (0.075s with rapid fire) |
+| Missile | Speed 210. It stays in flight for at least 0.38s so the rocket reads, then detonates by 0.72s. Blast radius 220 erases everything inside it. Cooldown 4s |
 
 Shields soak damage first. A translucent bubble shows remaining shield. Boost widens the camera field of view slightly. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
+
+Primary fire is a thin laser. The nuclear missile is the power-fantasy button, labeled **טיל גרעיני** on the HUD and on the phone pad. It is a fat glowing rocket. It stays visible for a short flight, then the blast deletes every enemy and tower inside a huge radius. Kills pop in a quick cascade so the wipe reads as about a second of explosions. It does not hurt Shomeret. After firing, the button shows the remaining cooldown.
 
 ## Enemies
 
@@ -61,9 +65,9 @@ Waves spawn outside the camera, staggered about 0.38s apart, 125–170 units fro
 
 | Id | Hebrew | HP | Speed | Score | Behavior |
 | --- | --- | --- | --- | --- | --- |
-| Glint | גלינט | 30 | 34 | 120 | Fast interceptor. Chases with a wide weave. Contact 10. |
-| Nib | ניב | 12 | 44 | 50 | Tiny swarm body. Nearly straight chase. Contact 7. Dies in one shot. |
-| Howler | מיילל | 54 | 22 | 280 | Keeps about 38 units away, strafes, and fires. Shots deal 9. Contact 12. |
+| Glint | גלינט | 30 | 34 | 120 | Small fighter. Flies one straight lane, a flyby, never a circle. Contact 10. |
+| Nib | ניב | 12 | 44 | 50 | Small fighter. Flies one straight lane. Contact 7. Dies in one shot. |
+| Howler | מיילל | 54 | 22 | 280 | Small fighter on a straight lane. Fires while passing. Shots deal 9. Contact 12. No orbit. |
 | Slab | לוח | 140 | 13 | 700 | Slow armored cruiser. Heavy shots deal 16 and are easier to see. Contact 18. |
 | Judge Vorak | הדיין ווראק | 420 | 10 | 1800 | Elite escort. See below. |
 

@@ -71,7 +71,8 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Steer | Mouse (crosshair stays at screen center) or arrow keys |
 | Boost / brake | `W` / `S` |
 | Strafe | `A` / `D` |
-| Shoot | Space or left click. On a phone, hold the round ירי button |
+| Lasers | Space or left click. Thin shots. On a phone, hold ירי |
+| Nuclear missile | Orange טיל גרעיני button, `F`, or right click. Wipes the area, then waits 4s |
 | Phone steer | Large left joystick. A soft aim assist helps while the stick is near center |
 | Pause | `Esc` or `P` |
 | Mute | `M` |

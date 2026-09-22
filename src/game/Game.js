@@ -5,6 +5,7 @@ import {
   COMBO_STEP,
   COMBO_WINDOW,
   ENEMIES,
+  MISSILE,
   PLAYER,
   POOLS,
   POWER,
@@ -17,6 +18,7 @@ import { Sfx } from './audio.js';
 import { bonusHome, buildLayout } from './layout.js';
 import {
   boltGeometry,
+  createMissile,
   createPlayerShip,
   createEnemy,
   createPickup,
@@ -87,6 +89,8 @@ export class Game {
     this.structures = 0;
     this.fireCd = 0;
     this.fireLock = 0;
+    this.missileCd = 0;
+    this.chain = [];
     this.rapidUntil = 0;
     this.spreadUntil = 0;
     this.invuln = 0;
@@ -166,6 +170,8 @@ export class Game {
       stickBase: document.querySelector('.stick-base'),
       stickKnob: document.querySelector('.stick-knob'),
       fireBtn: document.querySelector('#fire-btn'),
+      missileBtn: document.querySelector('#missile-btn'),
+      nukeBtn: document.querySelector('#nuke-btn'),
     };
 
     this.fillText();
@@ -282,6 +288,7 @@ export class Game {
           strafe: Math.random() < 0.5 ? 1 : -1,
           strafeT: 1,
           phase: Math.random() * 10,
+          lane: new THREE.Vector3(),
           flash: 0,
         });
       }
@@ -289,6 +296,7 @@ export class Game {
 
     this.playerBolts = this.makeBolts(POOLS.playerBolts);
     this.enemyBolts = this.makeBolts(POOLS.enemyBolts);
+    this.missiles = this.makeMissiles();
 
     this.pickups = [];
     const pickupTypes = ['rapid', 'spread', 'shield', 'repair'];
@@ -334,6 +342,8 @@ export class Game {
     dom.waveLabel.textContent = T.wave;
     dom.pauseBtn.textContent = T.pause;
     dom.fireBtn.textContent = T.fire;
+    dom.missileBtn.textContent = T.missile;
+    dom.nukeBtn.textContent = T.missile;
     dom.muteBtn.textContent = T.sound;
     dom.resumeBtn.textContent = T.resume;
     dom.restartBtn.textContent = T.restart;
@@ -373,6 +383,10 @@ export class Game {
       }
     });
     window.addEventListener('pointerdown', (event) => {
+      if (event.button === 2) {
+        this.launchMissile();
+        return;
+      }
       if (this.coarse || event.button !== 0) return;
       if (event.target instanceof Element && event.target.closest('button, #touch')) return;
       this.pointer.fire = true;
@@ -387,6 +401,8 @@ export class Game {
     dom.fireBtn.addEventListener('pointerdown', (event) => this.onFireDown(event));
     dom.fireBtn.addEventListener('pointerup', (event) => this.onFireUp(event));
     dom.fireBtn.addEventListener('pointercancel', (event) => this.onFireUp(event));
+    dom.missileBtn.addEventListener('pointerdown', (event) => this.onMissileDown(event));
+    dom.nukeBtn.addEventListener('pointerdown', (event) => this.onMissileDown(event));
     this.canvas.addEventListener('contextmenu', (event) => event.preventDefault());
   }
 
@@ -490,6 +506,13 @@ export class Game {
     this.pointer.fire = false;
   }
 
+  onMissileDown(event) {
+    if (this.state !== 'play') return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.launchMissile();
+  }
+
   smoothStick(dt) {
     const follow = 1 - Math.exp(-14 * dt);
     this.stick.x += (this.stick.tx - this.stick.x) * follow;
@@ -565,6 +588,10 @@ export class Game {
       this.shoot();
       return;
     }
+    if (event.code === 'KeyF' && this.state === 'play') {
+      this.launchMissile();
+      return;
+    }
     if (event.code === 'KeyR' && (this.state === 'dead' || this.state === 'paused')) {
       this.startMission();
       return;
@@ -635,6 +662,126 @@ export class Game {
     return bolts;
   }
 
+  makeMissiles() {
+    const missiles = [];
+    for (let i = 0; i < 3; i += 1) {
+      const mesh = createMissile();
+      mesh.visible = false;
+      this.scene.add(mesh);
+      missiles.push({
+        mesh,
+        alive: false,
+        pos: new THREE.Vector3(),
+        vel: new THREE.Vector3(),
+        life: 0,
+        arm: 0,
+      });
+    }
+    return missiles;
+  }
+
+  launchMissile() {
+    if (this.state !== 'play' || !this.missiles || this.missileCd > 0) return;
+    const missile = this.missiles.find((item) => !item.alive);
+    if (!missile) return;
+    this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
+    const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 8 * PLAYER.visualScale);
+    missile.alive = true;
+    missile.life = MISSILE.life;
+    missile.arm = MISSILE.arm;
+    missile.pos.copy(origin);
+    missile.vel.copy(this.nose).multiplyScalar(MISSILE.speed);
+    missile.mesh.visible = true;
+    missile.mesh.position.copy(origin);
+    missile.mesh.scale.setScalar(MISSILE.visualScale);
+    this.missileCd = MISSILE.cooldown;
+    this.sfx.missile();
+    burstSparks(this.sparks, origin, 0xff7a22, 16, 22, this.nose, 2.8, 1.2);
+  }
+
+  updateMissiles(dt) {
+    if (!this.missiles) return;
+    for (const missile of this.missiles) {
+      if (!missile.alive) continue;
+      missile.life -= dt;
+      missile.arm -= dt;
+      missile.pos.addScaledVector(missile.vel, dt);
+      missile.mesh.position.copy(missile.pos);
+      this.v3.copy(missile.pos).add(missile.vel);
+      missile.mesh.lookAt(this.v3);
+      missile.mesh.scale.setScalar(MISSILE.visualScale);
+      const trail = this.v1.copy(missile.vel).multiplyScalar(-1);
+      if (trail.lengthSq() > 0.001) trail.normalize();
+      if (Math.random() < 0.85) {
+        burstSparks(this.sparks, missile.pos, 0xff6a1a, 2, 14, trail, 2.4, 1.1);
+      }
+
+      let boom = missile.life <= 0 || missile.pos.length() > WORLD.bounds + 20;
+      if (!boom && missile.arm <= 0) {
+        for (const enemy of this.enemies) {
+          if (!enemy.alive) continue;
+          if (missile.pos.distanceTo(enemy.mesh.position) <= MISSILE.hitRadius + enemy.cfg.radius) {
+            boom = true;
+            break;
+          }
+        }
+        if (!boom) {
+          for (const tower of this.towers) {
+            if (!tower.alive) continue;
+            if (missile.pos.distanceTo(tower.mesh.position) <= MISSILE.hitRadius + tower.radius) {
+              boom = true;
+              break;
+            }
+          }
+        }
+      }
+      if (!boom) continue;
+      const pos = missile.pos.clone();
+      missile.alive = false;
+      missile.mesh.visible = false;
+      this.detonateMissile(pos);
+    }
+    this.updateChain();
+  }
+
+  detonateMissile(origin) {
+    this.sfx.missileBoom();
+    this.addShake(1.3);
+    burstSparks(this.sparks, origin, 0xff6a12, 48, 62, null, 6.5, 1.7);
+    burstSparks(this.sparks, origin, 0xfff2c4, 28, 48, null, 4.2, 1.4);
+    spawnRing(this.rings, origin, 0xff7a18, { life: 0.72, grow: 280, scale: 2.4 });
+    spawnRing(this.rings, origin, 0xfff6d2, { life: 0.55, grow: 190, scale: 1.6 });
+    spawnRing(this.rings, origin, 0xff3b2e, { life: 0.48, grow: 120, scale: 1.2 });
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      if (enemy.mesh.position.distanceTo(origin) <= MISSILE.blast + enemy.cfg.radius) {
+        this.damageEnemy(enemy, MISSILE.damage, true);
+      }
+    }
+    for (const tower of this.towers) {
+      if (!tower.alive) continue;
+      if (tower.mesh.position.distanceTo(origin) <= MISSILE.blast + tower.radius) {
+        this.damageTower(tower, MISSILE.damage, true);
+      }
+    }
+  }
+
+  updateChain() {
+    if (!this.chain.length) return;
+    for (let i = this.chain.length - 1; i >= 0; i -= 1) {
+      const event = this.chain[i];
+      if (event.at > this.time) continue;
+      this.chain.splice(i, 1);
+      burstSparks(this.sparks, event.pos, event.color, event.size === 'small' ? 8 : 14, 28, null, event.size === 'big' ? 3.4 : 2.2, 1.3);
+      burstSparks(this.sparks, event.pos, 0xfff6d8, 6, 22, null, 1.8, 1.1);
+      spawnRing(this.rings, event.pos, event.color, {
+        life: 0.36,
+        grow: event.size === 'big' ? 90 : 58,
+        scale: 1.4,
+      });
+    }
+  }
+
   startLoop() {
     const step = (now) => {
       this.raf = requestAnimationFrame(step);
@@ -664,6 +811,7 @@ export class Game {
       return;
     }
     if (this.state === 'dead') {
+      this.updateChain();
       updateSparks(this.sparks, dt);
       updateRings(this.rings, this.camera, dt);
       this.updateStarParallax();
@@ -679,6 +827,7 @@ export class Game {
     this.separateEnemies();
     this.updateTowers(dt, true);
     this.updateBolts(dt);
+    this.updateMissiles(dt);
     this.updatePickups(dt);
     this.checkWaveClear();
     updateSparks(this.sparks, dt);
@@ -763,6 +912,7 @@ export class Game {
     this.edge = Math.max(0, this.edge - dt);
 
     this.fireCd = Math.max(0, this.fireCd - dt);
+    this.missileCd = Math.max(0, this.missileCd - dt);
     if (this.pointer.fire || this.keys.has('Space')) this.shoot();
 
     if (this.time - this.lastHit > PLAYER.shieldDelay && this.shield < PLAYER.shield && this.invuln <= 0) {
@@ -784,7 +934,7 @@ export class Game {
     if (muzzleFlash && muzzleFlash.visible) {
       muzzleFlash.userData.life -= dt;
       const life = Math.max(0, muzzleFlash.userData.life);
-      muzzleFlash.scale.setScalar(8 * (0.4 + life / 0.1));
+      muzzleFlash.scale.setScalar(2.1 * (0.45 + life / 0.08));
       muzzleFlash.material.opacity = 0.95 * (life / 0.1);
       if (life <= 0) muzzleFlash.visible = false;
     }
@@ -812,13 +962,13 @@ export class Game {
       const dir = this.v1.copy(this.nose).applyAxisAngle(this.upV, angle).normalize();
       const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.2 * PLAYER.visualScale);
       this.spawnBolt('player', origin, dir, PLAYER.bulletSpeed, PLAYER.bulletDamage, 0xe8fff8, 1);
-      burstSparks(this.sparks, origin, 0xe8fff8, 28, 32, dir, 3.4);
+      burstSparks(this.sparks, origin, 0xe8fff8, 8, 18, dir, 1.1);
       const muzzleFlash = this.player.mesh.userData.muzzleFlash;
       if (muzzleFlash) {
         muzzleFlash.visible = true;
-        muzzleFlash.userData.life = 0.1;
-        muzzleFlash.material.opacity = 0.95;
-        muzzleFlash.scale.setScalar(8);
+        muzzleFlash.userData.life = 0.08;
+        muzzleFlash.material.opacity = 0.9;
+        muzzleFlash.scale.setScalar(2.1);
       }
     }
     this.sfx.shoot();
@@ -865,6 +1015,18 @@ export class Game {
     restoreMaterials(enemy.mesh.userData.mats);
     if (enemy.mesh.userData.bar) enemy.mesh.userData.bar.group.visible = false;
     if (type === 'vorak') this.showToast(T.enemyNames.vorak);
+    this.assignLane(enemy);
+  }
+
+  assignLane(enemy) {
+    if (enemy.cfg.ai !== 'lane') return;
+    const side = this.v3.set(Math.random() - 0.5, (Math.random() - 0.5) * 0.3, Math.random() - 0.5);
+    if (side.lengthSq() < 0.01) side.set(1, 0, 0);
+    side.normalize();
+    const aim = this.v2.copy(this.player.mesh.position).addScaledVector(side, 14 + Math.random() * 34);
+    enemy.lane.copy(aim).sub(enemy.mesh.position);
+    if (enemy.lane.lengthSq() < 0.01) enemy.lane.set(0, 0, -1);
+    else enemy.lane.normalize();
   }
 
   spawnAnchor() {
@@ -892,7 +1054,11 @@ export class Game {
 
       enemy.phase += dt;
       const desired = this.v2.copy(to);
-      if (enemy.cfg.ai === 'chase') {
+      if (enemy.cfg.ai === 'lane') {
+        if (enemy.lane.lengthSq() < 0.0001) this.assignLane(enemy);
+        desired.copy(enemy.lane);
+        if (enemy.cfg.range > 0 && dist < enemy.cfg.range) this.tryEnemyShot(enemy);
+      } else if (enemy.cfg.ai === 'chase') {
         const side = this.v3.set(-to.z, 0, to.x);
         if (side.lengthSq() < 0.0001) side.set(1, 0, 0);
         side.normalize();
@@ -938,11 +1104,21 @@ export class Game {
         if (dist < enemy.cfg.range) this.tryEnemyShot(enemy);
       }
 
-      const speed = enemy.cfg.ai === 'maul' && enemy.windup > 0 ? enemy.cfg.speed * 0.22 : enemy.cfg.speed;
-      desired.multiplyScalar(speed);
-      enemy.vel.lerp(desired, 1 - Math.exp(-2.8 * dt));
-      pos.addScaledVector(enemy.vel, dt);
-      if (pos.length() > WORLD.bounds - 12) pos.setLength(WORLD.bounds - 12);
+      if (enemy.cfg.ai === 'lane') {
+        enemy.vel.copy(enemy.lane).multiplyScalar(enemy.cfg.speed);
+        pos.addScaledVector(enemy.vel, dt);
+        if (pos.length() > WORLD.bounds - 20) {
+          enemy.lane.negate();
+          enemy.vel.copy(enemy.lane).multiplyScalar(enemy.cfg.speed);
+          pos.addScaledVector(enemy.lane, 36);
+        }
+      } else {
+        const speed = enemy.cfg.ai === 'maul' && enemy.windup > 0 ? enemy.cfg.speed * 0.22 : enemy.cfg.speed;
+        desired.multiplyScalar(speed);
+        enemy.vel.lerp(desired, 1 - Math.exp(-2.8 * dt));
+        pos.addScaledVector(enemy.vel, dt);
+        if (pos.length() > WORLD.bounds - 12) pos.setLength(WORLD.bounds - 12);
+      }
       pos.y = THREE.MathUtils.clamp(pos.y, -100, 140);
 
       if (enemy.cfg.ai === 'maul') {
@@ -1224,16 +1400,16 @@ export class Game {
     this.showToast(PICKUP_TEXT[pickup.type]);
   }
 
-  damageEnemy(enemy, amount) {
+  damageEnemy(enemy, amount, quiet) {
     if (!enemy.alive || this.state !== 'play') return;
     enemy.hp -= amount;
     enemy.flash = 0.08;
     flashMaterials(enemy.mesh.userData.mats);
-    burstSparks(this.sparks, enemy.mesh.position, 0xfff6d8, 7, 18, null);
-    if (enemy.hp <= 0) this.killEnemy(enemy);
+    if (quiet !== true) burstSparks(this.sparks, enemy.mesh.position, 0xfff6d8, 7, 18, null);
+    if (enemy.hp <= 0) this.killEnemy(enemy, quiet === true);
   }
 
-  killEnemy(enemy) {
+  killEnemy(enemy, quiet = false) {
     if (!enemy.alive) return;
     enemy.alive = false;
     const pos = enemy.mesh.position.clone();
@@ -1243,23 +1419,32 @@ export class Game {
     this.kills += 1;
     this.addScore(enemy.cfg.score, pos, true);
     const size = enemy.type === 'vorak' || enemy.type === 'slab' ? 'big' : enemy.type === 'nib' ? 'small' : 'mid';
-    this.fxBoom(pos, enemy.cfg.color, size);
-    this.addShake(enemy.type === 'vorak' ? 0.85 : enemy.type === 'slab' ? 0.48 : 0.16);
-    if (enemy.type === 'vorak') this.sfx.bigBoom();
-    else this.sfx.explode();
+    if (!quiet) {
+      this.fxBoom(pos, enemy.cfg.color, size);
+      this.addShake(enemy.type === 'vorak' ? 0.85 : enemy.type === 'slab' ? 0.48 : 0.16);
+      if (enemy.type === 'vorak') this.sfx.bigBoom();
+      else this.sfx.explode();
+    } else {
+      this.chain.push({
+        at: this.time + Math.min(0.5, this.chain.length * 0.045),
+        pos,
+        color: enemy.cfg.color,
+        size,
+      });
+    }
     if (Math.random() < enemy.cfg.drop) this.spawnPickup(pos);
   }
 
-  damageTower(tower, amount) {
+  damageTower(tower, amount, quiet) {
     if (!tower.alive || this.state !== 'play') return;
     tower.hp -= amount;
     tower.flash = 0.08;
     flashMaterials(tower.mesh.userData.mats);
-    burstSparks(this.sparks, tower.mesh.position, 0xfff6d8, 7, 18, null);
-    if (tower.hp <= 0) this.killTower(tower);
+    if (quiet !== true) burstSparks(this.sparks, tower.mesh.position, 0xfff6d8, 7, 18, null);
+    if (tower.hp <= 0) this.killTower(tower, quiet === true);
   }
 
-  killTower(tower) {
+  killTower(tower, quiet = false) {
     if (!tower.alive) return;
     tower.alive = false;
     const pos = tower.mesh.position.clone();
@@ -1268,10 +1453,19 @@ export class Game {
     this.structures += 1;
     this.addScore(tower.score, pos, true);
     const size = tower.type === 'silo' ? 'big' : tower.type === 'crate' ? 'small' : 'mid';
-    this.fxBoom(pos, tower.color, size);
-    this.addShake(tower.type === 'crate' ? 0.1 : 0.24);
-    if (tower.type === 'crate') this.sfx.pop();
-    else if (tower.type !== 'silo') this.sfx.explode();
+    if (!quiet) {
+      this.fxBoom(pos, tower.color, size);
+      this.addShake(tower.type === 'crate' ? 0.1 : 0.24);
+      if (tower.type === 'crate') this.sfx.pop();
+      else if (tower.type !== 'silo') this.sfx.explode();
+    } else {
+      this.chain.push({
+        at: this.time + Math.min(0.5, this.chain.length * 0.045),
+        pos,
+        color: tower.color,
+        size,
+      });
+    }
     if (tower.type === 'silo') this.blast(pos, TOWERS.silo.blast, TOWERS.silo.blastDamage);
   }
 
@@ -1329,6 +1523,12 @@ export class Game {
   onDeath() {
     if (this.state === 'dead') return;
     this.state = 'dead';
+    if (this.missiles) {
+      for (const missile of this.missiles) {
+        missile.alive = false;
+        missile.mesh.visible = false;
+      }
+    }
     this.player.mesh.visible = false;
     this.bubble.visible = false;
     const pos = this.player.mesh.position.clone();
@@ -1603,7 +1803,16 @@ export class Game {
     const parts = [];
     if (rapidLeft > 0) parts.push(`${T.weaponRapid} ${Math.ceil(rapidLeft)}`);
     if (spreadLeft > 0) parts.push(`${T.weaponSpread} ${Math.ceil(spreadLeft)}`);
-    this.dom.weapon.textContent = parts.length ? parts.join(' · ') : `${T.weapon}: ${T.weaponNormal}`;
+    if (!parts.length) parts.push(`${T.weapon}: ${T.weaponNormal}`);
+    parts.push(this.missileCd > 0 ? `${T.missile} ${Math.ceil(this.missileCd)}` : T.missileReady);
+    this.dom.weapon.textContent = parts.join(' · ');
+    const cooling = this.missileCd > 0;
+    const missileLabel = cooling ? `${T.missile} ${Math.ceil(this.missileCd)}` : T.missile;
+    for (const button of [this.dom.missileBtn, this.dom.nukeBtn]) {
+      if (!button) continue;
+      button.classList.toggle('cooling', cooling);
+      button.textContent = missileLabel;
+    }
     this.dom.flight.textContent = this.boosting ? T.boost : this.braking ? T.brake : T.cruise;
     this.dom.edge.classList.toggle('show', this.edge > 0);
   }
@@ -1620,6 +1829,7 @@ export class Game {
     document.body.classList.toggle('playing', playing);
     document.body.classList.toggle('touch', this.coarse);
     this.dom.touch.hidden = !(this.coarse && playing);
+    this.dom.nukeBtn.hidden = !playing;
   }
 
   openOverlay(mode) {
@@ -1731,6 +1941,8 @@ export class Game {
     this.time = 0;
     this.fireCd = 0;
     this.fireLock = 0.45;
+    this.missileCd = 0;
+    this.chain = [];
     this.rapidUntil = 0;
     this.spreadUntil = 0;
     this.invuln = 0;
@@ -1767,6 +1979,12 @@ export class Game {
       if (enemy.mesh.userData.bar) enemy.mesh.userData.bar.group.visible = false;
     }
     for (const bolt of this.playerBolts.concat(this.enemyBolts)) this.killBolt(bolt);
+    if (this.missiles) {
+      for (const missile of this.missiles) {
+        missile.alive = false;
+        missile.mesh.visible = false;
+      }
+    }
     for (const pickup of this.pickups) {
       pickup.alive = false;
       pickup.mesh.visible = false;
@@ -1791,6 +2009,7 @@ export class Game {
     this.syncVisibility();
     this.syncHud();
     this.updateMenuBest();
+    if (next === 'play') this.showToast(T.missileReady);
   }
 
   readBest() {
