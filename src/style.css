@@ -170,6 +170,7 @@ button.primary {
 }
 
 button.primary:hover, button.tiny:hover { filter: brightness(1.08); }
+button.primary.battle { background: #ffb15a; color: #2a1408; }
 
 button.ghost {
   background: transparent;
