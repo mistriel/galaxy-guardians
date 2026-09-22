@@ -217,6 +217,7 @@ export class Game {
       groundRetreat: document.querySelector('#ground-retreat'),
       groundBack: document.querySelector('#ground-back'),
       groundSpace: document.querySelector('#ground-space'),
+      worldFade: document.querySelector('#world-fade'),
       groundHoldLabel: document.querySelector('#ground-hold-label'),
       groundCaptureLabel: document.querySelector('#ground-capture-label'),
       groundTouch: document.querySelector('#ground-touch'),
@@ -250,6 +251,8 @@ export class Game {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.12;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(WORLD.background);
@@ -2879,7 +2882,18 @@ export class Game {
     this.closeGroundPick();
     this.state = 'ground';
     this.ground.start(worldId);
+    const world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
+    this.fadeWorld(`${T.groundWelcome} ${world.name}`);
     this.syncVisibility();
+  }
+
+  fadeWorld(text) {
+    const el = this.dom.worldFade;
+    if (!el) return;
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(this.fadeTimer);
+    this.fadeTimer = setTimeout(() => el.classList.remove('show'), 780);
   }
 
   returnToSpace() {
@@ -2892,6 +2906,7 @@ export class Game {
       for (const portal of this.portals) portal.armed = false;
     }
     this.state = this.spaceLive ? 'play' : 'menu';
+    this.fadeWorld(T.groundWelcomeBack);
     this.syncVisibility();
   }
 
