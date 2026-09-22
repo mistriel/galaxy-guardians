@@ -289,6 +289,8 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.05; color: v
 .help ul { margin: 0; padding: 0 1.1rem 0 0; color: var(--ink); }
 .help li { margin: 3px 0; }
 .menu-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.menu-actions .world-open[data-world="forest"] { border-color: #7dffb2; }
+.menu-actions .world-open[data-world="desert"] { border-color: #ffb15a; }
 #hangar { margin-top: 12px; }
 #hangar h2 { margin: 0 0 4px; font-size: 1.05rem; }
 #meta-points { margin: 0 0 8px; color: var(--amber); font-weight: 800; }

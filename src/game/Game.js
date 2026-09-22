@@ -219,6 +219,8 @@ export class Game {
       boostBtn: document.querySelector('#boost-btn'),
       boostTouch: document.querySelector('#boost-touch'),
       groundMenu: document.querySelector('#ground-menu-btn'),
+      openForest: document.querySelector('#open-forest'),
+      openDesert: document.querySelector('#open-desert'),
       groundPick: document.querySelector('#ground-pick'),
       groundTitle: document.querySelector('#ground-title'),
       groundBlurb: document.querySelector('#ground-blurb'),
@@ -448,6 +450,8 @@ export class Game {
     dom.weapon.textContent = `${T.weapon}: ${T.weaponNormal}`;
     dom.flight.textContent = T.cruise;
     dom.groundMenu.textContent = T.groundBattles;
+    if (dom.openForest) dom.openForest.textContent = T.openForest;
+    if (dom.openDesert) dom.openDesert.textContent = T.openDesert;
     dom.groundTitle.textContent = T.groundBattles;
     dom.groundBlurb.textContent = T.groundBlurb;
     dom.groundClose.textContent = T.groundClose;
@@ -484,6 +488,8 @@ export class Game {
     dom.restartBtn.addEventListener('click', () => this.startMission());
     dom.menuBtn.addEventListener('click', () => this.showMenu());
     dom.groundMenu.addEventListener('click', () => this.openGroundPick());
+    if (dom.openForest) dom.openForest.addEventListener('click', () => this.startGround('forest'));
+    if (dom.openDesert) dom.openDesert.addEventListener('click', () => this.startGround('desert'));
     dom.groundClose.addEventListener('click', () => this.startGround(this.ground?.world?.id || 'forest'));
     dom.groundBack.addEventListener('click', () => this.exitGround());
     dom.groundSpace.addEventListener('click', () => this.returnToSpace());
