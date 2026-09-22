@@ -41,6 +41,29 @@ export const MISSILE = {
   visualScale: 2.8,
 };
 
+/** Friendly escorts. One shared scale, clearly larger than Shomeret. */
+export const ALLY = {
+  count: 4,
+  hp: 220,
+  speed: 70,
+  radius: 6.4,
+  visualScale: 6.8,
+  fireEvery: 0.42,
+  shotDamage: 30,
+  color: 0x2ee6c7,
+};
+
+/** Capitals. Both sides use the same huge scale. */
+export const CARRIER = {
+  hp: 780,
+  enemyHp: 640,
+  radius: 16,
+  visualScale: 3.8,
+  score: 2400,
+  colorAlly: 0x7af6ee,
+  colorEnemy: 0xff4d3a,
+};
+
 export const POWER = {
   duration: 8,
   shield: 48,
@@ -194,7 +217,7 @@ export const POOLS = {
   slab: 6,
   vorak: 2,
   playerBolts: 72,
-  enemyBolts: 48,
+  enemyBolts: 72,
   pickups: 14,
   sparks: 240,
   rings: 18,
