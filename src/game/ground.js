@@ -278,28 +278,47 @@ function makeDestroyer() {
   return root;
 }
 
-/** Combat car: cabin, four wheels, and a roof gun that fires soft light. */
-function makeGunCar(accent, foe = false) {
+const CAR_GUNS = {
+  machine: { cd: 0.2, radius: 0.1, dur: 0.18, arc: 0.15, range: 9, spread: 1.1, hold: 0.08, splash: 1.6, kick: -0.06 },
+  cannon: { cd: 0.78, radius: 0.34, dur: 0.4, arc: 1.5, range: 14, spread: 1.8, hold: 0.4, splash: 4.4, kick: -0.22 },
+  mortar: { cd: 1.05, radius: 0.28, dur: 0.72, arc: 5.4, range: 16, spread: 3.2, hold: 0.28, splash: 4.6, kick: -0.42 },
+};
+
+/** Combat car: cabin, four wheels, and a mounted gun — machine, cannon, or mortar. */
+function makeGunCar(accent, foe = false, gun = 'machine') {
   const root = new THREE.Group();
   const paint = foe ? squadTint(accent, true) : accent;
   const bed = mat(paint, paint, foe ? 0.28 : 0.42);
   const cab = mat(foe ? 0x2a2236 : FRIENDLY, foe ? 0x120c18 : 0x243040, 0.22);
   const dark = mat(0x1b2430, 0x080c12, 0.15);
   const glass = mat(0xc5dcff, 0x1a4ea8, 0.55);
+  const brass = mat(0xffd56a, 0x8a5a10, 0.45);
   addBox(root, 1.85, 0.28, 3.15, bed, 0, 0.36, 0);
   addBox(root, 1.2, 0.62, 1.05, cab, 0, 0.78, 0.72);
   addBox(root, 0.72, 0.26, 0.5, glass, 0, 0.96, 0.28);
   const turret = new THREE.Group();
   turret.position.set(0, 0.7, -0.45);
   root.add(turret);
-  const barrel = addCyl(turret, 0.07, 0.1, 1.35, cab, 0, 0.14, -0.55);
-  barrel.rotation.x = Math.PI / 2;
   const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, 0.14, -1.35);
+  if (gun === 'cannon') {
+    const barrel = addCyl(turret, 0.14, 0.18, 1.55, brass, 0, 0.18, -0.55);
+    barrel.rotation.x = Math.PI / 2;
+    muzzle.position.set(0, 0.18, -1.45);
+  } else if (gun === 'mortar') {
+    const barrel = addCyl(turret, 0.16, 0.2, 0.9, brass, 0, 0.32, -0.1);
+    barrel.rotation.x = 1.15;
+    muzzle.position.set(0, 0.62, -0.62);
+  } else {
+    for (const x of [-0.11, 0.11]) {
+      const barrel = addCyl(turret, 0.045, 0.06, 1.2, cab, x, 0.14, -0.45);
+      barrel.rotation.x = Math.PI / 2;
+    }
+    muzzle.position.set(0, 0.14, -1.15);
+  }
   turret.add(muzzle);
   const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.18, 8, 6),
-    new THREE.MeshBasicMaterial({ color: foe ? paint : 0xfff1b8, transparent: true, opacity: 0 }),
+    new THREE.SphereGeometry(gun === 'machine' ? 0.14 : 0.22, 8, 6),
+    new THREE.MeshBasicMaterial({ color: gun === 'mortar' ? 0xffb0e0 : gun === 'cannon' ? 0xffd56a : (foe ? paint : 0xfff1b8), transparent: true, opacity: 0 }),
   );
   flash.position.copy(muzzle.position);
   turret.add(flash);
@@ -313,6 +332,7 @@ function makeGunCar(accent, foe = false) {
   root.userData.muzzle = muzzle;
   root.userData.flash = flash;
   root.userData.wheels = wheels;
+  root.userData.gun = gun;
   return root;
 }
 
@@ -725,7 +745,7 @@ export class GroundBattle {
   constructor(sfx) {
     this.sfx = sfx;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 420);
+    this.camera = new THREE.PerspectiveCamera(56, 1, 0.1, 420);
     this.look = new THREE.Vector3(0, 1, -12);
     this.camera.position.set(0, 24, 34);
     this.hemi = new THREE.HemisphereLight(0xfff4e0, 0x1a2838, 0.95);
@@ -806,31 +826,37 @@ export class GroundBattle {
     this.shake = 0;
     this.active = true;
     this.buildField();
-    [-11, 0, 11].forEach((x, i) => this.spawn('artillery', x, 0.05 + i * 0.08, { speed: 0, laneFollow: 0.15, bob: 0, z: 9 }));
-    [[-6, 8], [6, 10]].forEach(([x, z], i) => this.spawn('tank', x, 0.1 + i * 0.2, { z, speed: 6.5 }));
-    [[-8, 5.4], [-2, 6.5], [3.5, 7.5], [8.2, 5.8]].forEach(([x, z], i) => this.spawn('gunCar', x, 0.08 + i * 0.1, {
+    [-12, 0, 12].forEach((x, i) => this.spawn('artillery', x, 0.05 + i * 0.08, { speed: 0, laneFollow: 0.15, bob: 0, z: 10 }));
+    [[-9, 9.2], [-3, 10.4], [3.2, 9.6], [9, 8.8]].forEach(([x, z], i) => this.spawn('tank', x, 0.08 + i * 0.1, { z, speed: 5.8 }));
+    const friendGuns = ['machine', 'cannon', 'mortar', 'machine', 'cannon', 'machine'];
+    [[-11, 5.2], [-6.5, 6.4], [-2, 7.2], [2.4, 6.8], [6.6, 5.6], [11, 4.8]].forEach(([x, z], i) => this.spawn('gunCar', x, 0.05 + i * 0.05, {
       z,
-      speed: 7.2,
-      shotCd: 0.15 + i * 0.18,
+      speed: 6.2,
+      shotCd: 0.08 + i * 0.1,
+      gun: friendGuns[i],
     }));
-    [[-5.2, -13.2], [5.4, -12.4]].forEach(([x, z], i) => this.spawn('foeCar', x, 0.16 + i * 0.12, {
+    const foeGuns = ['cannon', 'machine', 'mortar', 'machine'];
+    [[-9.5, -14.2], [-3.2, -12.6], [3.4, -13.5], [9.6, -12.2]].forEach(([x, z], i) => this.spawn('foeCar', x, 0.1 + i * 0.06, {
       z,
-      speed: -2.6,
-      shotCd: 0.22 + i * 0.2,
+      speed: -2.1,
+      shotCd: 0.12 + i * 0.1,
+      gun: foeGuns[i],
     }));
-    for (let i = 0; i < 18; i += 1) {
-      const col = (i % 9) - 4;
-      const row = Math.floor(i / 9);
-      this.spawn('infantry', col * 2.15, 0.04 * (i % 5), {
-        z: 1.2 + row * 2.6,
-        speed: 3.2,
-        shotCd: 0.08 + (i % 6) * 0.14,
+    for (let i = 0; i < 36; i += 1) {
+      const col = (i % 12) - 5.5;
+      const row = Math.floor(i / 12);
+      this.spawn('infantry', col * 1.65, 0.02 * (i % 6), {
+        z: 0.2 + row * 2.05,
+        speed: 2.6,
+        shotCd: 0.05 + (i % 8) * 0.08,
       });
     }
-    for (let i = 0; i < 16; i += 1) {
-      this.spawn('defender', (i - 7.5) * 1.7, 0.03 * (i % 4), {
-        z: -11 - (i % 3) * 1.5,
-        shotCd: 0.12 + (i % 5) * 0.16,
+    for (let i = 0; i < 30; i += 1) {
+      const col = (i % 10) - 4.5;
+      const row = Math.floor(i / 10);
+      this.spawn('defender', col * 1.8, 0.02 * (i % 5), {
+        z: -11.2 - row * 1.55,
+        shotCd: 0.08 + (i % 7) * 0.1,
       });
     }
     this.syncHud();
@@ -944,8 +970,8 @@ export class GroundBattle {
     let mesh;
     if (kind === 'artillery') mesh = makeArtillery(this.world.accent);
     else if (kind === 'tank') mesh = makeTank(this.world.accent);
-    else if (kind === 'gunCar') mesh = makeGunCar(this.world.accent, false);
-    else if (kind === 'foeCar') mesh = makeGunCar(this.world.enemy, true);
+    else if (kind === 'gunCar') mesh = makeGunCar(this.world.accent, false, extra.gun || 'machine');
+    else if (kind === 'foeCar') mesh = makeGunCar(this.world.enemy, true, extra.gun || 'machine');
     else if (kind === 'infantry') mesh = makeInfantry(this.world.accent, false);
     else if (kind === 'defender') mesh = makeInfantry(this.world.enemy, true);
     else if (kind === 'destroyer') mesh = makeDestroyer();
@@ -977,6 +1003,7 @@ export class GroundBattle {
       laneFollow: extra.laneFollow ?? follows[kind] ?? 1,
       special: kind === 'destroyer' || kind === 'lantern' || kind === 'drum' || kind === 'crown',
       shotCd: extra.shotCd ?? 0.4 + Math.random() * 0.5,
+      gun: extra.gun || mesh.userData.gun || 'machine',
       attackT: 0,
     };
     this.units.push(unit);
@@ -989,18 +1016,20 @@ export class GroundBattle {
     this.phaseT = 0;
     if (id === 'armor') {
       [-12, -2, 8].forEach((x, i) => this.spawn('tank', x, 0.15 + i * 0.45));
-      [-8, 3, 13].forEach((x, i) => this.spawn('gunCar', x, 0.28 + i * 0.4));
+      ['machine', 'cannon', 'mortar'].forEach((gun, i) => this.spawn('gunCar', -8 + i * 8, 0.22 + i * 0.2, { gun }));
     } else if (id === 'infantry') {
       for (const unit of this.units) {
         if (unit.garrison && unit.kind === 'infantry') unit.speed = 12;
       }
-      for (let i = 0; i < 12; i += 1) {
-        const col = (i % 6) - 2.5;
-        const row = Math.floor(i / 6);
-        this.spawn('infantry', col * 2.4, row * 0.2, { z: 12 + row * 2.2, speed: 6 });
+      for (let i = 0; i < 24; i += 1) {
+        const col = (i % 8) - 3.5;
+        const row = Math.floor(i / 8);
+        this.spawn('infantry', col * 2.1, row * 0.12, { z: 12 + row * 1.8, speed: 5.4 });
       }
-      for (let i = 0; i < 8; i += 1) {
-        this.spawn('defender', (i - 3.5) * 2.2, 0.08, { z: -16 - (i % 2) });
+      for (let i = 0; i < 18; i += 1) {
+        const col = (i % 9) - 4;
+        const row = Math.floor(i / 9);
+        this.spawn('defender', col * 1.9, 0.06, { z: -16 - row * 1.4 });
       }
     } else if (id === 'special') {
       this.spawn('destroyer', 0, 0.18);
@@ -1107,26 +1136,31 @@ export class GroundBattle {
       from.set(unit.mesh.position.x, 1.2, unit.mesh.position.z);
     }
     const forward = unit.kind === 'foeCar' ? 1 : -1;
-    const color = unit.kind === 'foeCar' ? this.world.enemy : this.world.accent;
+    const gun = CAR_GUNS[unit.gun] || CAR_GUNS.machine;
+    const color = unit.gun === 'cannon'
+      ? 0xffd56a
+      : unit.gun === 'mortar'
+        ? 0xffb0e0
+        : (unit.kind === 'foeCar' ? this.world.enemy : this.world.accent);
     this.launchShell({
       from,
       to: new THREE.Vector3(
-        unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 2.4,
-        0.95,
-        unit.z + forward * (11 + Math.random() * 6),
+        unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * gun.spread,
+        unit.gun === 'mortar' ? 0.4 : 0.95,
+        unit.z + forward * (gun.range + Math.random() * 4),
       ),
       color,
-      radius: 0.22,
-      dur: 0.28,
-      holdHit: unit.kind === 'foeCar' ? 0 : 0.35,
-      splash: 3.2,
-      arc: 0.35,
+      radius: gun.radius,
+      dur: gun.dur,
+      holdHit: unit.kind === 'foeCar' ? 0 : gun.hold,
+      splash: gun.splash,
+      arc: gun.arc,
       silentTubes: true,
     });
     const flash = unit.mesh.userData.flash;
     if (flash) flash.material.opacity = 1;
     const turret = unit.mesh.userData.turret;
-    if (turret) turret.rotation.x = -0.16;
+    if (turret) turret.rotation.x = gun.kick;
     if (Math.random() < 0.45) {
       this.sfx.blip?.({ freq: unit.kind === 'foeCar' ? 160 : 240, dur: 0.06, type: 'square', vol: 0.04, slide: -30 });
     }
@@ -1292,7 +1326,8 @@ export class GroundBattle {
       if (car && this.outcome !== 'retreat' && unit.age > 0.3) {
         unit.shotCd -= dt * (pushing ? 1.2 : 1);
         if (unit.shotCd <= 0) {
-          unit.shotCd = 0.48 + (Math.abs(unit.x) % 0.22);
+          const gun = CAR_GUNS[unit.gun] || CAR_GUNS.machine;
+          unit.shotCd = gun.cd + (Math.abs(unit.x) % 0.12);
           this.fireCar(unit);
         }
         const turret = unit.mesh.userData.turret;
@@ -1414,7 +1449,7 @@ export class GroundBattle {
 
   updateCamera(dt) {
     const aims = {
-      artillery: { pos: [8.5, 6.1, 10.5], look: [0, 1.35, -5] },
+      artillery: { pos: [14, 10.5, 18], look: [0, 1.2, -3] },
       armor: { pos: [7, 7.2, 12], look: [0, 1.5, -10] },
       infantry: { pos: [5, 5.6, 8.5], look: [0, 1.35, -4] },
       special: { pos: [-6, 12, 18], look: [0, 2.2, -6] },
