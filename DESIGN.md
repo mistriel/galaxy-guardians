@@ -9,7 +9,7 @@ The menu shows שומרת and offers both יציאה לסיור and קרבות �
 1. Artillery lobs light shells and softens the line.
 2. Tanks and gun-cars (קרון ירי) roll in, staggered, and break the barricades.
 3. Infantry floods through and captures the flag.
-4. A world special drops in for the climax (אורן הנוצץ, תוף המדבר, or כתר הקרח).
+4. **משמיד** drops in for the climax. It is a turquoise tank wearing heavy cannons, a rack of artillery tubes, and fat glowing nuclear guns — the joke is every gun in the world on one hull. It slams onto the field, lobs a ground barrage (no space trails), and flattens a wide stretch of barricades. The world landmark (אורן הנוצץ, תוף המדבר, or כתר הקרח) still arrives off to the side. The Hebrew label is משמיד.
 5. The beat ends in ניצחון, or נסיגה if you choose to pull back.
 
 A and D (or the phone side buttons) slide the push. דחיפה or Space hurries the current step. The flight sortie is unchanged.

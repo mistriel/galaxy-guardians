@@ -76,10 +76,9 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Allies | Eight large escorts fight with you. נושאת מטוסים relaunches them. נושאת האויב launches triangle fighters |
 | Phone | Left stick moves (up turbo, down brake, sideways strafe). Right stick aims |
 | Hangar | מספנה spends נקודות on נץ, עוגן, מניפה, and מחט. שומרת and the thick laser stay free |
-| Mute | `M`, or קול on the HUD and the menu |
-| Ground battles | קרבות קרקע, then a world. Artillery, armor and gun-cars, infantry, then a special. נסיגה pulls back |
+| Ground battles | קרבות קרקע, then a world. Artillery, armor and gun-cars, infantry, then משמיד — a turquoise tank with every gun on it. נסיגה pulls back |
 | Pause | `Esc` or `P` |
-| Mute | `M` |
+| Mute | `M`, or קול on the HUD and the menu |
 | Restart after game over | Enter, `R`, or the on-screen button |
 
 The ship always cruises forward. Point the mouse away from the center to turn. Fire as soon as the mission starts: a tunnel of destructible crates sits straight ahead.
