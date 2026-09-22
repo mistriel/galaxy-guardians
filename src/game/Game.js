@@ -711,7 +711,6 @@ export class Game {
         pos: new THREE.Vector3(),
         vel: new THREE.Vector3(),
         life: 0,
-        arm: 0,
       });
     }
     return missiles;
@@ -725,7 +724,6 @@ export class Game {
     const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 8 * PLAYER.visualScale);
     missile.alive = true;
     missile.life = MISSILE.life;
-    missile.arm = MISSILE.arm;
     missile.pos.copy(origin);
     missile.vel.copy(this.nose).multiplyScalar(MISSILE.speed);
     missile.mesh.visible = true;
@@ -733,7 +731,7 @@ export class Game {
     missile.mesh.scale.setScalar(MISSILE.visualScale);
     this.missileCd = MISSILE.cooldown;
     this.sfx.missile();
-    burstSparks(this.sparks, origin, 0xff7a22, 16, 22, this.nose, 2.8, 1.2);
+    burstSparks(this.sparks, origin, 0xff7a22, 6, 14, this.nose, 0.7, 0.8);
   }
 
   updateMissiles(dt) {
@@ -741,7 +739,6 @@ export class Game {
     for (const missile of this.missiles) {
       if (!missile.alive) continue;
       missile.life -= dt;
-      missile.arm -= dt;
       missile.pos.addScaledVector(missile.vel, dt);
       missile.mesh.position.copy(missile.pos);
       this.v3.copy(missile.pos).add(missile.vel);
@@ -749,34 +746,12 @@ export class Game {
       missile.mesh.scale.setScalar(MISSILE.visualScale);
       const trail = this.v1.copy(missile.vel).multiplyScalar(-1);
       if (trail.lengthSq() > 0.001) trail.normalize();
-      if (Math.random() < 0.85) {
-        burstSparks(this.sparks, missile.pos, 0xff6a1a, 2, 14, trail, 2.4, 1.1);
+      if (Math.random() < 0.35) {
+        burstSparks(this.sparks, missile.pos, 0xff6a1a, 1, 6, trail, 0.45, 0.7);
       }
 
-      let boom = missile.life <= 0 || missile.pos.length() > WORLD.bounds + 20;
-      if (!boom && missile.arm <= 0) {
-        for (const enemy of this.enemies) {
-          if (!enemy.alive) continue;
-          if (missile.pos.distanceTo(enemy.mesh.position) <= MISSILE.hitRadius + enemy.cfg.radius) {
-            boom = true;
-            break;
-          }
-        }
-        if (!boom) {
-          for (const tower of this.towers) {
-            if (!tower.alive) continue;
-            if (missile.pos.distanceTo(tower.mesh.position) <= MISSILE.hitRadius + tower.radius) {
-              boom = true;
-              break;
-            }
-          }
-        }
-        const foe = this.carriers && this.carriers.enemy;
-        if (!boom && foe && foe.alive && missile.pos.distanceTo(foe.mesh.position) <= MISSILE.hitRadius + foe.radius) {
-          boom = true;
-        }
-      }
-      if (!boom) continue;
+      // Lifetime only. Passing a ship, or leaving the arena, must not cut the flight short.
+      if (missile.life > 0) continue;
       const pos = missile.pos.clone();
       missile.alive = false;
       missile.mesh.visible = false;
@@ -790,9 +765,9 @@ export class Game {
     this.addShake(1.3);
     burstSparks(this.sparks, origin, 0xff6a12, 48, 62, null, 6.5, 1.7);
     burstSparks(this.sparks, origin, 0xfff2c4, 28, 48, null, 4.2, 1.4);
-    spawnRing(this.rings, origin, 0xff7a18, { life: 0.72, grow: 280, scale: 2.4 });
-    spawnRing(this.rings, origin, 0xfff6d2, { life: 0.55, grow: 190, scale: 1.6 });
-    spawnRing(this.rings, origin, 0xff3b2e, { life: 0.48, grow: 120, scale: 1.2 });
+    spawnRing(this.rings, origin, 0xff7a18, { life: 1.05, grow: 1680, scale: 4 });
+    spawnRing(this.rings, origin, 0xfff6d2, { life: 0.85, grow: 1120, scale: 3 });
+    spawnRing(this.rings, origin, 0xff3b2e, { life: 0.7, grow: 720, scale: 2 });
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
       if (enemy.mesh.position.distanceTo(origin) <= MISSILE.blast + enemy.cfg.radius) {

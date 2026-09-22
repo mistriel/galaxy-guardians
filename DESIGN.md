@@ -53,11 +53,11 @@ The play space is a sphere of radius **430**. Hitting the edge shows **קצה ה
 | Shot beam | 2.7 thick, about 14 long, with a large muzzle flash |
 | Shot speed / life | 145 u/s, 1.15s |
 | Fire interval | 0.15s (0.075s with rapid fire) |
-| Missile | Speed 210. It stays in flight for at least 0.38s so the rocket reads, then detonates by 0.72s. Blast radius 220 erases everything inside it. Cooldown 4s |
+| Missile | Speed 250. Lifetime 6.4s, so it travels about 1600 units before it blooms. No contact fuse and no arena-edge fuse. Blast radius 1900 still clears the sector it crossed. Cooldown 4s |
 
 Shields soak damage first. A translucent bubble shows remaining shield. Holding טורבו jumps the ship to 240 and opens the view so the rush reads. A normal shot deals 36, so glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley.
 
-Primary fire is a thick beam. The nuclear missile is the power-fantasy button, labeled **טיל גרעיני** on the HUD and on the phone pad. It is a fat glowing rocket. It stays visible for a short flight, then the blast deletes every enemy and tower inside a huge radius. Kills pop in a quick cascade so the wipe reads as about a second of explosions. It does not hurt Shomeret. After firing, the button shows the remaining cooldown.
+Primary fire is a thick beam. The nuclear missile is the power-fantasy button, labeled **טיל גרעיני** on the HUD and on the phone pad. It is a long thin dart: a narrow body, a nose cone, and small fins, drawn at scale 1 so it stays a needle. It does not explode when it passes a ship. It flies for 6.4 seconds (about 1600 units), then the gold and orange bloom deletes every enemy and tower inside that blast. It does not hurt Shomeret or the escorts. After firing, the button shows the remaining cooldown.
 
 ## Enemies
 
