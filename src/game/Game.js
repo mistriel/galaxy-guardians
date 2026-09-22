@@ -1913,11 +1913,11 @@ export class Game {
       const squad = types.slice(i, i + squadSize);
       const sway = ((i / squadSize) % 7) - 3;
       const dir = nose.clone()
-        .addScaledVector(right, sway * 0.32)
-        .addScaledVector(lift, (Math.random() - 0.45) * 0.16);
+        .addScaledVector(right, sway * 0.16)
+        .addScaledVector(lift, (Math.random() - 0.45) * 0.1);
       if (dir.lengthSq() < 0.04) dir.copy(nose);
       dir.normalize();
-      const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 78 + Math.random() * 28);
+      const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 102 + Math.random() * 22);
       center.y = THREE.MathUtils.clamp(center.y, -36, 64);
       if (center.length() > WORLD.bounds - 90) center.setLength(WORLD.bounds - 90);
       const spin = (i / squadSize) % 2 === 0 ? 1 : -1;
