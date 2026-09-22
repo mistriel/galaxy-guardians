@@ -17,6 +17,7 @@ import {
   waveSpec,
 } from './balance.js';
 import { Sfx } from './audio.js';
+import { GROUND_WORLDS, GroundBattle } from './ground.js';
 import { bonusHome, buildLayout } from './layout.js';
 import {
   boltGeometry,
@@ -79,6 +80,9 @@ export class Game {
     this.firePointer = null;
     this.boostPointer = null;
     this.boostHeld = false;
+    this.groundPush = false;
+    this.groundLeft = false;
+    this.groundRight = false;
     this.nudgeX = 0;
     this.nudgeY = 0;
     this.state = 'menu';
@@ -180,6 +184,21 @@ export class Game {
       nukeBtn: document.querySelector('#nuke-btn'),
       boostBtn: document.querySelector('#boost-btn'),
       boostTouch: document.querySelector('#boost-touch'),
+      groundMenu: document.querySelector('#ground-menu-btn'),
+      groundPick: document.querySelector('#ground-pick'),
+      groundTitle: document.querySelector('#ground-title'),
+      groundBlurb: document.querySelector('#ground-blurb'),
+      groundWorlds: document.querySelector('#ground-worlds'),
+      groundClose: document.querySelector('#ground-close'),
+      groundHud: document.querySelector('#ground-hud'),
+      groundPushBtn: document.querySelector('#ground-push'),
+      groundRetreat: document.querySelector('#ground-retreat'),
+      groundBack: document.querySelector('#ground-back'),
+      groundHoldLabel: document.querySelector('#ground-hold-label'),
+      groundCaptureLabel: document.querySelector('#ground-capture-label'),
+      groundTouch: document.querySelector('#ground-touch'),
+      groundLeftBtn: document.querySelector('#ground-left'),
+      groundRightBtn: document.querySelector('#ground-right'),
     };
 
     this.fillText();
@@ -317,6 +336,7 @@ export class Game {
       this.pickups.push({ type, mesh, alive: false, life: 0 });
     }
 
+    this.ground = new GroundBattle(this.sfx);
     this.syncVisibility();
     this.syncHud();
     this.updateMenuBest();
@@ -362,6 +382,30 @@ export class Game {
     dom.edge.textContent = T.edge;
     dom.weapon.textContent = `${T.weapon}: ${T.weaponNormal}`;
     dom.flight.textContent = T.cruise;
+    dom.groundMenu.textContent = T.groundBattles;
+    dom.groundTitle.textContent = T.groundBattles;
+    dom.groundBlurb.textContent = T.groundBlurb;
+    dom.groundClose.textContent = T.groundClose;
+    dom.groundPushBtn.textContent = T.groundPush;
+    dom.groundRetreat.textContent = T.groundRetreat;
+    dom.groundBack.textContent = T.menu;
+    dom.groundHoldLabel.textContent = T.groundHold;
+    dom.groundCaptureLabel.textContent = T.groundCapture;
+    dom.groundLeftBtn.textContent = T.groundLeft;
+    dom.groundRightBtn.textContent = T.groundRight;
+    dom.groundWorlds.replaceChildren();
+    for (const world of GROUND_WORLDS) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'world-btn';
+      button.dataset.world = world.id;
+      button.textContent = world.name;
+      const hint = document.createElement('small');
+      hint.textContent = world.blurb;
+      button.append(document.createElement('br'), hint);
+      button.addEventListener('click', () => this.startGround(world.id));
+      dom.groundWorlds.appendChild(button);
+    }
   }
 
   bindInput() {
@@ -372,11 +416,45 @@ export class Game {
     dom.resumeBtn.addEventListener('click', () => this.togglePause());
     dom.restartBtn.addEventListener('click', () => this.startMission());
     dom.menuBtn.addEventListener('click', () => this.showMenu());
+    dom.groundMenu.addEventListener('click', () => this.openGroundPick());
+    dom.groundClose.addEventListener('click', () => this.closeGroundPick());
+    dom.groundBack.addEventListener('click', () => this.exitGround());
+    dom.groundRetreat.addEventListener('click', () => this.ground?.retreat());
+    dom.groundPushBtn.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      this.groundPush = true;
+      this.ground?.boostPush();
+    });
+    dom.groundPushBtn.addEventListener('pointerup', () => { this.groundPush = false; });
+    dom.groundPushBtn.addEventListener('pointercancel', () => { this.groundPush = false; });
+    const holdLane = (button, side) => {
+      button.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        if (side < 0) this.groundLeft = true;
+        else this.groundRight = true;
+      });
+      button.addEventListener('pointerup', () => {
+        if (side < 0) this.groundLeft = false;
+        else this.groundRight = false;
+      });
+      button.addEventListener('pointercancel', () => {
+        if (side < 0) this.groundLeft = false;
+        else this.groundRight = false;
+      });
+    };
+    holdLane(dom.groundLeftBtn, -1);
+    holdLane(dom.groundRightBtn, 1);
 
     window.addEventListener('keydown', (event) => this.onKeyDown(event));
-    window.addEventListener('keyup', (event) => this.keys.delete(event.code));
+    window.addEventListener('keyup', (event) => {
+      this.keys.delete(event.code);
+      if (event.code === 'Space') this.groundPush = false;
+    });
     window.addEventListener('blur', () => {
       this.keys.clear();
+      this.groundPush = false;
+      this.groundLeft = false;
+      this.groundRight = false;
       this.releaseStick(true);
       this.releaseFire();
       this.releaseBoost();
@@ -395,6 +473,7 @@ export class Game {
       }
     });
     window.addEventListener('pointerdown', (event) => {
+      if (this.state === 'ground') return;
       if (event.button === 2) {
         this.launchMissile();
         return;
@@ -604,6 +683,27 @@ export class Game {
       event.preventDefault();
     }
     if (event.repeat) return;
+    if (this.state === 'ground') {
+      if (event.code === 'KeyM') {
+        this.toggleMute();
+        return;
+      }
+      if (event.code === 'Escape') {
+        this.exitGround();
+        return;
+      }
+      if (event.code === 'Space') {
+        this.ground?.boostPush();
+        this.groundPush = true;
+        return;
+      }
+      if (event.code === 'KeyG') {
+        this.ground?.retreat();
+        return;
+      }
+      this.keys.add(event.code);
+      return;
+    }
     if (event.code === 'KeyM') {
       this.toggleMute();
       return;
@@ -815,6 +915,16 @@ export class Game {
   }
 
   frame(dt) {
+    if (this.state === 'ground') {
+      this.ground?.update(dt, {
+        left: this.groundLeft || this.keys.has('KeyA') || this.keys.has('ArrowLeft'),
+        right: this.groundRight || this.keys.has('KeyD') || this.keys.has('ArrowRight'),
+        push: this.groundPush || this.keys.has('Space'),
+        stick: this.coarse ? this.stick.x : 0,
+      });
+      this.render();
+      return;
+    }
     if (this.state === 'paused') {
       this.render();
       return;
@@ -2203,10 +2313,14 @@ export class Game {
   syncVisibility() {
     const menu = this.state === 'menu';
     const playing = this.state === 'play';
+    const ground = this.state === 'ground';
     this.dom.menu.hidden = !menu;
-    this.dom.hud.hidden = menu;
-    this.dom.radar.hidden = menu;
-    document.querySelector('#flight-row').hidden = menu;
+    this.dom.hud.hidden = menu || ground;
+    this.dom.radar.hidden = menu || ground;
+    document.querySelector('#flight-row').hidden = menu || ground;
+    this.dom.groundHud.hidden = !ground;
+    this.dom.groundTouch.hidden = !(ground && this.coarse);
+    if (!ground) this.dom.groundPick.hidden = this.state === 'play' || this.state === 'paused' || this.state === 'dead' ? true : this.dom.groundPick.hidden;
     this.dom.crosshair.hidden = !playing;
     this.dom.overlay.hidden = this.state !== 'paused' && this.state !== 'dead';
     document.body.classList.toggle('playing', playing);
@@ -2430,10 +2544,47 @@ export class Game {
     const height = Math.max(1, window.innerHeight);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    if (this.ground) {
+      this.ground.camera.aspect = width / height;
+      this.ground.camera.updateProjectionMatrix();
+    }
     this.renderer.setSize(width, height, false);
   }
 
+  openGroundPick() {
+    if (!this.renderer) return;
+    this.sfx.unlock();
+    this.dom.groundPick.hidden = false;
+  }
+
+  closeGroundPick() {
+    this.dom.groundPick.hidden = true;
+  }
+
+  startGround(worldId) {
+    if (!this.renderer || !this.ground) return;
+    this.sfx.unlock();
+    this.closeGroundPick();
+    this.state = 'ground';
+    this.ground.start(worldId);
+    this.syncVisibility();
+  }
+
+  exitGround() {
+    this.ground?.stop();
+    this.groundPush = false;
+    this.groundLeft = false;
+    this.groundRight = false;
+    this.state = 'menu';
+    this.closeGroundPick();
+    this.syncVisibility();
+  }
+
   render() {
+    if (this.state === 'ground' && this.ground) {
+      this.renderer.render(this.ground.scene, this.ground.camera);
+      return;
+    }
     this.renderer.render(this.scene, this.camera);
   }
 }

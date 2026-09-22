@@ -75,6 +75,7 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Nuclear missile | Orange טיל גרעיני button, `F`, or right click. Thin dart, flies across the sector, then wipes. Waits 4s |
 | Allies | Four large escorts fight with you. נושאת מטוסים relaunches them. נושאת האויב launches triangle fighters |
 | Phone steer | Large left joystick. A soft aim assist helps while the stick is near center |
+| Ground battles | קרבות קרקע, then a world. Artillery, armor and gun-cars, infantry, then a special. נסיגה pulls back |
 | Pause | `Esc` or `P` |
 | Mute | `M` |
 | Restart after game over | Enter, `R`, or the on-screen button |

@@ -76,6 +76,7 @@
             <p id="roster" class="goal"></p>
             <div class="menu-actions">
               <button id="start-btn" class="primary" type="button"></button>
+              <button id="ground-menu-btn" class="ghost" type="button"></button>
               <span id="menu-best"></span>
             </div>
           </div>
@@ -85,6 +86,38 @@
           </div>
         </div>
       </section>
+      <section id="ground-pick" hidden>
+        <div class="overlay-card ground-card">
+          <h2 id="ground-title"></h2>
+          <p id="ground-blurb" class="goal"></p>
+          <div id="ground-worlds"></div>
+          <button id="ground-close" class="ghost" type="button"></button>
+        </div>
+      </section>
+      <div id="ground-hud" hidden>
+        <div class="ground-top">
+          <p id="ground-world" class="kicker"></p>
+          <p id="ground-phase"></p>
+          <p id="ground-note"></p>
+          <div class="meter">
+            <span id="ground-hold-label"></span>
+            <div class="track"><div id="ground-hold-bar"></div></div>
+          </div>
+          <div class="meter">
+            <span id="ground-capture-label"></span>
+            <div class="track"><div id="ground-capture-bar"></div></div>
+          </div>
+        </div>
+        <div class="ground-actions">
+          <button id="ground-push" class="primary" type="button"></button>
+          <button id="ground-retreat" class="ghost" type="button"></button>
+          <button id="ground-back" class="ghost" type="button"></button>
+        </div>
+      </div>
+      <div id="ground-touch" hidden>
+        <button id="ground-left" type="button"></button>
+        <button id="ground-right" type="button"></button>
+      </div>
       <section id="overlay" hidden>
         <div class="overlay-card">
           <h2 id="overlay-title"></h2>
