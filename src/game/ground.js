@@ -394,7 +394,9 @@ function makeInfantry(accent, foe = false) {
   const pants = mat(foe ? 0x2a2236 : 0xf4efe2, foe ? 0x120c18 : 0xc8b89a, 0.12);
   const skin = mat(0xffd2b0, 0x5a3020, 0.1);
   const boot = mat(foe ? 0x1a1422 : 0x3a2a22, 0x100c0a, 0.16);
-  const helm = mat(foe ? 0x4a2848 : 0xf7fbff, accent, 0.42);
+  const helm = foe
+    ? mat(0x4a2848, accent, 0.42)
+    : new THREE.MeshBasicMaterial({ color: 0xff2d35, fog: false });
   const sashMat = mat(foe ? 0xff8ab8 : 0xffd56a, foe ? 0xff8ab8 : 0xffe08a, 0.6);
 
   const pivotLimb = (x, y, material, radius, length) => {
