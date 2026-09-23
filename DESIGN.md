@@ -12,7 +12,9 @@ The menu shows שומרת, יציאה לסיור, and a second button labeled ex
 4. **משמיד** drops in for the climax. It is a turquoise tank wearing heavy cannons, a rack of artillery tubes, and fat glowing nuclear guns — the joke is every gun in the world on one hull. It slams onto the field, lobs a ground barrage (no space trails), and flattens a wide stretch of barricades. The world landmark (אורן הנוצץ, תוף המדבר, or כתר הקרח) still arrives off to the side. The Hebrew label is משמיד.
 5. The beat ends in ניצחון, or נסיגה if you choose to pull back.
 
-A and D (or the phone side buttons) slide the push. דחיפה or Space hurries the current step. The flight sortie is unchanged.
+Soldiers on the two lines close, pair, and fight hand to hand. A hit is a spark. The loser flops onto their back with spinning stars — a toy knockout, no gore. Rifles, tanks, and the destroyer also land on a soldier when the shot reaches one. אחיזת היריב and כיבוש still fill from the phase clock and from each knockout.
+
+The bottom row deploys forces. חייל sends four soldiers streaming in from the rear to engage. טנק sends one tank that rolls the line and bumps warriors. המשמיד drops the turquoise overgunned tank, which slams in and fires. Each press is one deployment. A and D (or the phone side buttons) slide the blue soldier. Space fires. The flight sortie is unchanged.
 
 ## Ship
 
