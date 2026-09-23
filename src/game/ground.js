@@ -336,6 +336,50 @@ function makeGunCar(accent, foe = false, gun = 'machine') {
   return root;
 }
 
+/** Chunky toy rifle. Local −Z is the muzzle. Both hands stay on the weapon. */
+function makeToyRifle(foe, steel) {
+  const rifle = new THREE.Group();
+  const metal = mat(0xd5dee8, steel?.emissive?.getHex?.() || 0x243040, 0.62);
+  const wood = mat(foe ? 0x6a3050 : 0xc4843a, foe ? 0x3a1428 : 0x5a3010, 0.4);
+  const glow = mat(foe ? 0xffb0e0 : 0xfff1a8, foe ? 0xff8ab8 : 0xffe08a, 0.95);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.1, 0.32), wood);
+  stock.position.set(0, 0.02, 0.18);
+  const pistol = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.07), wood);
+  pistol.position.set(0, -0.07, 0.04);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, 0.36), metal);
+  body.position.set(0, 0.035, -0.14);
+  const band = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.045, 0.08), glow);
+  band.position.set(0, 0.07, -0.08);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.7, 8), metal);
+  barrel.rotation.x = -Math.PI / 2;
+  barrel.position.set(0, 0.035, -0.52);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), glow);
+  tip.position.set(0, 0.035, -0.9);
+  const fore = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.08, 0.12), wood);
+  fore.position.set(0, -0.02, -0.3);
+  const support = new THREE.Mesh(
+    new THREE.SphereGeometry(0.058, 8, 6),
+    mat(0xffd2b0, 0x5a3020, 0.1),
+  );
+  support.position.set(0.02, -0.07, -0.3);
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.11, 8, 6),
+    new THREE.MeshBasicMaterial({
+      color: foe ? 0xffd0ea : 0xfff6c8,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    }),
+  );
+  flash.position.set(0, 0.035, -0.98);
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.035, -1.02);
+  rifle.add(stock, pistol, body, band, barrel, tip, fore, support, flash, muzzle);
+  rifle.userData.flash = flash;
+  rifle.userData.muzzle = muzzle;
+  return rifle;
+}
+
 function squadTint(accent, foe) {
   const color = new THREE.Color(accent);
   if (foe && color.r + color.g + color.b < 1.15) color.offsetHSL(0, 0.08, 0.2);
@@ -394,33 +438,13 @@ function makeInfantry(accent, foe = false) {
 
   const armL = pivotLimb(-0.32, 1.22, cloth, 0.055, 0.28);
   const armR = pivotLimb(0.32, 1.22, cloth, 0.055, 0.26);
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), skin);
-  hand.position.set(0, -0.36, 0);
-  armL.add(hand);
-  const rifle = new THREE.Group();
-  rifle.position.set(0.02, -0.4, -0.02);
-  const barrel = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.72, 3, 6), steel);
-  barrel.rotation.x = Math.PI / 2;
-  barrel.position.z = -0.22;
-  const tip = new THREE.Mesh(
-    new THREE.SphereGeometry(0.045, 6, 5),
-    mat(foe ? 0xffd0ea : 0xfff1a8, foe ? 0xffd0ea : 0xffe08a, 0.9),
-  );
-  tip.position.z = -0.58;
-  const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.09, 8, 6),
-    new THREE.MeshBasicMaterial({
-      color: foe ? 0xffd0ea : 0xfff6c8,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-    }),
-  );
-  flash.position.z = -0.64;
-  const muzzle = new THREE.Object3D();
-  muzzle.position.z = -0.68;
-  rifle.add(barrel, tip, flash, muzzle);
-  armR.add(rifle);
+  const gripHand = new THREE.Mesh(new THREE.SphereGeometry(0.064, 8, 6), skin);
+  gripHand.position.set(0, -0.34, -0.02);
+  armR.add(gripHand);
+  const rifle = makeToyRifle(foe, steel);
+  gripHand.add(rifle);
+  armR.rotation.set(1.08, 0.18, -0.18);
+  armL.rotation.set(0.86, 0.55, 0.72);
 
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), skin);
   head.position.set(0, 1.52, 0);
@@ -475,8 +499,8 @@ function makeInfantry(accent, foe = false) {
     root.userData.flag = flag;
   }
   root.userData.swing = { legL, legR, armL, armR, chest, rifle };
-  root.userData.flash = flash;
-  root.userData.muzzle = muzzle;
+  root.userData.flash = rifle.userData.flash;
+  root.userData.muzzle = rifle.userData.muzzle;
   return root;
 }
 
@@ -745,9 +769,9 @@ export class GroundBattle {
   constructor(sfx) {
     this.sfx = sfx;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(56, 1, 0.1, 420);
-    this.look = new THREE.Vector3(0, 1, -12);
-    this.camera.position.set(0, 24, 34);
+    this.camera = new THREE.PerspectiveCamera(74, 1, 0.1, 640);
+    this.look = new THREE.Vector3(0, 1.2, -20);
+    this.camera.position.set(0, 38, 56);
     this.hemi = new THREE.HemisphereLight(0xfff4e0, 0x1a2838, 0.95);
     this.sun = new THREE.DirectionalLight(0xfff0d0, 1.55);
     this.sun.position.set(30, 48, 18);
@@ -788,6 +812,8 @@ export class GroundBattle {
     this.deployCd = { infantry: 0, tank: 0, destroyer: 0 };
     this.deployNote = '';
     this.deployNoteT = 0;
+    this.aiming = false;
+    this.grenadeCd = 0;
     const q = (id) => (typeof document === 'undefined' ? null : document.querySelector(id));
     this.dom = {
       phase: q('#ground-phase'),
@@ -804,7 +830,7 @@ export class GroundBattle {
   start(worldId) {
     this.world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
     this.scene.background = new THREE.Color(this.world.skyHorizon);
-    this.scene.fog = new THREE.FogExp2(this.world.fog, 0.0048);
+    this.scene.fog = new THREE.FogExp2(this.world.fog, 0.00215);
     this.sun.castShadow = true;
     this.hemi.color.setHex(this.world.skyHorizon);
     this.hemi.groundColor.setHex(this.world.ground);
@@ -833,6 +859,7 @@ export class GroundBattle {
     this.deployCd = { infantry: 0, tank: 0, destroyer: 0 };
     this.deployNote = '';
     this.deployNoteT = 0;
+    this.grenadeCd = 0;
     this.active = true;
     this.buildField();
     [-12, 0, 12].forEach((x, i) => this.spawn('artillery', x, 0.05 + i * 0.08, { speed: 0, laneFollow: 0.15, bob: 0, z: 10 }));
@@ -1197,12 +1224,53 @@ export class GroundBattle {
     this.fireRifle(player);
   }
 
+  /** Lobs a toy grenade. The bloom covers a patch of the line, not one soldier. */
+  throwGrenade() {
+    const player = this.playerUnit();
+    if (!this.active || this.phase === 'resolve' || this.grenadeCd > 0) return false;
+    if (!player || player.down || player.delay > 0) return false;
+    this.grenadeCd = 1.15;
+    player.attackT = 0.32;
+    const foe = this.aiming && player.focus && this.troopAlive(player.focus)
+      ? player.focus
+      : this.nearestEnemy(player, this.aiming ? 24 : 16);
+    const reach = this.aiming ? 16 : 12;
+    const from = new THREE.Vector3();
+    const muzzle = player.mesh.userData.muzzle;
+    if (muzzle) {
+      player.mesh.updateMatrixWorld(true);
+      muzzle.getWorldPosition(from);
+    } else {
+      from.set(player.mesh.position.x, 2.4, player.mesh.position.z);
+    }
+    const to = foe
+      ? new THREE.Vector3(foe.x, 0.45, foe.z)
+      : new THREE.Vector3(player.x, 0.45, player.z - reach);
+    this.launchShell({
+      from,
+      to,
+      color: 0xffd27a,
+      radius: 0.36,
+      dur: 0.58,
+      holdHit: 0.7,
+      splash: 8,
+      arc: 4.6,
+      silentTubes: true,
+      team: 'friend',
+      soldierHit: this.aiming ? 4.8 : 3.6,
+      grenade: true,
+    });
+    this.sfx.blip?.({ freq: 260, dur: 0.09, type: 'triangle', vol: 0.06, slide: 160 });
+    return true;
+  }
+
   update(dt, input) {
     if (!this.active) return;
     this.deployCd.infantry = Math.max(0, this.deployCd.infantry - dt);
     this.deployCd.tank = Math.max(0, this.deployCd.tank - dt);
     this.deployCd.destroyer = Math.max(0, this.deployCd.destroyer - dt);
     this.deployNoteT = Math.max(0, this.deployNoteT - dt);
+    this.grenadeCd = Math.max(0, this.grenadeCd - dt);
     this.drivePlayer(dt, input);
     this.lane = THREE.MathUtils.damp(this.lane, 0, 4, dt);
 
@@ -1352,6 +1420,7 @@ export class GroundBattle {
       arc: spec.arc ?? 9,
       team: spec.team || null,
       soldierHit: spec.soldierHit || 0,
+      grenade: Boolean(spec.grenade),
     });
     if (spec.silentTubes) return;
     for (const tube of this.tubes) {
@@ -1411,8 +1480,14 @@ export class GroundBattle {
       shell.mesh.position.lerpVectors(shell.from, shell.to, p);
       shell.mesh.position.y += Math.sin(p * Math.PI) * (shell.arc ?? 9);
       if (p < 1) continue;
-      this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7);
-      if (shell.team && shell.soldierHit) this.hurtSoldiers(shell.to.x, shell.to.z, shell.soldierHit, shell.team);
+      if (shell.grenade) {
+        this.splash(shell.to.x, shell.to.z, 0xffd27a, 22);
+        this.splash(shell.to.x, shell.to.z, 0x7af6ee, 13);
+        this.blastSoldiers(shell.to.x, shell.to.z, shell.soldierHit || 3.6, shell.team);
+      } else {
+        this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7);
+        if (shell.team && shell.soldierHit) this.hurtSoldiers(shell.to.x, shell.to.z, shell.soldierHit, shell.team);
+      }
       this.hold = Math.max(0, this.hold - (shell.holdHit ?? 3.1));
       this.crackNearest(shell.to.x, shell.to.z);
       this.shake = Math.min(0.8, this.shake + 0.18);
@@ -1673,6 +1748,17 @@ export class GroundBattle {
     if (best) this.strike(best, 1);
   }
 
+  blastSoldiers(x, z, radius, team) {
+    for (const unit of this.units) {
+      if (!this.troopAlive(unit)) continue;
+      if (team === 'friend' && unit.kind !== 'defender') continue;
+      if (team === 'foe' && unit.kind === 'defender') continue;
+      if (Math.hypot(unit.x - x, unit.z - z) > radius) continue;
+      this.strike(unit, 6);
+      this.clashSpark(unit.x, unit.z, 0xffd27a);
+    }
+  }
+
   clashSpark(x, z, color) {
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.2, 0.38, 14),
@@ -1840,31 +1926,22 @@ export class GroundBattle {
         const attacking = unit.attackT > 0 && !unit.duel;
         const step = Math.sin(unit.age * (moving ? 9 : 1.7) + unit.x);
         const melee = Boolean(unit.duel);
+        const carry = attacking ? 1.32 : 1.08;
         if (melee) {
           const sw = Math.sin(unit.age * 16 + unit.x);
           swing.legL.rotation.x = 0.28;
           swing.legR.rotation.x = -0.12;
-          swing.armR.rotation.x = -0.4;
-          swing.armR.rotation.z = sw * 1.35;
-          swing.armL.rotation.x = 0.55;
-          swing.armL.rotation.z = -sw * 0.55;
-          if (swing.rifle) swing.rifle.rotation.x = 1.05;
+          swing.armR.rotation.set(0.72, 0.2, sw * 0.9);
+          swing.armL.rotation.set(0.48, 0.2, 0.28 - sw * 0.3);
+          if (swing.rifle) swing.rifle.rotation.x = 0.12;
         } else {
-          swing.armL.rotation.z = 0;
-          swing.armR.rotation.z = 0;
+          const bob = moving ? step * 0.1 : 0;
           const legAmp = moving ? 0.95 : 0.05;
           swing.legL.rotation.x = step * legAmp;
           swing.legR.rotation.x = -step * legAmp;
-          if (attacking) {
-            swing.armR.rotation.x = -0.85;
-            swing.armL.rotation.x = -0.28;
-            if (swing.rifle) swing.rifle.rotation.x = -0.35;
-          } else {
-            const armAmp = moving ? 0.62 : 0.1;
-            swing.armL.rotation.x = -step * armAmp;
-            swing.armR.rotation.x = step * armAmp;
-            if (swing.rifle) swing.rifle.rotation.x = 0;
-          }
+          swing.armR.rotation.set(carry + bob, 0.18, -0.18);
+          swing.armL.rotation.set(Math.max(0.35, carry - 0.22 - bob), 0.55, 0.72);
+          if (swing.rifle) swing.rifle.rotation.x = attacking ? -0.1 : 0.02;
         }
         if (swing.chest) {
           swing.chest.rotation.x = unit.stagger > 0 ? -0.42 : melee ? 0.3 : 0;
@@ -1953,28 +2030,37 @@ export class GroundBattle {
 
   updateCamera(dt) {
     const aims = {
-      artillery: { pos: [14, 10.5, 18], look: [0, 1.2, -3] },
-      armor: { pos: [7, 7.2, 12], look: [0, 1.5, -10] },
-      infantry: { pos: [5, 5.6, 8.5], look: [0, 1.35, -4] },
-      special: { pos: [-6, 12, 18], look: [0, 2.2, -6] },
-      resolve: { pos: [0, 12, 22], look: [0, 2, -10] },
+      artillery: { pos: [0, 42, 62], look: [0, 1.2, -18] },
+      armor: { pos: [10, 38, 56], look: [0, 1.4, -16] },
+      infantry: { pos: [0, 36, 52], look: [0, 1.2, -16] },
+      special: { pos: [-14, 44, 64], look: [0, 2.2, -14] },
+      resolve: { pos: [0, 48, 70], look: [0, 2, -18] },
     };
     const player = this.playerUnit();
     let aim = aims[this.phase] || aims.artillery;
+    const spotOf = (unit) => unit?.mesh?.position;
     if (player && player.mesh.visible && this.phase !== 'resolve') {
-      const spot = player.mesh.position;
-      aim = {
-        pos: [spot.x, 6.4, spot.z + 10],
-        look: [spot.x, 1.3, spot.z - 9],
-      };
+      const spot = spotOf(player);
+      if (this.aiming) {
+        // Zoom window stays a wide slice of the valley, much larger than the old tight crop.
+        aim = {
+          pos: [spot.x * 0.4, 24, spot.z + 34],
+          look: [spot.x * 0.3, 1.5, spot.z - 26],
+        };
+      } else {
+        aim = {
+          pos: [spot.x * 0.22, 40, spot.z + 54],
+          look: [spot.x * 0.12, 1.2, spot.z - 30],
+        };
+      }
     }
-    if (this.phase === 'special') {
+    if (this.phase === 'special' && !this.aiming) {
       const hero = this.units.find((unit) => unit.kind === 'destroyer' && unit.mesh.visible);
       if (hero) {
-        const spot = hero.mesh.position;
+        const spot = spotOf(hero);
         aim = {
-          pos: [spot.x - 12, 15, spot.z + 18],
-          look: [spot.x + 1, 2.8, spot.z - 2],
+          pos: [spot.x - 18, 36, spot.z + 42],
+          look: [spot.x + 2, 2.4, spot.z - 22],
         };
       }
     }
@@ -1985,6 +2071,11 @@ export class GroundBattle {
     const mag = this.shake * 0.35;
     this.camera.position.x += (Math.random() - 0.5) * mag;
     this.camera.position.y += (Math.random() - 0.5) * mag;
+    const fov = this.aiming ? 70 : 78;
+    if (Math.abs(this.camera.fov - fov) > 0.05) {
+      this.camera.fov += (fov - this.camera.fov) * (1 - Math.exp(-2.4 * dt));
+      this.camera.updateProjectionMatrix();
+    }
     this.camera.lookAt(this.look);
   }
 
