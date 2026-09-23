@@ -187,7 +187,8 @@ function makeArtillery(accent) {
   const hot = mat(accent, accent, 0.55);
   addBox(root, 1.5, 0.45, 2.2, dark, 0, 0.35, 0);
   const tube = addCyl(root, 0.18, 0.22, 2.4, hot, 0, 0.85, -0.6);
-  tube.rotation.x = Math.PI / 2.4;
+  // Cylinder +Y is the bore. Negative pitch lifts it along −Z, toward the enemy line.
+  tube.rotation.x = -Math.PI / 2.4;
   addCyl(root, 0.38, 0.38, 0.28, dark, -0.7, 0.38, 0).rotation.z = Math.PI / 2;
   addCyl(root, 0.38, 0.38, 0.28, dark, 0.7, 0.38, 0).rotation.z = Math.PI / 2;
   root.userData.tube = tube;
@@ -306,7 +307,7 @@ function makeGunCar(accent, foe = false, gun = 'machine') {
     muzzle.position.set(0, 0.18, -1.45);
   } else if (gun === 'mortar') {
     const barrel = addCyl(turret, 0.16, 0.2, 0.9, brass, 0, 0.32, -0.1);
-    barrel.rotation.x = 1.15;
+    barrel.rotation.x = -1.15;
     muzzle.position.set(0, 0.62, -0.62);
   } else {
     for (const x of [-0.11, 0.11]) {
@@ -340,6 +341,19 @@ function squadTint(accent, foe) {
   const color = new THREE.Color(accent);
   if (foe && color.r + color.g + color.b < 1.15) color.offsetHSL(0, 0.08, 0.2);
   return color;
+}
+
+/**
+ * Eyes, rifles, and gun barrels point along local −Z.
+ * Object3D.lookAt aims +Z, which turned both lines around to face the camera.
+ */
+function faceNegZ(mesh, x, z) {
+  const dx = x - mesh.position.x;
+  const dz = z - mesh.position.z;
+  if (dx * dx + dz * dz < 1e-8) return;
+  mesh.rotation.x = 0;
+  mesh.rotation.z = 0;
+  mesh.rotation.y = Math.atan2(-dx, -dz);
 }
 
 /** Original toy soldier. Tunic, pants, and a rifle read at battle distance. */
@@ -1785,7 +1799,11 @@ export class GroundBattle {
       unit.mesh.position.set(unit.x + this.lane * unit.laneFollow, yBob + drop + hop, unit.z);
       if (this.isTroop(unit)) {
         const focus = unit.duel || unit.focus;
-        if (focus && !focus.down) unit.mesh.lookAt(focus.x, unit.mesh.position.y, focus.z);
+        if (focus && !focus.down) faceNegZ(unit.mesh, focus.x, focus.z);
+        else {
+          const ahead = unit.kind === 'defender' || (fallingBack && unit.kind !== 'player') ? 1 : -1;
+          faceNegZ(unit.mesh, unit.x, unit.z + ahead);
+        }
       }
       const swing = unit.mesh.userData.swing;
       const flash = unit.mesh.userData.flash;
