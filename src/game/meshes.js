@@ -88,9 +88,9 @@ function addMesh(parent, geometry, material, x, y, z) {
 }
 
 /**
- * Shomeret (playerShip) — original cargo freighter, painted entirely blue.
- * Long deck, pale-blue nose, wide shoulders, blue crates to starboard,
- * deep-blue spine. Nose is local −Z. Game.js scales by PLAYER.visualScale.
+ * Shomeret (playerShip) — original split-beak swallow, painted entirely blue.
+ * Two forward prongs, swept wings, twin aft engines. Nose is local −Z.
+ * Game.js scales by PLAYER.visualScale.
  */
 export function createPlayerShip(softMap) {
   const root = new THREE.Group();
@@ -108,39 +108,42 @@ export function createPlayerShip(softMap) {
     roughness: 0.12,
   });
 
-  addMesh(root, box(1.15, 0.38, 4.4), hull, 0, 0, 0.15);
-  addMesh(root, box(0.72, 0.28, 1.15), pale, 0, 0.02, -2.35);
-  addMesh(root, box(0.42, 0.18, 0.55), pale, 0, 0.02, -3.05);
-  addMesh(root, box(0.14, 0.1, 3.5), deep, 0, 0.26, 0.05);
+  addMesh(root, box(0.55, 0.32, 1.85), hull, 0, 0, 0.45);
+  addMesh(root, box(0.18, 0.1, 1.6), deep, 0, 0.22, 0.4);
 
-  const wingL = addMesh(root, box(1.55, 0.08, 1.35), accent, -1.25, 0.02, 0.35);
-  wingL.rotation.y = 0.22;
-  const wingR = addMesh(root, box(1.15, 0.08, 1.05), accent, 1.15, 0.06, 0.85);
-  wingR.rotation.y = -0.18;
-  wingR.rotation.z = -0.12;
+  const prongL = addMesh(root, box(0.28, 0.14, 2.55), pale, -0.46, 0.02, -1.05);
+  prongL.rotation.y = 0.32;
+  const prongR = addMesh(root, box(0.28, 0.14, 2.55), pale, 0.46, 0.02, -1.05);
+  prongR.rotation.y = -0.32;
+  const tipL = addMesh(root, box(0.12, 0.08, 0.72), accent, -0.86, 0.02, -2.35);
+  tipL.rotation.y = 0.48;
+  const tipR = addMesh(root, box(0.12, 0.08, 0.72), accent, 0.86, 0.02, -2.35);
+  tipR.rotation.y = -0.48;
 
-  addMesh(root, box(0.7, 0.42, 0.85), accent, 0.72, 0.38, 0.15);
-  addMesh(root, box(0.48, 0.28, 0.55), pale, 0.78, 0.7, 0.55);
-  addMesh(root, box(0.55, 0.08, 0.9), deep, 0.72, 0.62, 0.15);
+  const wingL = addMesh(root, box(1.55, 0.07, 0.72), accent, -1.2, 0, 0.95);
+  wingL.rotation.y = -0.62;
+  const wingR = addMesh(root, box(1.55, 0.07, 0.72), accent, 1.2, 0, 0.95);
+  wingR.rotation.y = 0.62;
+  addMesh(root, box(0.9, 0.06, 0.35), deep, 0, 0.16, -0.15);
 
   const cockpit = addMesh(
     root,
-    geo('cockpit', () => new THREE.SphereGeometry(0.32, 16, 12)),
+    geo('cockpit', () => new THREE.SphereGeometry(0.28, 16, 12)),
     glass,
-    -0.38,
-    0.32,
-    -1.15,
+    0,
+    0.28,
+    -0.25,
   );
-  cockpit.scale.set(1.05, 0.62, 1.35);
+  cockpit.scale.set(0.9, 0.55, 1.25);
 
-  const bigEngine = addMesh(root, cyl(0.28, 0.36, 0.9, 14), dark, 0.38, 0, 2.15);
-  bigEngine.rotation.x = Math.PI / 2;
-  const bigRing = addMesh(root, cyl(0.4, 0.4, 0.1, 14), accent, 0.38, 0, 1.72);
-  bigRing.rotation.x = Math.PI / 2;
-  const smallEngine = addMesh(root, cyl(0.16, 0.22, 0.55, 12), dark, -0.42, 0.04, 1.95);
-  smallEngine.rotation.x = Math.PI / 2;
-  const smallRing = addMesh(root, cyl(0.26, 0.26, 0.08, 12), pale, -0.42, 0.04, 1.68);
-  smallRing.rotation.x = Math.PI / 2;
+  const engineL = addMesh(root, cyl(0.2, 0.26, 0.72, 12), dark, -0.28, 0, 1.55);
+  engineL.rotation.x = Math.PI / 2;
+  const ringL = addMesh(root, cyl(0.3, 0.3, 0.08, 12), accent, -0.28, 0, 1.22);
+  ringL.rotation.x = Math.PI / 2;
+  const engineR = addMesh(root, cyl(0.2, 0.26, 0.72, 12), dark, 0.28, 0, 1.55);
+  engineR.rotation.x = Math.PI / 2;
+  const ringR = addMesh(root, cyl(0.3, 0.3, 0.08, 12), pale, 0.28, 0, 1.22);
+  ringR.rotation.x = Math.PI / 2;
 
   const glowMat = (color, opacity) => new THREE.SpriteMaterial({
     map: softMap,
@@ -152,29 +155,23 @@ export function createPlayerShip(softMap) {
     fog: false,
   });
   const bigGlow = new THREE.Sprite(glowMat(0x7eb6ff, 0.95));
-  bigGlow.position.set(0.38, 0, 2.65);
-  bigGlow.scale.set(1.05, 1.05, 1);
+  bigGlow.position.set(-0.28, 0, 1.95);
+  bigGlow.scale.set(0.7, 0.7, 1);
   root.add(bigGlow);
-  const smallGlow = new THREE.Sprite(glowMat(0x7eb6ff, 0.9));
-  smallGlow.position.set(-0.42, 0.04, 2.28);
-  smallGlow.scale.set(0.55, 0.55, 1);
+  const smallGlow = new THREE.Sprite(glowMat(0x7eb6ff, 0.95));
+  smallGlow.position.set(0.28, 0, 1.95);
+  smallGlow.scale.set(0.7, 0.7, 1);
   root.add(smallGlow);
 
   const muzzleFlash = new THREE.Sprite(glowMat(0xd6e8ff, 0.95));
-  muzzleFlash.position.set(0, 0.04, -3.35);
+  muzzleFlash.position.set(0, 0.04, -2.85);
   muzzleFlash.scale.setScalar(0.001);
   muzzleFlash.visible = false;
   root.add(muzzleFlash);
   root.userData.muzzleFlash = muzzleFlash;
 
-  const mast = addMesh(root, cyl(0.03, 0.03, 0.7, 6), pale, -0.15, 0.62, 0.4);
-  mast.rotation.z = 0.25;
-  const dish = addMesh(root, geo('dish', () => new THREE.ConeGeometry(0.14, 0.12, 8)), deep, -0.28, 0.95, 0.35);
-  dish.rotation.z = -0.4;
-  addMesh(root, box(0.32, 0.1, 0.4), hull, 0.05, -0.22, -2.2);
-
   const light = new THREE.PointLight(0x4d86ff, 1.4, 8, 2);
-  light.position.set(0.2, 0, 2.2);
+  light.position.set(0, 0.1, 1.5);
   root.add(light);
 
   root.userData.glows = [bigGlow, smallGlow];
@@ -513,7 +510,7 @@ export const boltGeometry = geo('bolt', () => new THREE.BoxGeometry(0.34, 0.34, 
 
 /**
  * Movie-missile needle. Slender body, sharp nose, small tail fins, axial plume.
- * Local −Z is the nose. Body radius stays under 0.08 before MISSILE.visualScale.
+ * Local −Z is the nose. Body radius stays under 0.04 before MISSILE.visualScale.
  * The plume is a cone, not a billboard, so the chase view stays a thin dart.
  */
 export function createMissile() {
@@ -533,23 +530,23 @@ export function createMissile() {
   });
 
   const bodyLen = 16;
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.034, bodyLen, 8), hull);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.022, bodyLen, 8), hull);
   body.rotation.x = Math.PI / 2;
   root.add(body);
 
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.28, 8), bandMat);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.22, 8), bandMat);
   collar.rotation.x = Math.PI / 2;
   collar.position.z = bodyLen * 0.12;
   root.add(collar);
 
   const noseLen = 3.8;
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.036, noseLen, 8), hot);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.024, noseLen, 8), hot);
   nose.rotation.x = -Math.PI / 2;
   nose.position.z = -(bodyLen / 2 + noseLen / 2) + 0.02;
   root.add(nose);
 
   for (let i = 0; i < 4; i += 1) {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.16, 0.85), finMat);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.11, 0.7), finMat);
     const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
     blade.position.set(Math.cos(angle) * 0.11, Math.sin(angle) * 0.11, bodyLen / 2 - 0.55);
     blade.rotation.z = angle;

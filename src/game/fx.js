@@ -265,3 +265,94 @@ export function updateSpeedTunnel(group, camera, dt, { active, reduceMotion }) {
     mesh.material.opacity = rush * opacityCap * near * far;
   }
 }
+
+/** Streaks and a soft glow locked to the ship so the rush covers the whole hull. */
+export function createHullRush(count = 56) {
+  const group = new THREE.Group();
+  group.name = 'hullRush';
+  group.frustumCulled = false;
+  const geos = [
+    new THREE.BoxGeometry(0.12, 0.12, 7),
+    new THREE.BoxGeometry(0.08, 0.18, 11),
+    new THREE.BoxGeometry(0.2, 0.07, 15),
+  ];
+  const streaks = [];
+  for (let i = 0; i < count; i += 1) {
+    const mat = new THREE.MeshBasicMaterial({
+      color: STREAK_COLORS[i % STREAK_COLORS.length],
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geos[i % geos.length], mat);
+    mesh.frustumCulled = false;
+    const radius = 0.9 + Math.random() * 4.6;
+    const ang = (i / count) * Math.PI * 2;
+    const z = -12 + Math.random() * 22;
+    mesh.userData = { radius, ang, z, drift: 0.45 + Math.random() * 0.7 };
+    mesh.position.set(Math.cos(ang) * radius, Math.sin(ang) * radius, z);
+    mesh.visible = false;
+    group.add(mesh);
+    streaks.push(mesh);
+  }
+  const sheath = [];
+  const soft = makeSoftTexture();
+  const spots = [-7.5, -3.5, 0.2, 3.6, 7.2];
+  spots.forEach((z, i) => {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: soft,
+      color: i % 2 === 0 ? 0xd6e8ff : 0xfff6c2,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+    }));
+    sprite.position.set(0, 0, z);
+    sprite.scale.set(4.5, 4.5, 1);
+    sprite.frustumCulled = false;
+    group.add(sprite);
+    sheath.push(sprite);
+  });
+  group.userData.streaks = streaks;
+  group.userData.sheath = sheath;
+  group.userData.rush = 0;
+  return group;
+}
+
+export function updateHullRush(group, ship, dt, { active, reduceMotion }) {
+  if (!group || !ship) return;
+  group.position.copy(ship.position);
+  group.quaternion.copy(ship.quaternion);
+  const rush = THREE.MathUtils.damp(group.userData.rush, active ? 1 : 0, active ? 8 : 5, dt);
+  group.userData.rush = rush;
+  const show = rush > 0.03;
+  const travel = (70 + rush * 280) * dt;
+  const opacityCap = reduceMotion ? 0.16 : 0.72;
+  for (const mesh of group.userData.streaks) {
+    mesh.visible = show;
+    if (!show) continue;
+    const data = mesh.userData;
+    data.z += travel * data.drift;
+    if (data.z > 10) {
+      data.z = -13 - Math.random() * 2;
+      data.ang += 0.4;
+    }
+    const radius = data.radius * (0.82 + rush * 0.28);
+    mesh.position.set(Math.cos(data.ang) * radius, Math.sin(data.ang) * radius, data.z);
+    mesh.scale.set(1, 1, 0.7 + rush * 1.8);
+    const along = 1 - Math.abs(data.z) / 14;
+    mesh.material.opacity = rush * opacityCap * Math.max(0.15, along);
+  }
+  group.userData.sheath.forEach((sprite, i) => {
+    sprite.visible = show;
+    const pulse = 0.85 + Math.sin(rush * 12 + i) * 0.08;
+    const size = (3.2 + rush * 5.5) * pulse;
+    sprite.scale.set(size, size * 0.72, 1);
+    sprite.material.opacity = show ? rush * (reduceMotion ? 0.12 : 0.38) : 0;
+  });
+}

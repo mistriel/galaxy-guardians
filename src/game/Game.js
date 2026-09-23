@@ -47,10 +47,12 @@ import {
   createNebulas,
   createRings,
   createSparks,
+  createHullRush,
   createSpeedTunnel,
   createStarfield,
   makeSoftTexture,
   spawnRing,
+  updateHullRush,
   updateRings,
   updateSparks,
   updateSpeedTunnel,
@@ -191,6 +193,7 @@ export class Game {
       muteBtn: document.querySelector('#mute-btn'),
       menuMute: document.querySelector('#menu-mute'),
       hangarTitle: document.querySelector('#hangar-title'),
+      shipPickerTitle: document.querySelector('#ship-picker-title'),
       metaPoints: document.querySelector('#meta-points'),
       shipPicks: document.querySelector('#ship-picks'),
       weaponPicks: document.querySelector('#weapon-picks'),
@@ -308,7 +311,8 @@ export class Game {
     this.sparks = createSparks(this.scene, this.soft, POOLS.sparks);
     this.rings = createRings(this.scene, POOLS.rings);
     this.speedTunnel = createSpeedTunnel();
-    this.scene.add(this.speedTunnel);
+    this.hullRush = createHullRush();
+    this.scene.add(this.speedTunnel, this.hullRush);
 
     this.shipMeshes = {
       shomeret: createPlayerShip(this.soft),
@@ -416,7 +420,7 @@ export class Game {
     const shipLabel = T.shipNames[this.meta.ship] || T.ship;
     dom.shipName.textContent = shipLabel;
     dom.hudShip.textContent = shipLabel;
-    dom.tagline.textContent = T.tagline;
+    dom.tagline.textContent = T.shipTaglines[this.meta.ship] || T.tagline;
     dom.sector.textContent = T.sector;
     dom.goal.textContent = T.goal;
     const enemyList = Object.values(T.enemyNames).join(', ');
@@ -1405,7 +1409,7 @@ export class Game {
     let targetSpeed = PLAYER.cruise;
     if (this.boosting) targetSpeed = PLAYER.boost;
     if (this.braking) targetSpeed = PLAYER.brake;
-    const accel = this.boosting ? 8.5 : 2.6;
+    const accel = this.boosting ? 16 : 2.6;
     this.speed = THREE.MathUtils.damp(this.speed, targetSpeed, accel, dt);
 
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
@@ -2267,19 +2271,24 @@ export class Game {
       this.camera.position.y += (Math.random() - 0.5) * mag * 0.7;
       this.shakeAmp = Math.max(0, this.shakeAmp - dt * 1.7);
     }
-    this.dampFov(this.boosting && this.state === 'play' ? 98 : 66);
+    this.dampFov(this.boosting && this.state === 'play' ? 114 : 66);
   }
 
   updateSpeedTunnel(dt) {
+    const active = this.boosting && this.state === 'play';
     updateSpeedTunnel(this.speedTunnel, this.camera, dt, {
-      active: this.boosting && this.state === 'play',
+      active,
+      reduceMotion: this.reduceMotion,
+    });
+    updateHullRush(this.hullRush, this.player?.mesh, dt, {
+      active,
       reduceMotion: this.reduceMotion,
     });
   }
 
   dampFov(target) {
     const before = this.camera.fov;
-    this.camera.fov += (target - this.camera.fov) * 0.08;
+    this.camera.fov += (target - this.camera.fov) * 0.18;
     if (Math.abs(this.camera.fov - before) > 0.01) this.camera.updateProjectionMatrix();
   }
 
@@ -2912,6 +2921,7 @@ export class Game {
     const { dom } = this;
     if (!dom.hangarTitle) return;
     dom.hangarTitle.textContent = T.hangar;
+    if (dom.shipPickerTitle) dom.shipPickerTitle.textContent = T.pickShip;
     dom.metaPoints.textContent = `${T.points} ${Math.floor(this.meta.points).toLocaleString('he-IL')}`;
     dom.shipPicks.replaceChildren();
     for (const spec of Object.values(SHIPS)) dom.shipPicks.appendChild(this.pickButton('ship', spec));
@@ -2928,9 +2938,11 @@ export class Game {
     button.type = 'button';
     button.className = selected ? 'pick on' : 'pick';
     const name = kind === 'ship' ? T.shipNames[spec.id] : T.weaponNames[spec.id];
-    let suffix = ` · ${spec.cost.toLocaleString('he-IL')}`;
+    const blurb = kind === 'ship' ? (T.shipBlurbs[spec.id] || '') : '';
+    let suffix = '';
     if (selected) suffix = ` · ${T.equipped}`;
-    else if (owned) suffix = ` · ${T.owned}`;
+    else if (!owned && spec.cost > 0) suffix = ` · ${spec.cost.toLocaleString('he-IL')}`;
+    else if (blurb) suffix = ` · ${blurb}`;
     button.textContent = `${name}${suffix}`;
     button.addEventListener('click', () => {
       this.sfx.unlock();
@@ -2987,6 +2999,7 @@ export class Game {
     const name = T.shipNames[id] || T.ship;
     this.dom.shipName.textContent = name;
     this.dom.hudShip.textContent = name;
+    if (this.dom.tagline && T.shipTaglines[id]) this.dom.tagline.textContent = T.shipTaglines[id];
   }
 
   startMission() {

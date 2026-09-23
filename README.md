@@ -69,14 +69,14 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Action | Input |
 | --- | --- |
 | Steer | Mouse (crosshair stays at screen center) or arrow keys |
-| Speed rush / brake | Hold `W`, Shift, or the מהירות על חלל button / `S` |
+| Speed rush / brake | Hold `W`, Shift, or the מהירות על־חלל button / `S` |
 | Strafe | `A` / `D` |
 | Lasers | Space, left click, or the red ירי button. Small bright tracers |
 | Giant missile | Gold טיל ענק button or `Q` |
 | Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin movie dart, long flight, then an energy mushroom |
 | Factions | Blues are triangles (your army). Reds are circles that loiter on rings in their sector so you can shoot them. The menu says כחולים: משולשים · אדומים: עיגולים |
-| Phone | Left stick moves (up מהירות על חלל, down brake, sideways strafe). Right stick aims |
-| Hangar | מספנה spends נקודות on נץ, עוגן, מניפה, and מחט. שומרת and the thick laser stay free |
+| Phone | Left stick moves (up מהירות על־חלל, down brake, sideways strafe). Right stick aims |
+| Hangar | בחרו ספינה on the menu: שומרת, נץ, and עוגן are free. מספנה spends נקודות on מניפה and מחט |
 | Ground battles | קרבות קרקע, then a world. Artillery, armor and gun-cars, infantry, then משמיד — a turquoise tank with every gun on it. נסיגה pulls back |
 | Pause | `Esc` or `P` |
 | Mute | `M`, or קול on the HUD and the menu |

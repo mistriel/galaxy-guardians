@@ -18,17 +18,16 @@ A and D (or the phone side buttons) slide the push. דחיפה or Space hurries 
 
 **Shomeret / שומרת**
 
-A long cargo freighter, scaled to 3 so she reads large in the chase view. Lopsided silhouette:
+A split-beak swallow, scaled to 3 so she reads large in the chase view. Symmetric silhouette, all blue:
 
-- Cockpit blister offset to port
-- Round cargo drum bolted to starboard
-- One oversized rear engine and one stub engine
-- Uneven fins and a crooked antenna mast
-- Full blue paint: deep hull, pale nose and panels, brighter fins and cargo, blue-black engines
+- Two long prongs reach forward and open into a fork
+- A glass canopy sits in the fork
+- Swept wings angle back from the spine
+- Twin blue engines sit side by side at the tail
 
 The nose points down the mesh's local −Z axis. The whole mesh is scaled by 3. Nothing about the shape is taken from an existing film or comic vehicle.
 
-The מספנה spends persistent נקודות (separate from the run score and the best score). שומרת and the movie לייזר are free. נץ costs 1200 and is a narrow dart at scale 1.75. עוגן costs 2200 and is a wide hauler at scale 2.35. מניפה (900) fires three small tracers. מחט (1400) fires a thinner faster dart.
+The menu heading **בחרו ספינה** offers שומרת, נץ, and עוגן with no point cost. The מספנה still spends persistent נקודות on weapons. The לייזר is free. מניפה (900) fires three small tracers. מחט (1400) fires a thinner faster dart. נץ is a narrow dart at scale 1.75. עוגן is a wide hauler at scale 2.35.
 
 ## Controls
 
@@ -37,14 +36,14 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Action | Input |
 | --- | --- |
 | Steer yaw / pitch | Mouse offset from center, or arrow keys |
-| Speed rush | Hold `W`, Shift, the מהירות על חלל button on the HUD, or the phone מהירות על חלל button (240 u/s). Light streaks and a soft whoosh frame the ship |
+| Speed rush | Hold `W`, Shift, the מהירות על־חלל button on the HUD, or the phone מהירות על־חלל button (420 u/s). Streaks and a soft glow wrap the whole hull, and the view opens to FOV 114 |
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
 | Shoot | Space, left click, or the red ירי button. Small cinematic tracers |
 | Giant missile | Gold טיל ענק button or `Q`. Fat body, scale 3.4, blooms after 1.7s (about 270 units). Blast 150. Cooldown 3s. Does not touch allies |
 | Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin movie dart, 12.5s flight, then an energy mushroom. Cooldown 4s |
-| Phone move | Left joystick. Horizontal strafes. Up holds מהירות על חלל, down brakes. Brake wins if both |
+| Phone move | Left joystick. Horizontal strafes. Up holds מהירות על־חלל, down brakes. Brake wins if both |
 | Phone aim | Right joystick. Touch yaw rate is 68% of the mouse rate. The stick value is not passed through the mouse deadzone |
 | Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
 | Pause | `Esc` or `P`, or the השהיה button |
@@ -71,19 +70,19 @@ The play space is a closed sphere of radius **430** that feels open. Stars and d
 | Fire interval | 0.15s (0.075s with rapid fire) |
 | Missile | Speed 260. Lifetime 12.5s, so it travels about 3250 units before it blooms. No contact fuse and no arena-edge fuse. Blast radius 3600 still clears the sector it crossed. Cooldown 4s |
 
-Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding מהירות על חלל jumps the ship to 240, opens the view, and draws pale light streaks around the ship. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
+Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding מהירות על־חלל jumps the ship to 420, opens the view to FOV 114, and draws pale streaks plus a glow along the whole hull. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
 
 Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4 bolt, so it reads as a bright streak rather than a slab. Damage stays 36.
 
 טיל ענק is the fat special. The mesh is a thick gold body at scale 3.4. It flies for 1.7 seconds at 160 (about 270 units) and only then blooms. Blast radius 150. It does not hurt שומרת, the blue triangles, or the friendly carrier.
 
-טילים גרעיניים are a thin movie dart (body radius under 0.08, small tail fins, an axial plume instead of a fat flame, scale 1, speed 260, life 12.5s, no contact fuse). At the end of that long flight the bloom is an energy mushroom drawn ahead of the camera so it still fills the view: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 3600, and it still skips allies.
+טילים גרעיניים are a thinner movie dart (body radius under 0.04, small tail fins, an axial plume instead of a fat flame, scale 1, speed 260, life 12.5s, no contact fuse). At the end of that long flight the bloom is an energy mushroom drawn ahead of the camera so it still fills the view: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 3600, and it still skips allies.
 
 A separate heavy cycle sits beside those two. **E** or the חימוש button fires the selected one. **C** or **הבא** steps אטומים → פגזים → פצצות אולטרה גרעיניות. Atoms are a spinning cluster of pastel beads (speed 175, life 1.35s, blast 78). Shells are short gold rounds (speed 230, life 0.95s, blast 62). Ultra is a glowing orb with two rings that opens into a local festival of light (speed 120, life 2.15s, blast 280), not the sector-wide nuclear wipe. Each has its own cooldown. No gore.
 
 ## Enemies
 
-Two factions fill the sector. Blues are triangles and fight with שומרת: 44 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the all-blue freighter at scale 3.
+Two factions fill the sector. Blues are triangles and fight with שומרת: 44 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the all-blue split-beak swallow at scale 3.
 
 Waves arrive as squads of eight. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is 32 red circles. Later waves climb slowly, and Judge Vorak stays at one until well after wave 6. Pool caps still hold a second wave (nib 56, glint 36, howler 18, slab 8, vorak 2). Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
 
