@@ -625,8 +625,9 @@ export class Game {
     const rect = stick.root.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const shiftX = THREE.MathUtils.clamp(event.clientX - cx, -28, 28);
-    const shiftY = THREE.MathUtils.clamp(event.clientY - cy, -28, 28);
+    const grab = (rect.width || 168) * (28 / 168);
+    const shiftX = THREE.MathUtils.clamp(event.clientX - cx, -grab, grab);
+    const shiftY = THREE.MathUtils.clamp(event.clientY - cy, -grab, grab);
     stick.id = event.pointerId;
     stick.originX = cx + shiftX;
     stick.originY = cy + shiftY;
@@ -646,7 +647,8 @@ export class Game {
   }
 
   applyJoy(stick, clientX, clientY) {
-    const maxThrow = 64;
+    const width = stick.root?.getBoundingClientRect().width || 168;
+    const maxThrow = width * (64 / 168);
     const dead = 0.3;
     let dx = clientX - stick.originX;
     let dy = clientY - stick.originY;
