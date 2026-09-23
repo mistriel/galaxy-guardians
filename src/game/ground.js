@@ -785,6 +785,9 @@ export class GroundBattle {
     this.shake = 0;
     this.active = false;
     this.flagCloth = null;
+    this.deployCd = { infantry: 0, tank: 0, destroyer: 0 };
+    this.deployNote = '';
+    this.deployNoteT = 0;
     const q = (id) => (typeof document === 'undefined' ? null : document.querySelector(id));
     this.dom = {
       phase: q('#ground-phase'),
@@ -792,6 +795,9 @@ export class GroundBattle {
       hold: q('#ground-hold-bar'),
       capture: q('#ground-capture-bar'),
       note: q('#ground-note'),
+      soldierBtn: q('#ground-soldier'),
+      tankBtn: q('#ground-tank'),
+      destroyerBtn: q('#ground-destroyer'),
     };
   }
 
@@ -824,6 +830,9 @@ export class GroundBattle {
     this.shellCd = 1.05;
     this.destroyerCd = 1;
     this.shake = 0;
+    this.deployCd = { infantry: 0, tank: 0, destroyer: 0 };
+    this.deployNote = '';
+    this.deployNoteT = 0;
     this.active = true;
     this.buildField();
     [-12, 0, 12].forEach((x, i) => this.spawn('artillery', x, 0.05 + i * 0.08, { speed: 0, laneFollow: 0.15, bob: 0, z: 10 }));
@@ -1017,6 +1026,14 @@ export class GroundBattle {
       shotCd: extra.shotCd ?? 0.4 + Math.random() * 0.5,
       gun: extra.gun || mesh.userData.gun || 'machine',
       attackT: 0,
+      hp: kind === 'player' ? 8 : kind === 'defender' ? 6 : kind === 'infantry' ? 6 : 0,
+      duel: null,
+      down: false,
+      downT: 0,
+      meleeCd: 0.35 + Math.random() * 0.25,
+      stagger: 0,
+      stars: null,
+      focus: null,
     };
     this.units.push(unit);
     if (kind === 'artillery' && mesh.userData.tube) this.tubes.push(mesh.userData.tube);
@@ -1071,8 +1088,80 @@ export class GroundBattle {
     this.beginPhase('resolve');
   }
 
-  boostPush() {
-    this.pushPulse = 0.35;
+  countKind(kind) {
+    let n = 0;
+    for (const unit of this.units) {
+      if (unit.kind === kind && !unit.down) n += 1;
+    }
+    return n;
+  }
+
+  rearAnchor() {
+    const player = this.playerUnit();
+    return {
+      x: player ? player.x : 0,
+      z: Math.min(18, (player ? player.z : 6) + 3.4),
+    };
+  }
+
+  flashDeploy(text) {
+    this.deployNote = text;
+    this.deployNoteT = 1.7;
+  }
+
+  /** One press streams a force in from the friendly rear. */
+  deploy(kind) {
+    if (!this.active || this.phase === 'resolve' || this.retreating) return false;
+    if (kind === 'infantry') return this.deployInfantry();
+    if (kind === 'tank') return this.deployTank();
+    if (kind === 'destroyer') return this.deployDestroyer();
+    return false;
+  }
+
+  deployInfantry() {
+    if (this.deployCd.infantry > 0 || this.countKind('infantry') >= 88) return false;
+    this.deployCd.infantry = 0.48;
+    const { x, z } = this.rearAnchor();
+    for (let i = 0; i < 4; i += 1) {
+      this.spawn('infantry', x + (i - 1.5) * 1.28, 0.07 * i, {
+        z: z + (i % 2) * 0.75,
+        speed: 7.6,
+        shotCd: 0.15 + i * 0.08,
+      });
+    }
+    this.flashDeploy(T.groundSoldierIn);
+    this.sfx.ui?.();
+    return true;
+  }
+
+  deployTank() {
+    if (this.deployCd.tank > 0 || this.countKind('tank') >= 12) return false;
+    this.deployCd.tank = 0.85;
+    const { x, z } = this.rearAnchor();
+    this.spawn('tank', THREE.MathUtils.clamp(x, -14, 14), 0, {
+      z: z + 0.3,
+      speed: 8.6,
+      shotCd: 0.2,
+    });
+    this.flashDeploy(T.groundTankIn);
+    this.sfx.wave?.();
+    return true;
+  }
+
+  deployDestroyer() {
+    if (this.deployCd.destroyer > 0 || this.countKind('destroyer') >= 3) return false;
+    this.deployCd.destroyer = 1.35;
+    const { x, z } = this.rearAnchor();
+    const unit = this.spawn('destroyer', THREE.MathUtils.clamp(x, -10, 10), 0.05, {
+      z: Math.min(z, 8),
+      speed: 6.2,
+      shotCd: 0.45,
+    });
+    this.splash(unit.x, unit.z, 0x1ad4c8, 14);
+    this.shake = Math.min(1.6, this.shake + 0.7);
+    this.flashDeploy(T.groundDestroyerIn);
+    this.sfx.wave?.();
+    return true;
   }
 
   playerUnit() {
@@ -1102,7 +1191,7 @@ export class GroundBattle {
   }
 
   firePlayer(player) {
-    if (player.shotCd > 0) return;
+    if (player.shotCd > 0 || player.down || player.duel) return;
     player.shotCd = 0.22;
     player.attackT = 0.2;
     this.fireRifle(player);
@@ -1110,19 +1199,22 @@ export class GroundBattle {
 
   update(dt, input) {
     if (!this.active) return;
-    const pushing = Boolean(input?.push) || this.pushPulse > 0;
-    this.pushPulse = Math.max(0, this.pushPulse - dt);
+    this.deployCd.infantry = Math.max(0, this.deployCd.infantry - dt);
+    this.deployCd.tank = Math.max(0, this.deployCd.tank - dt);
+    this.deployCd.destroyer = Math.max(0, this.deployCd.destroyer - dt);
+    this.deployNoteT = Math.max(0, this.deployNoteT - dt);
     this.drivePlayer(dt, input);
     this.lane = THREE.MathUtils.damp(this.lane, 0, 4, dt);
 
     if (this.phase !== 'resolve') {
-      this.phaseT += dt * (pushing ? 1.28 : 1);
+      this.phaseT += dt;
       if (this.phaseT >= PHASE_LEN[this.phase]) this.nextPhase();
     }
 
-    this.updatePhase(dt, pushing);
-    this.updateUnits(dt, pushing);
-    this.updateDestroyer(dt, pushing);
+    this.pairSoldiers();
+    this.updatePhase(dt);
+    this.updateUnits(dt);
+    this.updateDestroyer(dt);
     this.updateShells(dt);
     this.updateBits(dt);
     this.updateCamera(dt);
@@ -1145,12 +1237,13 @@ export class GroundBattle {
     }
     const forward = unit.kind === 'defender' ? 1 : -1;
     const color = unit.kind === 'defender' ? this.world.enemy : this.world.accent;
+    const foe = unit.focus && this.troopAlive(unit.focus) ? unit.focus : this.nearestEnemy(unit, 20);
     this.launchShell({
       from,
       to: new THREE.Vector3(
-        unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 3.2,
-        1.15,
-        unit.z + forward * (8 + Math.random() * 5),
+        foe ? foe.x : unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 3.2,
+        1.05,
+        foe ? foe.z : unit.z + forward * (8 + Math.random() * 5),
       ),
       color,
       radius: 0.14,
@@ -1159,6 +1252,8 @@ export class GroundBattle {
       splash: 2.4,
       arc: 0.85,
       silentTubes: true,
+      team: unit.kind === 'defender' ? 'foe' : 'friend',
+      soldierHit: unit.kind === 'player' ? 1.8 : 0,
     });
     const flash = unit.mesh.userData.flash;
     if (flash) flash.material.opacity = 1;
@@ -1197,6 +1292,8 @@ export class GroundBattle {
       splash: gun.splash,
       arc: gun.arc,
       silentTubes: true,
+      team: unit.kind === 'foeCar' ? 'foe' : 'friend',
+      soldierHit: unit.gun === 'machine' ? 0 : 2.1,
     });
     const flash = unit.mesh.userData.flash;
     if (flash) flash.material.opacity = 1;
@@ -1207,13 +1304,12 @@ export class GroundBattle {
     }
   }
 
-  updatePhase(dt, pushing) {
-    const pace = pushing ? 1.35 : 1;
+  updatePhase(dt) {
     if (this.phase === 'artillery' || this.phase === 'armor') {
-      this.hold = Math.max(0, this.hold - (this.phase === 'artillery' ? 4.2 : 3.2) * pace * dt);
-      this.shellCd -= dt * pace;
+      this.hold = Math.max(0, this.hold - (this.phase === 'artillery' ? 4.2 : 3.2) * dt);
+      this.shellCd -= dt;
       if (this.shellCd <= 0) {
-        this.shellCd = pushing ? 0.38 : 0.62;
+        this.shellCd = 0.62;
         const guns = this.units.filter((unit) => unit.kind === 'artillery' && unit.mesh.visible);
         const gun = guns[Math.floor(Math.random() * guns.length)];
         this.launchShell(gun ? {
@@ -1223,11 +1319,11 @@ export class GroundBattle {
         } : { arc: 6 });
       }
     } else if (this.phase === 'infantry') {
-      this.capture = Math.min(100, this.capture + 7 * pace * dt);
-      this.hold = Math.max(0, this.hold - 1.4 * pace * dt);
+      this.capture = Math.min(100, this.capture + 7 * dt);
+      this.hold = Math.max(0, this.hold - 1.4 * dt);
     } else if (this.phase === 'special') {
-      this.capture = Math.min(100, this.capture + 10 * pace * dt);
-      this.hold = Math.max(0, this.hold - 14 * pace * dt);
+      this.capture = Math.min(100, this.capture + 10 * dt);
+      this.hold = Math.max(0, this.hold - 14 * dt);
     } else if (this.outcome === 'win') {
       this.capture = 100;
       this.hold = 0;
@@ -1254,6 +1350,8 @@ export class GroundBattle {
       holdHit: spec.holdHit ?? 3.1,
       splash: spec.splash ?? 7,
       arc: spec.arc ?? 9,
+      team: spec.team || null,
+      soldierHit: spec.soldierHit || 0,
     });
     if (spec.silentTubes) return;
     for (const tube of this.tubes) {
@@ -1277,6 +1375,8 @@ export class GroundBattle {
         holdHit: nuclear ? 2.2 : 1,
         splash: nuclear ? 10 : 5.5,
         silentTubes: true,
+        team: 'friend',
+        soldierHit: nuclear ? 3.3 : 2.2,
       });
     }
     this.shake = Math.min(1.3, this.shake + 0.24);
@@ -1284,19 +1384,20 @@ export class GroundBattle {
     this.sfx.noise?.(0.14, 0.16, 380);
   }
 
-  updateDestroyer(dt, pushing) {
-    const unit = this.units.find((item) => item.kind === 'destroyer' && item.mesh.visible);
-    if (!unit) return;
-    const pulse = 0.7 + Math.sin(unit.age * 10) * 0.35;
-    for (const core of unit.mesh.userData.cores || []) {
-      core.material.emissiveIntensity = pulse;
-      core.scale.setScalar(0.9 + Math.sin(unit.age * 10) * 0.18);
+  updateDestroyer(dt) {
+    for (const unit of this.units) {
+      if (unit.kind !== 'destroyer' || !unit.mesh.visible || unit.delay > 0) continue;
+      const pulse = 0.7 + Math.sin(unit.age * 10) * 0.35;
+      for (const core of unit.mesh.userData.cores || []) {
+        core.material.emissiveIntensity = pulse;
+        core.scale.setScalar(0.9 + Math.sin(unit.age * 10) * 0.18);
+      }
+      if (this.phase === 'resolve' || this.outcome === 'retreat' || unit.age < 0.7) continue;
+      unit.shotCd -= dt;
+      if (unit.shotCd > 0) continue;
+      unit.shotCd = 0.85;
+      this.fireDestroyer(unit);
     }
-    if (this.phase !== 'special' || this.outcome === 'retreat' || unit.age < 0.7) return;
-    this.destroyerCd -= dt * (pushing ? 1.25 : 1);
-    if (this.destroyerCd > 0) return;
-    this.destroyerCd = 0.72;
-    this.fireDestroyer(unit);
   }
 
   updateShells(dt) {
@@ -1311,6 +1412,7 @@ export class GroundBattle {
       shell.mesh.position.y += Math.sin(p * Math.PI) * (shell.arc ?? 9);
       if (p < 1) continue;
       this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7);
+      if (shell.team && shell.soldierHit) this.hurtSoldiers(shell.to.x, shell.to.z, shell.soldierHit, shell.team);
       this.hold = Math.max(0, this.hold - (shell.holdHit ?? 3.1));
       this.crackNearest(shell.to.x, shell.to.z);
       this.shake = Math.min(0.8, this.shake + 0.18);
@@ -1337,9 +1439,311 @@ export class GroundBattle {
     best.mesh.scale.setScalar(scale);
   }
 
-  updateUnits(dt, pushing) {
-    const pace = pushing ? 1.28 : 1;
+  isTroop(unit) {
+    return Boolean(unit) && (unit.kind === 'infantry' || unit.kind === 'defender' || unit.kind === 'player');
+  }
+
+  troopAlive(unit) {
+    return this.isTroop(unit) && !unit.down && unit.delay <= 0;
+  }
+
+  nearestEnemy(unit, range) {
+    const wantDefender = unit.kind !== 'defender';
+    let best = null;
+    let bestScore = range * 1.7;
+    for (const other of this.units) {
+      if (!this.troopAlive(other)) continue;
+      if (wantDefender ? other.kind !== 'defender' : other.kind === 'defender') continue;
+      const dx = Math.abs(unit.x - other.x);
+      const dz = Math.abs(unit.z - other.z);
+      const dist = Math.hypot(dx, dz);
+      if (dist > range) continue;
+      let score = dist + dx * 0.85;
+      if (other.duel && other.duel !== unit) score += 5;
+      if (score < bestScore) {
+        best = other;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  breakDuel(unit) {
+    if (!unit?.duel) return;
+    const foe = unit.duel;
+    unit.duel = null;
+    if (foe.duel === unit) foe.duel = null;
+  }
+
+  pairSoldiers() {
+    for (const unit of this.units) {
+      if (!this.troopAlive(unit)) {
+        if (unit.duel) this.breakDuel(unit);
+        continue;
+      }
+      const foe = unit.duel;
+      if (!foe) continue;
+      const dist = Math.hypot(unit.x - foe.x, unit.z - foe.z);
+      if (!this.troopAlive(foe) || foe.duel !== unit || dist > 4.8) this.breakDuel(unit);
+    }
+    for (const unit of this.units) {
+      if (!this.troopAlive(unit) || unit.duel || unit.kind === 'defender') continue;
+      let best = null;
+      let bestD = 3.15;
+      for (const other of this.units) {
+        if (!this.troopAlive(other) || other.kind !== 'defender' || other.duel) continue;
+        const dist = Math.hypot(unit.x - other.x, unit.z - other.z);
+        if (dist < bestD) {
+          best = other;
+          bestD = dist;
+        }
+      }
+      if (!best) continue;
+      unit.duel = best;
+      best.duel = unit;
+      unit.meleeCd = Math.min(unit.meleeCd, 0.32);
+      unit.attackT = 0.24;
+      best.attackT = 0.24;
+      this.clashSpark((unit.x + best.x) * 0.5, (unit.z + best.z) * 0.5, this.world.accent);
+    }
+  }
+
+  steerTroop(unit, dt) {
+    unit._slow = 1;
+    unit._step = 0;
+    if (!this.troopAlive(unit)) {
+      unit.focus = null;
+      return;
+    }
+    if (unit.duel) {
+      unit.focus = unit.duel;
+      return;
+    }
+    const foe = this.nearestEnemy(unit, unit.kind === 'defender' ? 16 : 28);
+    unit.focus = foe;
+    if (unit.kind === 'player') return;
+    if (!foe) {
+      if (unit.kind !== 'defender') {
+        for (const other of this.units) {
+          if (!this.troopAlive(other) || other.kind !== 'defender') continue;
+          const dz = unit.z - other.z;
+          const dx = unit.x - other.x;
+          if (dz > 0 && dz < 3.2 && Math.abs(dx) < 1.45) {
+            unit._slow = 0.04;
+            unit.x += Math.sign(dx || (unit.x >= 0 ? 1 : -1)) * 2.4 * dt;
+            break;
+          }
+        }
+      }
+      return;
+    }
+    const dx = foe.x - unit.x;
+    const closing = unit.kind === 'defender' ? foe.z - unit.z : unit.z - foe.z;
+    unit.x += THREE.MathUtils.clamp(dx, -1, 1) * (unit.kind === 'defender' ? 2.5 : 3.6) * dt;
+    if (unit.kind === 'defender') {
+      if (closing > 0.45 && closing < 12) unit._step = 2.3;
+    } else if (closing < 5.5 && Math.abs(dx) > 1.05) unit._slow = 0.22;
+    else if (closing < 2.5) unit._slow = 0.08;
+  }
+
+  separateTroops() {
+    const troops = [];
+    for (const unit of this.units) {
+      if (this.troopAlive(unit)) troops.push(unit);
+    }
+    for (let i = 0; i < troops.length; i += 1) {
+      for (let j = i + 1; j < troops.length; j += 1) {
+        const a = troops[i];
+        const b = troops[j];
+        if (a.duel === b) continue;
+        let dx = a.x - b.x;
+        let dz = a.z - b.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > 0.9 || dist < 0.0001) continue;
+        const push = (0.9 - dist) * 0.45;
+        dx /= dist;
+        dz /= dist;
+        a.x += dx * push;
+        a.z += dz * push;
+        b.x -= dx * push;
+        b.z -= dz * push;
+      }
+    }
+  }
+
+  exchange(a, b) {
+    if (!this.troopAlive(a) || !this.troopAlive(b)) return;
+    const attacker = Math.random() < 0.56 ? a : b;
+    const victim = attacker === a ? b : a;
+    attacker.attackT = 0.32;
+    victim.stagger = 0.24;
+    this.clashSpark((a.x + b.x) * 0.5, (a.z + b.z) * 0.5, attacker.kind === 'defender' ? this.world.enemy : this.world.accent);
+    this.strike(victim, 1);
+    if (Math.random() < 0.4) {
+      this.sfx.blip?.({ freq: 150 + Math.random() * 70, dur: 0.05, type: 'square', vol: 0.03, slide: -24 });
+    }
+  }
+
+  strike(unit, amount) {
+    if (!this.troopAlive(unit)) return;
+    unit.hp -= amount;
+    unit.stagger = Math.max(unit.stagger || 0, 0.16);
+    if (unit.hp > 0) return;
+    this.knockOut(unit);
+  }
+
+  knockOut(unit) {
+    if (!unit || unit.down || !this.isTroop(unit)) return;
+    unit.down = true;
+    unit.downT = 0;
+    unit.speed = 0;
+    this.breakDuel(unit);
+    if (!unit.stars) unit.stars = this.attachStars(unit.mesh);
+    unit.stars.visible = true;
+    const foe = unit.kind === 'defender';
+    if (foe) {
+      this.hold = Math.max(0, this.hold - 0.85);
+      this.capture = Math.min(100, this.capture + 0.65);
+    } else if (unit.kind !== 'player') {
+      this.hold = Math.min(100, this.hold + 0.4);
+      this.capture = Math.max(0, this.capture - 0.25);
+    }
+    this.splash(unit.x, unit.z, foe ? this.world.enemy : this.world.accent, 2.1);
+    this.sfx.blip?.({ freq: foe ? 92 : 120, dur: 0.08, type: 'triangle', vol: 0.05, slide: -46 });
+  }
+
+  attachStars(mesh) {
+    const group = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xfff3b0,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+    });
+    for (let i = 0; i < 3; i += 1) {
+      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), material);
+      const angle = (i / 3) * Math.PI * 2;
+      star.position.set(Math.cos(angle) * 0.32, 0, Math.sin(angle) * 0.32);
+      group.add(star);
+    }
+    group.position.y = 1.15;
+    mesh.add(group);
+    return group;
+  }
+
+  updateDowned(unit, dt) {
+    unit.downT += dt;
+    const flop = Math.min(1, unit.downT / 0.32);
+    const yaw = unit.mesh.rotation.y;
+    unit.mesh.rotation.set(-1.4 * flop, yaw, Math.sin(unit.downT * 10) * (1 - flop) * 0.55);
+    const hop = Math.sin(Math.min(1, unit.downT) * Math.PI) * 0.42;
+    unit.mesh.position.set(unit.x, Math.max(0.02, (1 - flop) * 0.3 + hop), unit.z);
+    unit.mesh.scale.setScalar(unit.kind === 'player' ? 2.8 : 2.5);
+    if (unit.stars) {
+      unit.stars.visible = unit.downT < 4.2;
+      unit.stars.rotation.y += dt * 5.5;
+      unit.stars.position.y = 1.02 + Math.sin(unit.age * 8) * 0.06;
+      const fade = unit.downT > 1.4 ? Math.max(0, 1 - (unit.downT - 1.4) / 1.1) : 1;
+      for (const star of unit.stars.children) star.material.opacity = fade;
+    }
+    if (unit.kind === 'player' && unit.downT > 1.15) {
+      unit.down = false;
+      unit.hp = 8;
+      unit.downT = 0;
+      unit.stagger = 0;
+      unit.mesh.rotation.x = 0;
+      unit.mesh.rotation.z = 0;
+      if (unit.stars) unit.stars.visible = false;
+    }
+  }
+
+  hurtSoldiers(x, z, radius, team) {
+    let best = null;
+    let bestD = radius;
+    for (const unit of this.units) {
+      if (!this.troopAlive(unit)) continue;
+      if (team === 'friend' && unit.kind !== 'defender') continue;
+      if (team === 'foe' && unit.kind === 'defender') continue;
+      const dist = Math.hypot(unit.x - x, unit.z - z);
+      if (dist < bestD) {
+        best = unit;
+        bestD = dist;
+      }
+    }
+    if (best) this.strike(best, 1);
+  }
+
+  clashSpark(x, z, color) {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.2, 0.38, 14),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.95,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, 0.35, z);
+    this.root.add(ring);
+    this.bits.push({ mesh: ring, life: 0.28, max: 0.28, grow: 1.4 });
+    for (let i = 0; i < 3; i += 1) {
+      const bit = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), mat(color, color, 0.8));
+      bit.position.set(x, 0.9, z);
+      this.root.add(bit);
+      this.bits.push({
+        mesh: bit,
+        life: 0.32,
+        max: 0.32,
+        grow: 0,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 3.5, 2.2 + Math.random() * 1.6, (Math.random() - 0.5) * 3.5),
+      });
+    }
+  }
+
+  rollThrough(unit) {
+    const reach = unit.kind === 'destroyer' ? 3.5 : unit.kind === 'tank' ? 2.05 : 0;
+    if (!reach) return;
+    for (const foe of this.units) {
+      if (!this.troopAlive(foe) || foe.kind !== 'defender') continue;
+      if (Math.hypot(foe.x - unit.x, foe.z - unit.z) > reach) continue;
+      if (!foe._bumps) foe._bumps = [];
+      if (foe._bumps.includes(unit)) continue;
+      foe._bumps.push(unit);
+      foe.x += Math.sign(foe.x - unit.x || (foe.x >= 0 ? 1 : -1)) * 0.45;
+      foe.z -= 0.55;
+      foe.stagger = 0.28;
+      this.clashSpark(foe.x, foe.z, unit.kind === 'destroyer' ? 0x7af6ee : 0xffd56a);
+      this.strike(foe, unit.kind === 'destroyer' ? 2 : 1);
+    }
+  }
+
+  fireTank(unit) {
+    const foe = unit.focus && this.troopAlive(unit.focus) ? unit.focus : this.nearestEnemy(unit, 26);
+    this.launchShell({
+      from: new THREE.Vector3(unit.mesh.position.x, 1.45, unit.mesh.position.z - 1.1),
+      to: foe
+        ? new THREE.Vector3(foe.x, 0.7, foe.z)
+        : new THREE.Vector3(unit.x + (Math.random() - 0.5) * 3, 0.45, unit.z - 12),
+      color: 0xffd56a,
+      radius: 0.28,
+      dur: 0.4,
+      holdHit: 0.32,
+      splash: 3.1,
+      arc: 1.15,
+      silentTubes: true,
+      team: 'friend',
+      soldierHit: 2.3,
+    });
+    if (Math.random() < 0.5) {
+      this.sfx.blip?.({ freq: 180, dur: 0.07, type: 'square', vol: 0.04, slide: -50 });
+    }
+  }
+
+  updateUnits(dt) {
     const fallingBack = this.outcome === 'retreat';
+    this.separateTroops();
     for (const unit of this.units) {
       if (unit.delay > 0) {
         unit.delay -= dt;
@@ -1348,24 +1752,47 @@ export class GroundBattle {
       }
       unit.mesh.visible = true;
       unit.age += dt;
+      if (unit.stagger > 0) unit.stagger -= dt;
+      if (unit.down) {
+        this.updateDowned(unit, dt);
+        continue;
+      }
+      this.steerTroop(unit, dt);
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
-      const people = unit.kind === 'infantry' || unit.kind === 'defender';
-      const pop = unit.kind === 'player' ? 2.8 : unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : people ? 2.5 : 0.85;
-      unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro));
+      const pop = unit.kind === 'player' ? 2.8 : unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : (unit.kind === 'infantry' || unit.kind === 'defender') ? 2.5 : 0.85;
+      unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro) * (unit.stagger > 0.1 ? 1.08 : 1));
       if (unit.kind !== 'player' && fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
-      else if (unit.kind !== 'player' && this.phase !== 'resolve') unit.z -= unit.speed * pace * dt;
-      if (unit.kind === 'defender' && this.capture > 50 && !fallingBack) unit.z += 8 * dt;
+      else if (unit.kind !== 'player' && this.phase !== 'resolve') {
+        if (unit.duel && unit.kind !== 'player') {
+          const foe = unit.duel;
+          const dx = foe.x - unit.x;
+          const dz = foe.z - unit.z;
+          const dist = Math.hypot(dx, dz) || 1;
+          const push = (dist - 1.9) * 2.6;
+          unit.x += (dx / dist) * push * dt;
+          unit.z += (dz / dist) * push * dt;
+        } else if (unit.kind === 'defender') {
+          unit.z += (unit._step || 0) * dt;
+          if (this.capture > 82 && this.hold < 18) unit.z += 6.5 * dt;
+        } else unit.z -= unit.speed * (unit._slow ?? 1) * dt;
+      }
       if (unit.kind === 'foeCar' && !fallingBack) unit.z = Math.min(unit.z, -6.5);
       unit.z = THREE.MathUtils.clamp(unit.z, -50, 22);
-      const yBob = Math.sin(unit.age * (unit.kind === 'infantry' ? 10 : 4)) * unit.bob;
+      if (this.isTroop(unit)) unit.x = THREE.MathUtils.clamp(unit.x, -18, 18);
+      const yBob = Math.sin(unit.age * ((unit.kind === 'infantry' || unit.kind === 'defender') ? 10 : 4)) * unit.bob;
       const drop = unit.special ? (1 - intro) * 14 : (1 - intro) * 0.8;
-      unit.mesh.position.set(unit.x + this.lane * unit.laneFollow, yBob + drop, unit.z);
+      const hop = unit.duel ? Math.abs(Math.sin(unit.age * 16)) * 0.14 : 0;
+      unit.mesh.position.set(unit.x + this.lane * unit.laneFollow, yBob + drop + hop, unit.z);
+      if (this.isTroop(unit)) {
+        const focus = unit.duel || unit.focus;
+        if (focus && !focus.down) unit.mesh.lookAt(focus.x, unit.mesh.position.y, focus.z);
+      }
       const swing = unit.mesh.userData.swing;
       const flash = unit.mesh.userData.flash;
       if (flash) flash.material.opacity = Math.max(0, flash.material.opacity - dt * 5);
       const car = unit.kind === 'gunCar' || unit.kind === 'foeCar';
       if (car && this.outcome !== 'retreat' && unit.age > 0.3) {
-        unit.shotCd -= dt * (pushing ? 1.2 : 1);
+        unit.shotCd -= dt;
         if (unit.shotCd <= 0) {
           const gun = CAR_GUNS[unit.gun] || CAR_GUNS.machine;
           unit.shotCd = gun.cd + (Math.abs(unit.x) % 0.12);
@@ -1378,37 +1805,73 @@ export class GroundBattle {
           for (const wheel of wheels) wheel.rotation.x += unit.speed * dt * 1.6;
         }
       }
-      if (people && this.outcome !== 'retreat' && unit.age > 0.25) {
-        unit.shotCd -= dt * (pushing ? 1.15 : 1);
+      if (unit.kind === 'tank' && this.outcome !== 'retreat' && unit.age > 0.35) {
+        unit.focus = this.nearestEnemy(unit, 26);
+        unit.shotCd -= dt;
         if (unit.shotCd <= 0) {
-          unit.shotCd = (unit.kind === 'defender' ? 1.7 : 0.85) + (Math.abs(unit.x) % 0.35);
-          unit.attackT = 0.34;
-          this.fireRifle(unit);
+          unit.shotCd = 1.55;
+          this.fireTank(unit);
+        }
+        this.rollThrough(unit);
+      }
+      if (unit.kind === 'destroyer' && this.outcome !== 'retreat' && unit.age > 0.55) this.rollThrough(unit);
+      const dueling = Boolean(unit.duel) && this.troopAlive(unit.duel);
+      if (dueling && unit.kind !== 'defender' && this.outcome !== 'retreat') {
+        unit.meleeCd -= dt;
+        if (unit.meleeCd <= 0 && unit.duel && !unit.duel.down) {
+          unit.meleeCd = 0.64;
+          this.exchange(unit, unit.duel);
+        }
+      } else if ((unit.kind === 'infantry' || unit.kind === 'defender') && !unit.duel && this.outcome !== 'retreat' && unit.age > 0.25) {
+        const focus = unit.focus;
+        const dist = focus ? Math.hypot(unit.x - focus.x, unit.z - focus.z) : 99;
+        if (dist > 6.5) {
+          unit.shotCd -= dt;
+          if (unit.shotCd <= 0) {
+            unit.shotCd = (unit.kind === 'defender' ? 1.55 : 0.9) + (Math.abs(unit.x) % 0.35);
+            unit.attackT = 0.34;
+            this.fireRifle(unit);
+          }
         }
       }
       if (unit.attackT > 0) unit.attackT -= dt;
       if (swing) {
-        const moving = Math.abs(unit.speed) > 0.4 && this.phase !== 'resolve';
-        const attacking = unit.attackT > 0;
+        const moving = !unit.duel && this.phase !== 'resolve' && (Math.abs(unit.speed) > 0.4 || (unit._step || 0) > 0.2);
+        const attacking = unit.attackT > 0 && !unit.duel;
         const step = Math.sin(unit.age * (moving ? 9 : 1.7) + unit.x);
-        const legAmp = moving ? 0.95 : 0.05;
-        swing.legL.rotation.x = step * legAmp;
-        swing.legR.rotation.x = -step * legAmp;
-        if (attacking) {
-          swing.armR.rotation.x = -0.85;
-          swing.armL.rotation.x = -0.28;
-          if (swing.rifle) swing.rifle.rotation.x = -0.35;
+        const melee = Boolean(unit.duel);
+        if (melee) {
+          const sw = Math.sin(unit.age * 16 + unit.x);
+          swing.legL.rotation.x = 0.28;
+          swing.legR.rotation.x = -0.12;
+          swing.armR.rotation.x = -0.4;
+          swing.armR.rotation.z = sw * 1.35;
+          swing.armL.rotation.x = 0.55;
+          swing.armL.rotation.z = -sw * 0.55;
+          if (swing.rifle) swing.rifle.rotation.x = 1.05;
         } else {
-          const armAmp = moving ? 0.62 : 0.1;
-          swing.armL.rotation.x = -step * armAmp;
-          swing.armR.rotation.x = step * armAmp;
-          if (swing.rifle) swing.rifle.rotation.x = 0;
+          swing.armL.rotation.z = 0;
+          swing.armR.rotation.z = 0;
+          const legAmp = moving ? 0.95 : 0.05;
+          swing.legL.rotation.x = step * legAmp;
+          swing.legR.rotation.x = -step * legAmp;
+          if (attacking) {
+            swing.armR.rotation.x = -0.85;
+            swing.armL.rotation.x = -0.28;
+            if (swing.rifle) swing.rifle.rotation.x = -0.35;
+          } else {
+            const armAmp = moving ? 0.62 : 0.1;
+            swing.armL.rotation.x = -step * armAmp;
+            swing.armR.rotation.x = step * armAmp;
+            if (swing.rifle) swing.rifle.rotation.x = 0;
+          }
         }
         if (swing.chest) {
+          swing.chest.rotation.x = unit.stagger > 0 ? -0.42 : melee ? 0.3 : 0;
           swing.chest.position.y = swing.chest.userData.baseY + Math.sin(unit.age * 1.7) * (moving ? 0.012 : 0.028);
         }
       }
-      if (unit.kind === 'infantry' && unit.z < -40 && !unit.scored && !fallingBack) {
+      if (unit.kind === 'infantry' && unit.z < -40 && !unit.scored && !fallingBack && !unit.down) {
         unit.scored = true;
         this.capture = Math.min(100, this.capture + 3.5);
       }
@@ -1543,7 +2006,7 @@ export class GroundBattle {
     if (dom.hold) dom.hold.style.width = `${Math.max(0, this.hold)}%`;
     if (dom.capture) dom.capture.style.width = `${Math.min(100, this.capture)}%`;
     if (dom.note) {
-      dom.note.textContent = {
+      dom.note.textContent = this.deployNoteT > 0 ? this.deployNote : {
         artillery: T.groundArtilleryNote,
         armor: T.groundArmorNote,
         infantry: T.groundInfantryNote,
@@ -1551,5 +2014,9 @@ export class GroundBattle {
         resolve: this.outcome === 'retreat' ? T.groundRetreatNote : T.groundWinNote,
       }[this.phase] || '';
     }
+    const locked = !this.active || this.phase === 'resolve';
+    if (dom.soldierBtn) dom.soldierBtn.disabled = locked || this.deployCd.infantry > 0 || this.countKind('infantry') >= 88;
+    if (dom.tankBtn) dom.tankBtn.disabled = locked || this.deployCd.tank > 0 || this.countKind('tank') >= 12;
+    if (dom.destroyerBtn) dom.destroyerBtn.disabled = locked || this.deployCd.destroyer > 0 || this.countKind('destroyer') >= 3;
   }
 }

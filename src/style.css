@@ -705,10 +705,32 @@ body.touch #flight-row {
   bottom: 18px;
   transform: translateX(-50%);
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(720px, calc(100% - 16px));
+  pointer-events: auto;
+}
+.deploy-row {
+  display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
-  pointer-events: auto;
+  width: 100%;
+}
+.ground-actions button.primary {
+  width: auto;
+  flex: 1 1 108px;
+  min-width: 108px;
+  font-weight: 900;
+}
+#ground-soldier { background: #7dffb2; color: #12301c; }
+#ground-tank { background: #ffd27a; color: #2a1c08; }
+#ground-destroyer { background: #1ad4c8; color: #04221f; }
+.ground-actions button:disabled {
+  opacity: 0.42;
+  filter: grayscale(0.35);
+  cursor: default;
 }
 #ground-touch { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
 #ground-left, #ground-right {
@@ -737,5 +759,6 @@ body.touch #flight-row {
   .meter { min-width: 0; }
   button.primary, button.ghost, button.tiny { min-height: 48px; }
   button.primary { width: 100%; font-size: 1.2rem; }
+  .ground-actions button.primary { width: auto; font-size: 1.05rem; }
   body.playing { touch-action: none; }
 }

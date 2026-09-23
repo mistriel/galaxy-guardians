@@ -106,7 +106,6 @@ export class Game {
     this.firePointer = null;
     this.boostPointer = null;
     this.boostHeld = false;
-    this.groundPush = false;
     this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
@@ -236,7 +235,9 @@ export class Game {
       groundWorlds: document.querySelector('#ground-worlds'),
       groundClose: document.querySelector('#ground-close'),
       groundHud: document.querySelector('#ground-hud'),
-      groundPushBtn: document.querySelector('#ground-push'),
+      groundSoldierBtn: document.querySelector('#ground-soldier'),
+      groundTankBtn: document.querySelector('#ground-tank'),
+      groundDestroyerBtn: document.querySelector('#ground-destroyer'),
       groundRetreat: document.querySelector('#ground-retreat'),
       groundBack: document.querySelector('#ground-back'),
       groundSpace: document.querySelector('#ground-space'),
@@ -467,7 +468,9 @@ export class Game {
     dom.groundTitle.textContent = T.groundBattles;
     dom.groundBlurb.textContent = T.groundBlurb;
     dom.groundClose.textContent = T.groundClose;
-    dom.groundPushBtn.textContent = T.groundPush;
+    dom.groundSoldierBtn.textContent = T.groundSoldier;
+    dom.groundTankBtn.textContent = T.groundTank;
+    dom.groundDestroyerBtn.textContent = T.groundDeployDestroyer;
     dom.groundRetreat.textContent = T.groundRetreat;
     dom.groundBack.textContent = T.groundWorlds;
     dom.groundSpace.textContent = T.groundSpace;
@@ -506,13 +509,9 @@ export class Game {
     dom.groundBack.addEventListener('click', () => this.exitGround());
     dom.groundSpace.addEventListener('click', () => this.returnToSpace());
     dom.groundRetreat.addEventListener('click', () => this.ground?.retreat());
-    dom.groundPushBtn.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      this.groundPush = true;
-      this.ground?.boostPush();
-    });
-    dom.groundPushBtn.addEventListener('pointerup', () => { this.groundPush = false; });
-    dom.groundPushBtn.addEventListener('pointercancel', () => { this.groundPush = false; });
+    dom.groundSoldierBtn.addEventListener('click', () => this.ground?.deploy('infantry'));
+    dom.groundTankBtn.addEventListener('click', () => this.ground?.deploy('tank'));
+    dom.groundDestroyerBtn.addEventListener('click', () => this.ground?.deploy('destroyer'));
     const holdLane = (button, side) => {
       button.addEventListener('pointerdown', (event) => {
         event.preventDefault();
@@ -534,14 +533,10 @@ export class Game {
     window.addEventListener('keydown', (event) => this.onKeyDown(event));
     window.addEventListener('keyup', (event) => {
       this.keys.delete(event.code);
-      if (event.code === 'Space') {
-        this.groundPush = false;
-        this.groundFire = false;
-      }
+      if (event.code === 'Space') this.groundFire = false;
     });
     window.addEventListener('blur', () => {
       this.keys.clear();
-      this.groundPush = false;
       this.groundFire = false;
       this.groundLeft = false;
       this.groundRight = false;
@@ -1296,7 +1291,6 @@ export class Game {
         forward: this.keys.has('KeyW') || this.keys.has('ArrowUp'),
         back: this.keys.has('KeyS') || this.keys.has('ArrowDown'),
         fire: this.groundFire,
-        push: this.groundPush,
         stick: this.coarse ? this.move.x : 0,
       });
       this.render();
@@ -3192,7 +3186,6 @@ export class Game {
   }
 
   returnToSpace() {
-    this.groundPush = false;
     this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
@@ -3257,7 +3250,6 @@ export class Game {
   }
 
   exitGround() {
-    this.groundPush = false;
     this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
