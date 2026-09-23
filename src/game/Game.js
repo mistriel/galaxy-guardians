@@ -1130,7 +1130,7 @@ export class Game {
       if (trail.lengthSq() > 0.001) trail.normalize();
       const hairline = scale <= 1.01;
       if (Math.random() < (hairline ? 0.2 : 0.35)) {
-        burstSparks(this.sparks, missile.pos, trailColor, 1, hairline ? 4 : 6, trail, hairline ? 0.1 : 0.45, hairline ? 0.4 : 0.7);
+        burstSparks(this.sparks, missile.pos, trailColor, 1, hairline ? 4 : 6, trail, hairline ? 0.06 : 0.45, hairline ? 0.4 : 0.7);
       }
       if (missile.life > 0) continue;
       const pos = missile.pos.clone();
