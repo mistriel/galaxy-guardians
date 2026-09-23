@@ -42,7 +42,7 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Strafe | `A` / `D` (20 u/s) |
 | Shoot | Space, left click, or the red ירי button. Small cinematic tracers |
 | Giant missile | Gold טיל ענק button or `Q`. Fat body, scale 3.4, blooms after 1.7s (about 270 units). Blast 150. Cooldown 3s. Does not touch allies |
-| Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin movie dart, 12.5s flight, then an energy mushroom. Cooldown 4s |
+| Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Hairline dart, 32s flight, about 28800 units, then an energy mushroom. No contact fuse. Cooldown 4s |
 | Phone move | Left joystick. Horizontal strafes. Up holds מהירות על־חלל, down brakes. Brake wins if both |
 | Phone aim | Right joystick. Touch yaw rate is 68% of the mouse rate. The stick value is not passed through the mouse deadzone |
 | Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
@@ -68,7 +68,7 @@ The play space is a closed sphere of radius **430** that feels open. Stars and d
 | Shot bolt | About 0.5 thick and 20 long, bright tracer, small muzzle flash |
 | Shot speed / life | 145 u/s, 1.15s |
 | Fire interval | 0.15s (0.075s with rapid fire) |
-| Missile | Speed 260. Lifetime 12.5s, so it travels about 3250 units before it blooms. No contact fuse and no arena-edge fuse. Blast radius 3600 still clears the sector it crossed. Cooldown 4s |
+| Missile | Speed 900. Lifetime 32s, so it travels 28800 units before it blooms. Body radius 0.014 aft and 0.009 at the nose, nose cone radius 0.01, fin thickness 0.005, plume radius 0.015, scale 1. No contact fuse and no arena-edge fuse. Blast radius 29200 still clears the sector it crossed. Cooldown 4s |
 
 Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding מהירות על־חלל jumps the ship to 420, opens the view to FOV 114, and draws pale streaks plus a glow along the whole hull. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
 
@@ -76,7 +76,7 @@ Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4
 
 טיל ענק is the fat special. The mesh is a thick gold body at scale 3.4. It flies for 1.7 seconds at 160 (about 270 units) and only then blooms. Blast radius 150. It does not hurt שומרת, the blue triangles, or the friendly carrier.
 
-טילים גרעיניים are a thinner movie dart (body radius under 0.04, small tail fins, an axial plume instead of a fat flame, scale 1, speed 260, life 12.5s, no contact fuse). At the end of that long flight the bloom is an energy mushroom drawn ahead of the camera so it still fills the view: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 3600, and it still skips allies.
+טילים גרעיניים are a hairline movie dart (body radius 0.014 aft and 0.009 at the nose, nose cone radius 0.01, fin thickness 0.005, plume radius 0.015, scale 1, speed 900, life 32s, range 28800). Lifetime fuse only: no contact fuse and no arena-edge fuse, so it cannot pop early. At the end of that flight the bloom is an energy mushroom drawn ahead of the camera so it still fills the view: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 29200, and it still skips allies.
 
 A separate heavy cycle sits beside those two. **E** or the חימוש button fires the selected one. **C** or **הבא** steps אטומים → פגזים → פצצות אולטרה גרעיניות. Atoms are a spinning cluster of pastel beads (speed 175, life 1.35s, blast 78). Shells are short gold rounds (speed 230, life 0.95s, blast 62). Ultra is a glowing orb with two rings that opens into a local festival of light (speed 120, life 2.15s, blast 280), not the sector-wide nuclear wipe. Each has its own cooldown. No gore.
 
