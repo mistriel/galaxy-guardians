@@ -831,6 +831,89 @@ body.touch #hud button.tiny {
 #ground-left { left: max(16px, env(safe-area-inset-left)); }
 #ground-right { right: max(16px, env(safe-area-inset-right)); }
 
+#side-actions {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 7;
+}
+#aim-view-btn, #grenade-btn {
+  position: absolute;
+  top: 42%;
+  transform: translateY(-50%);
+  width: 118px;
+  min-height: 92px;
+  padding: 10px 12px;
+  border-radius: 22px;
+  border: 3px solid rgba(255, 244, 220, 0.92);
+  font-weight: 900;
+  font-size: 1.35rem;
+  line-height: 1.15;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.38);
+}
+#aim-view-btn {
+  right: max(12px, env(safe-area-inset-right));
+  background: rgba(255, 210, 122, 0.96);
+  color: #2a1c08;
+}
+#grenade-btn {
+  left: max(12px, env(safe-area-inset-left));
+  background: rgba(255, 122, 64, 0.96);
+  color: #2a1004;
+}
+#aim-view-btn .side-kicker {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 800;
+  opacity: 0.82;
+}
+#aim-view-btn .side-name {
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+#aim-view-btn.on {
+  background: #fff7c2;
+  box-shadow: 0 0 0 4px rgba(255, 244, 180, 0.85), 0 0 28px rgba(255, 210, 80, 0.95);
+}
+#grenade-btn.cooling {
+  filter: grayscale(0.4) brightness(0.78);
+}
+body.aiming #crosshair {
+  width: 78px;
+  height: 78px;
+  border: 2px solid rgba(255, 244, 220, 0.95);
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(255, 210, 122, 0.95);
+}
+body.aiming #crosshair span:nth-child(1),
+body.aiming #crosshair span:nth-child(2) {
+  width: 20px;
+  top: 38px;
+}
+body.aiming #crosshair span:nth-child(3),
+body.aiming #crosshair span:nth-child(4) {
+  height: 20px;
+  left: 38px;
+}
+
+@media (max-width: 800px) {
+  #aim-view-btn, #grenade-btn {
+    width: 96px;
+    min-height: 76px;
+    font-size: 1.15rem;
+    right: auto;
+    transform: none;
+    left: max(10px, env(safe-area-inset-left));
+  }
+  #grenade-btn { top: 17%; }
+  #aim-view-btn { top: calc(17% + 86px); }
+  #aim-view-btn .side-name { font-size: 1.2rem; }
+}
+
 @media (max-width: 800px) {
   .card {
     grid-template-columns: 1fr;
