@@ -22,6 +22,13 @@ import {
   waveSpec,
 } from './balance.js';
 import { Sfx } from './audio.js';
+import {
+  drawTarot,
+  emptyCampaign,
+  grantTarot,
+  normalizeCampaign,
+  noteRegularWin,
+} from './campaign.js';
 import { GROUND_WORLDS, GroundBattle } from './ground.js';
 import { bonusHome, buildLayout } from './layout.js';
 import {
@@ -59,6 +66,7 @@ import {
 } from './fx.js';
 
 const BEST_KEY = 'galaxy-guardians-best';
+const CAMPAIGN_KEY = 'galaxy-guardians-campaign';
 const META_KEY = 'galaxy-guardians-meta';
 
 function blankStick() {
@@ -115,6 +123,11 @@ export class Game {
     this.time = 0;
     this.score = 0;
     this.best = this.readBest();
+    this.campaign = this.readCampaign();
+    this.pendingBoss = null;
+    this.tarotOpen = false;
+    this.tarotAt = 0;
+    this.tarotGranted = false;
     this.newBest = false;
     this.combo = 1;
     this.comboUntil = 0;
@@ -247,6 +260,14 @@ export class Game {
       groundTouch: document.querySelector('#ground-touch'),
       groundLeftBtn: document.querySelector('#ground-left'),
       groundRightBtn: document.querySelector('#ground-right'),
+      tarot: document.querySelector('#tarot'),
+      tarotCard: document.querySelector('#tarot-card'),
+      tarotKicker: document.querySelector('#tarot-kicker'),
+      tarotNumeral: document.querySelector('#tarot-numeral'),
+      tarotName: document.querySelector('#tarot-name'),
+      tarotBlurb: document.querySelector('#tarot-blurb'),
+      tarotSuit: document.querySelector('#tarot-suit'),
+      tarotTake: document.querySelector('#tarot-take'),
     };
 
     this.fillText();
@@ -407,6 +428,7 @@ export class Game {
     }
 
     this.ground = new GroundBattle(this.sfx);
+    this.ground.onResolved = (info) => this.onGroundResolved(info);
     this.syncVisibility();
     this.syncHud();
     this.updateMenuBest();
@@ -466,7 +488,9 @@ export class Game {
     if (dom.openForest) dom.openForest.textContent = T.openForest;
     if (dom.openDesert) dom.openDesert.textContent = T.openDesert;
     dom.groundTitle.textContent = T.groundBattles;
-    dom.groundBlurb.textContent = T.groundBlurb;
+    this.refreshGroundBlurb();
+    if (dom.tarotKicker) dom.tarotKicker.textContent = T.tarotKicker;
+    if (dom.tarotTake) dom.tarotTake.textContent = T.tarotTake;
     dom.groundClose.textContent = T.groundClose;
     dom.groundSoldierBtn.textContent = T.groundSoldier;
     dom.groundTankBtn.textContent = T.groundTank;
@@ -509,6 +533,7 @@ export class Game {
     dom.groundBack.addEventListener('click', () => this.exitGround());
     dom.groundSpace.addEventListener('click', () => this.returnToSpace());
     dom.groundRetreat.addEventListener('click', () => this.ground?.retreat());
+    if (dom.tarotTake) dom.tarotTake.addEventListener('click', () => this.acceptTarot());
     dom.groundSoldierBtn.addEventListener('click', () => this.ground?.deploy('infantry'));
     dom.groundTankBtn.addEventListener('click', () => this.ground?.deploy('tank'));
     dom.groundDestroyerBtn.addEventListener('click', () => this.ground?.deploy('destroyer'));
@@ -810,6 +835,13 @@ export class Game {
       return;
     }
     if (this.state === 'ground') {
+      if (this.tarotOpen) {
+        if (event.code === 'Enter' || event.code === 'Escape' || event.code === 'Space') {
+          event.preventDefault();
+          this.acceptTarot();
+        }
+        return;
+      }
       if (event.code === 'KeyM') {
         this.toggleMute();
         return;
@@ -1285,7 +1317,8 @@ export class Game {
       return;
     }
     if (this.state === 'ground') {
-      this.ground?.update(dt, {
+      this.tickGroundShow(dt);
+      if (!this.tarotOpen) this.ground?.update(dt, {
         left: this.groundLeft || this.keys.has('KeyA') || this.keys.has('ArrowLeft'),
         right: this.groundRight || this.keys.has('KeyD') || this.keys.has('ArrowRight'),
         forward: this.keys.has('KeyW') || this.keys.has('ArrowUp'),
@@ -3164,15 +3197,149 @@ export class Game {
   }
 
   startGround(worldId) {
+    this.enterGround(worldId, Boolean(this.campaign?.bossDue));
+  }
+
+  startBoss(worldId) {
+    this.enterGround(worldId, true);
+  }
+
+  enterGround(worldId, boss) {
     if (!this.renderer || !this.ground) return;
     if (this.state === 'play') this.spaceLive = true;
     else if (this.state === 'menu') this.spaceLive = false;
     this.sfx.unlock();
     this.closeGroundPick();
+    this.hideTarot();
+    this.pendingBoss = null;
+    this.tarotAt = 0;
+    this.groundFire = false;
     this.state = 'ground';
-    this.ground.start(worldId);
     const world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
-    this.fadeWorld(`${T.groundWelcome} ${world.name}`);
+    this.ground.start(worldId, {
+      boss,
+      perks: this.campaign?.perks,
+      marchLabel: boss ? T.bossPhase : this.marchText(),
+    });
+    this.fadeWorld(boss ? `${T.bossWelcome} · ${world.name}` : `${T.groundWelcome} ${world.name}`);
+    this.syncVisibility();
+  }
+
+  marchText() {
+    if (this.campaign?.bossDue) return T.bossArriving;
+    const n = (this.campaign?.sinceBoss || 0) + 1;
+    return `${T.groundMarch} ${n} ${T.groundMarchOf}`;
+  }
+
+  refreshGroundBlurb() {
+    if (!this.dom?.groundBlurb) return;
+    this.dom.groundBlurb.textContent = this.campaign?.bossDue
+      ? `${T.groundBlurb} ${T.bossDueBlurb}`
+      : `${T.groundBlurb} ${this.marchText()}.`;
+  }
+
+  readCampaign() {
+    try {
+      return normalizeCampaign(JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || 'null'));
+    } catch (err) {
+      return emptyCampaign();
+    }
+  }
+
+  saveCampaign() {
+    try {
+      localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(this.campaign));
+    } catch (err) {
+      /* private mode */
+    }
+  }
+
+  onGroundResolved(info) {
+    if (!info?.win) return;
+    if (info.boss) {
+      this.campaign = { ...this.campaign, bossDue: false, sinceBoss: 0 };
+      this.saveCampaign();
+      this.refreshGroundBlurb();
+      this.tarotGranted = false;
+      this.tarotAt = 1.15;
+      return;
+    }
+    this.campaign = noteRegularWin(this.campaign);
+    this.saveCampaign();
+    this.refreshGroundBlurb();
+    if (this.campaign.bossDue) {
+      this.ground.marchLabel = T.bossArriving;
+      this.pendingBoss = { worldId: info.worldId, at: 2.5 };
+    } else {
+      this.ground.marchLabel = `${T.groundWins} ${this.campaign.sinceBoss} ${T.groundMarchOf}`;
+    }
+  }
+
+  tickGroundShow(dt) {
+    if (this.tarotAt > 0 && !this.tarotOpen) {
+      this.tarotAt -= dt;
+      if (this.tarotAt <= 0) this.openTarot();
+    }
+    if (!this.pendingBoss || this.tarotOpen || this.state !== 'ground') return;
+    this.pendingBoss.at -= dt;
+    if (this.pendingBoss.at > 0) return;
+    const worldId = this.pendingBoss.worldId;
+    this.pendingBoss = null;
+    this.startBoss(worldId);
+  }
+
+  openTarot() {
+    if (this.tarotGranted || !this.dom.tarot) return;
+    const card = drawTarot(this.campaign);
+    const granted = grantTarot(this.campaign, card.id);
+    this.campaign = granted.state;
+    this.saveCampaign();
+    this.refreshGroundBlurb();
+    this.tarotGranted = true;
+    this.tarotOpen = true;
+    this.tarotAt = 0;
+    this.groundFire = false;
+    const copy = T.tarotCards[card.id];
+    let blurb = copy.blurb;
+    if (!granted.grew) blurb = `${blurb} ${T.tarotKept}`;
+    else if (granted.tier > 1) blurb = `${blurb} ${T.tarotStronger}`;
+    this.dom.tarotKicker.textContent = T.tarotKicker;
+    this.dom.tarotNumeral.textContent = card.numeral;
+    this.dom.tarotName.textContent = copy.name;
+    this.dom.tarotBlurb.textContent = blurb;
+    this.dom.tarotSuit.textContent = T.tarotDeck;
+    this.dom.tarotCard.dataset.suit = card.id;
+    this.dom.tarot.classList.remove('show');
+    this.dom.tarot.hidden = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.dom.tarot?.classList.add('show'));
+    });
+    this.sfx.pickup();
+  }
+
+  hideTarot() {
+    this.tarotOpen = false;
+    this.tarotAt = 0;
+    if (!this.dom?.tarot) return;
+    this.dom.tarot.classList.remove('show');
+    this.dom.tarot.hidden = true;
+  }
+
+  acceptTarot() {
+    if (!this.tarotOpen) return;
+    this.sfx.ui();
+    this.tarotOpen = false;
+    this.tarotAt = 0;
+    if (this.dom?.tarot) {
+      this.dom.tarot.classList.remove('show');
+      this.dom.tarot.hidden = true;
+    }
+    this.groundFire = false;
+    this.groundLeft = false;
+    this.groundRight = false;
+    this.pendingBoss = null;
+    this.refreshGroundBlurb();
+    this.state = 'ground-pick';
     this.syncVisibility();
   }
 
@@ -3186,9 +3353,12 @@ export class Game {
   }
 
   returnToSpace() {
+    if (this.holdForTarot()) return;
     this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
+    this.pendingBoss = null;
+    this.hideTarot();
     this.ground?.stop();
     this.closeGroundPick();
     if (this.portals) {
@@ -3250,11 +3420,25 @@ export class Game {
   }
 
   exitGround() {
+    if (this.holdForTarot()) return;
     this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
+    this.pendingBoss = null;
+    this.hideTarot();
+    this.refreshGroundBlurb();
     this.state = 'ground-pick';
     this.syncVisibility();
+  }
+
+  /** Keep the tarot gift on screen until the player takes the card. */
+  holdForTarot() {
+    if (this.tarotOpen) return true;
+    if (this.tarotAt > 0) {
+      this.openTarot();
+      return true;
+    }
+    return false;
   }
 
   render() {

@@ -12,6 +12,10 @@ const PHASE_LEN = {
 
 const PHASE_ORDER = ['artillery', 'armor', 'infantry', 'special', 'resolve'];
 
+/** Toy commander. Hits are gated so the army cannot melt him in a second. */
+const BOSS_HP = 240;
+const BOSS_HIT_GAP = 0.36;
+
 export const GROUND_WORLDS = [
   {
     id: 'forest',
@@ -741,6 +745,55 @@ function makeProp(world, i) {
   return root;
 }
 
+/** Round toy commander. Face looks toward +Z, at the friendly line. No gore. */
+function makeBoss(world) {
+  const root = new THREE.Group();
+  const cloth = mat(world.enemy, world.enemy, 0.45);
+  const gold = mat(world.glow, world.glow, 0.85);
+  const cream = mat(0xfff6ea, 0xf0d0b0, 0.22);
+  const blush = mat(0xff8aa0, 0xff8aa0, 0.4);
+  const dark = mat(0x241824, 0x100810, 0.2);
+  const ink = mat(0x1a1a22, 0x1a1a22, 0.15);
+
+  addCyl(root, 0.55, 0.72, 0.38, dark, -0.4, 0.22, 0);
+  addCyl(root, 0.55, 0.72, 0.38, dark, 0.4, 0.22, 0);
+  addCyl(root, 0.95, 1.15, 1.45, cloth, 0, 1.28, 0);
+  addBox(root, 0.28, 0.95, 0.16, gold, 0, 1.4, 0.58);
+  addCyl(root, 0.7, 0.76, 0.72, cream, 0, 2.32, 0.04);
+  const leftPad = addCyl(root, 0.28, 0.28, 0.72, cloth, -0.95, 1.85, 0);
+  leftPad.rotation.z = Math.PI / 2;
+  const rightPad = addCyl(root, 0.28, 0.28, 0.72, cloth, 0.95, 1.85, 0);
+  rightPad.rotation.z = Math.PI / 2;
+  for (const x of [-0.22, 0.22]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), ink);
+    eye.position.set(x, 2.4, 0.7);
+    root.add(eye);
+  }
+  for (const x of [-0.36, 0.36]) {
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), blush);
+    cheek.position.set(x, 2.26, 0.62);
+    root.add(cheek);
+  }
+  for (const [x, y] of [[-0.12, 2.14], [0, 2.08], [0.12, 2.14]]) {
+    const smile = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), gold);
+    smile.position.set(x, y, 0.72);
+    root.add(smile);
+  }
+  addCyl(root, 0.46, 0.52, 0.12, gold, 0, 2.72, 0);
+  for (const x of [-0.28, 0, 0.28]) addCyl(root, 0.02, 0.12, 0.36, gold, x, 2.92, 0);
+  const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.1, 16), gold);
+  shield.rotation.z = Math.PI / 2;
+  shield.position.set(-1.2, 1.45, 0.25);
+  root.add(shield);
+  const bossMark = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 8, 6),
+    mat(0xfff6ea, world.glow, 0.95),
+  );
+  bossMark.position.set(-1.2, 1.45, 0.38);
+  root.add(bossMark);
+  return root;
+}
+
 export class GroundBattle {
   constructor(sfx) {
     this.sfx = sfx;
@@ -773,6 +826,8 @@ export class GroundBattle {
     this.barricades = [];
     this.tubes = [];
     this.world = GROUND_WORLDS[0];
+    this.mode = 'regular';
+    this.perks = {};
     this.phase = 'artillery';
     this.phaseT = 0;
     this.hold = 100;
@@ -780,6 +835,17 @@ export class GroundBattle {
     this.lane = 0;
     this.retreating = false;
     this.outcome = null;
+    this.reported = false;
+    this.onResolved = null;
+    this.marchLabel = '';
+    this.bossHitCd = 0;
+    this.voiceClock = 0;
+    this.voiceNext = { friend: 0, foe: 0 };
+    this.voiceOnce = {};
+    this.pendingVoices = [];
+    this.bark = '';
+    this.barkT = 0;
+    this.barkSide = '';
     this.shellCd = 1;
     this.destroyerCd = 1;
     this.shake = 0;
@@ -795,13 +861,27 @@ export class GroundBattle {
       hold: q('#ground-hold-bar'),
       capture: q('#ground-capture-bar'),
       note: q('#ground-note'),
+      march: q('#ground-march'),
+      bark: q('#ground-bark'),
+      holdLabel: q('#ground-hold-label'),
+      captureLabel: q('#ground-capture-label'),
       soldierBtn: q('#ground-soldier'),
       tankBtn: q('#ground-tank'),
       destroyerBtn: q('#ground-destroyer'),
     };
   }
 
-  start(worldId) {
+  start(worldId, opts = {}) {
+    this.mode = opts.boss ? 'boss' : 'regular';
+    this.perks = {
+      shield: 0,
+      company: 0,
+      cannon: 0,
+      banner: 0,
+      destroyer: 0,
+      ...(opts.perks || {}),
+    };
+    this.marchLabel = opts.marchLabel || '';
     this.world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
     this.scene.background = new THREE.Color(this.world.skyHorizon);
     this.scene.fog = new THREE.FogExp2(this.world.fog, 0.0048);
@@ -820,13 +900,22 @@ export class GroundBattle {
     this.bits = [];
     this.barricades = [];
     this.tubes = [];
-    this.phase = 'artillery';
+    this.phase = this.mode === 'boss' ? 'boss' : 'artillery';
     this.phaseT = 0;
     this.hold = 100;
     this.capture = 0;
     this.lane = 0;
     this.retreating = false;
     this.outcome = null;
+    this.reported = false;
+    this.bossHitCd = 0;
+    this.voiceClock = 0;
+    this.voiceNext = { friend: 0, foe: 0 };
+    this.voiceOnce = {};
+    this.pendingVoices = [];
+    this.bark = '';
+    this.barkT = 0;
+    this.barkSide = '';
     this.shellCd = 1.05;
     this.destroyerCd = 1;
     this.shake = 0;
@@ -868,6 +957,23 @@ export class GroundBattle {
         z: -11.2 - row * 1.55,
         shotCd: 0.08 + (i % 7) * 0.1,
       });
+    }
+    const extra = (this.perks.company || 0) * 8;
+    for (let i = 0; i < extra; i += 1) {
+      const col = (i % 8) - 3.5;
+      const row = Math.floor(i / 8);
+      this.spawn('infantry', col * 1.7, 0.04 * i, {
+        z: 8.2 + row * 1.45,
+        speed: 4.4,
+        shotCd: 0.18 + (i % 4) * 0.05,
+      });
+    }
+    if (this.mode === 'boss') {
+      this.spawn('boss', 0, 0.28, { z: -12.5, speed: -0.72, shotCd: 1.55 });
+      this.pendingVoices.push(
+        { side: 'friend', cue: 'engage', at: 0.45 },
+        { side: 'foe', cue: 'engage', at: 1.7 },
+      );
     }
     this.syncHud();
     this.sfx.wave?.();
@@ -986,6 +1092,7 @@ export class GroundBattle {
     else if (kind === 'player') mesh = makeInfantry(0x2a62f0, false);
     else if (kind === 'defender') mesh = makeInfantry(this.world.enemy, true);
     else if (kind === 'destroyer') mesh = makeDestroyer();
+    else if (kind === 'boss') mesh = makeBoss(this.world);
     else mesh = makeSpecial(kind, this.world);
     mesh.visible = false;
     if (kind === 'defender') mesh.rotation.y = Math.PI - 0.42;
@@ -1000,6 +1107,17 @@ export class GroundBattle {
       mark.rotation.x = Math.PI / 2;
       mark.position.y = 0.06;
       mesh.add(mark);
+      if ((this.perks.shield || 0) > 0) {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(0.62, 0.045, 6, 16),
+          new THREE.MeshBasicMaterial({ color: 0xfff1a8 }),
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.9;
+        mesh.add(ring);
+      }
+    } else if (kind === 'boss') {
+      mesh.rotation.y = 0;
     }
     mesh.traverse((obj) => {
       if (obj.isMesh) {
@@ -1008,25 +1126,26 @@ export class GroundBattle {
       }
     });
     this.root.add(mesh);
-    const speeds = { artillery: 0, tank: 8, gunCar: 13, foeCar: -2.6, infantry: 12, defender: 0, lantern: 9, drum: 9, crown: 9, destroyer: 7 };
-    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, foeCar: 0.05, infantry: 0.08, defender: 0.04, lantern: 0.08, drum: 0.04, crown: 0.05, destroyer: 0.05 };
-    const follows = { artillery: 0.15, tank: 1, gunCar: 1, foeCar: 0.35, infantry: 1, defender: 0.15, lantern: 0.35, drum: 0.35, crown: 0.35, destroyer: 0.45 };
+    const speeds = { artillery: 0, tank: 8, gunCar: 13, foeCar: -2.6, infantry: 12, defender: 0, lantern: 9, drum: 9, crown: 9, destroyer: 7, boss: -0.72 };
+    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, foeCar: 0.05, infantry: 0.08, defender: 0.04, lantern: 0.08, drum: 0.04, crown: 0.05, destroyer: 0.05, boss: 0.05 };
+    const follows = { artillery: 0.15, tank: 1, gunCar: 1, foeCar: 0.35, infantry: 1, defender: 0.15, lantern: 0.35, drum: 0.35, crown: 0.35, destroyer: 0.45, boss: 0.15 };
     const unit = {
       kind,
       mesh,
       x,
-      z: extra.z ?? (kind === 'defender' ? -20 : kind === 'infantry' ? 14 : kind === 'artillery' ? 18 : kind === 'destroyer' ? 6 : 12),
+      z: extra.z ?? (kind === 'boss' ? -12.5 : kind === 'defender' ? -20 : kind === 'infantry' ? 14 : kind === 'artillery' ? 18 : kind === 'destroyer' ? 6 : 12),
       garrison: Boolean(extra.garrison),
       delay,
       age: 0,
       speed: extra.speed ?? speeds[kind] ?? 8,
       bob: extra.bob ?? bobs[kind] ?? 0.04,
       laneFollow: extra.laneFollow ?? follows[kind] ?? 1,
-      special: kind === 'destroyer' || kind === 'lantern' || kind === 'drum' || kind === 'crown',
+      special: kind === 'destroyer' || kind === 'boss' || kind === 'lantern' || kind === 'drum' || kind === 'crown',
       shotCd: extra.shotCd ?? 0.4 + Math.random() * 0.5,
       gun: extra.gun || mesh.userData.gun || 'machine',
       attackT: 0,
-      hp: kind === 'player' ? 8 : kind === 'defender' ? 6 : kind === 'infantry' ? 6 : 0,
+      hp: kind === 'player' ? this.playerMaxHp() : kind === 'boss' ? BOSS_HP : kind === 'defender' ? 6 : kind === 'infantry' ? 6 : 0,
+      maxHp: kind === 'boss' ? BOSS_HP : kind === 'player' ? this.playerMaxHp() : 0,
       duel: null,
       down: false,
       downT: 0,
@@ -1070,9 +1189,33 @@ export class GroundBattle {
     } else if (id === 'resolve') {
       if (!this.retreating) this.outcome = 'win';
       this.sfx.wave?.();
+      this.reportResolved();
     } else {
       this.sfx.ui?.();
     }
+  }
+
+  reportResolved() {
+    if (this.reported) return;
+    this.reported = true;
+    this.onResolved?.({
+      win: this.outcome === 'win',
+      boss: this.mode === 'boss',
+      worldId: this.world.id,
+    });
+  }
+
+  playerMaxHp() {
+    return 8 + (this.perks?.shield || 0) * 6;
+  }
+
+  scaledCd(base, perk, gain) {
+    const tier = this.perks?.[perk] || 0;
+    return base / (1 + gain * tier);
+  }
+
+  captureRate() {
+    return 1 + (this.perks?.banner || 0) * 0.35;
   }
 
   nextPhase() {
@@ -1136,7 +1279,7 @@ export class GroundBattle {
 
   deployTank() {
     if (this.deployCd.tank > 0 || this.countKind('tank') >= 12) return false;
-    this.deployCd.tank = 0.85;
+    this.deployCd.tank = this.scaledCd(0.85, 'cannon', 0.75);
     const { x, z } = this.rearAnchor();
     this.spawn('tank', THREE.MathUtils.clamp(x, -14, 14), 0, {
       z: z + 0.3,
@@ -1150,7 +1293,7 @@ export class GroundBattle {
 
   deployDestroyer() {
     if (this.deployCd.destroyer > 0 || this.countKind('destroyer') >= 3) return false;
-    this.deployCd.destroyer = 1.35;
+    this.deployCd.destroyer = this.scaledCd(1.35, 'destroyer', 0.85);
     const { x, z } = this.rearAnchor();
     const unit = this.spawn('destroyer', THREE.MathUtils.clamp(x, -10, 10), 0.05, {
       z: Math.min(z, 8),
@@ -1206,7 +1349,19 @@ export class GroundBattle {
     this.drivePlayer(dt, input);
     this.lane = THREE.MathUtils.damp(this.lane, 0, 4, dt);
 
-    if (this.phase !== 'resolve') {
+    this.voiceClock += dt;
+    this.barkT = Math.max(0, this.barkT - dt);
+    this.bossHitCd = Math.max(0, this.bossHitCd - dt);
+    if (this.pendingVoices.length) {
+      const waiting = [];
+      for (const item of this.pendingVoices) {
+        item.at -= dt;
+        if (item.at > 0) waiting.push(item);
+        else this.voiceLine(item.side, item.cue);
+      }
+      this.pendingVoices = waiting;
+    }
+    if (this.phase !== 'resolve' && this.phase !== 'boss') {
       this.phaseT += dt;
       if (this.phaseT >= PHASE_LEN[this.phase]) this.nextPhase();
     }
@@ -1215,6 +1370,7 @@ export class GroundBattle {
     this.updatePhase(dt);
     this.updateUnits(dt);
     this.updateDestroyer(dt);
+    this.updateBoss(dt);
     this.updateShells(dt);
     this.updateBits(dt);
     this.updateCamera(dt);
@@ -1238,13 +1394,15 @@ export class GroundBattle {
     const forward = unit.kind === 'defender' ? 1 : -1;
     const color = unit.kind === 'defender' ? this.world.enemy : this.world.accent;
     const foe = unit.focus && this.troopAlive(unit.focus) ? unit.focus : this.nearestEnemy(unit, 20);
+    let to = new THREE.Vector3(
+      foe ? foe.x : unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 3.2,
+      1.05,
+      foe ? foe.z : unit.z + forward * (8 + Math.random() * 5),
+    );
+    if (unit.kind !== 'defender') to = this.bossTarget(to);
     this.launchShell({
       from,
-      to: new THREE.Vector3(
-        foe ? foe.x : unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 3.2,
-        1.05,
-        foe ? foe.z : unit.z + forward * (8 + Math.random() * 5),
-      ),
+      to,
       color,
       radius: 0.14,
       dur: 0.34,
@@ -1278,13 +1436,15 @@ export class GroundBattle {
       : unit.gun === 'mortar'
         ? 0xffb0e0
         : (unit.kind === 'foeCar' ? this.world.enemy : this.world.accent);
+    let to = new THREE.Vector3(
+      unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * gun.spread,
+      unit.gun === 'mortar' ? 0.4 : 0.95,
+      unit.z + forward * (gun.range + Math.random() * 4),
+    );
+    if (unit.kind !== 'foeCar') to = this.bossTarget(to);
     this.launchShell({
       from,
-      to: new THREE.Vector3(
-        unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * gun.spread,
-        unit.gun === 'mortar' ? 0.4 : 0.95,
-        unit.z + forward * (gun.range + Math.random() * 4),
-      ),
+      to,
       color,
       radius: gun.radius,
       dur: gun.dur,
@@ -1319,11 +1479,31 @@ export class GroundBattle {
         } : { arc: 6 });
       }
     } else if (this.phase === 'infantry') {
-      this.capture = Math.min(100, this.capture + 7 * dt);
+      this.capture = Math.min(100, this.capture + 7 * this.captureRate() * dt);
       this.hold = Math.max(0, this.hold - 1.4 * dt);
     } else if (this.phase === 'special') {
-      this.capture = Math.min(100, this.capture + 10 * dt);
+      this.capture = Math.min(100, this.capture + 10 * this.captureRate() * dt);
       this.hold = Math.max(0, this.hold - 14 * dt);
+    } else if (this.phase === 'boss') {
+      this.shellCd -= dt;
+      if (this.shellCd <= 0) {
+        this.shellCd = 0.9;
+        const boss = this.bossUnit();
+        const guns = this.units.filter((unit) => unit.kind === 'artillery' && unit.mesh.visible);
+        const gun = guns[Math.floor(Math.random() * Math.max(1, guns.length))];
+        const aim = boss && !boss.down ? boss : null;
+        this.launchShell(gun ? {
+          from: new THREE.Vector3(gun.mesh.position.x, 2.4, gun.mesh.position.z - 0.6),
+          to: new THREE.Vector3(
+            (aim ? aim.x : 0) + (Math.random() - 0.5) * 2.4,
+            1.3,
+            (aim ? aim.z : -14) + (Math.random() - 0.5) * 1.6,
+          ),
+          arc: 5.5,
+          team: 'friend',
+          splash: 6.5,
+        } : { arc: 5.5, team: 'friend', splash: 6.5 });
+      }
     } else if (this.outcome === 'win') {
       this.capture = 100;
       this.hold = 0;
@@ -1368,7 +1548,10 @@ export class GroundBattle {
       const spread = (i - (shots - 1) / 2) * 2.4;
       this.launchShell({
         from: new THREE.Vector3(origin.x + spread * 0.28, 3.4, origin.z - 2.2),
-        to: new THREE.Vector3(origin.x + spread, 0.4, origin.z - 16 - (i % 3) * 3.5),
+        to: this.bossTarget(
+          new THREE.Vector3(origin.x + spread, 0.4, origin.z - 16 - (i % 3) * 3.5),
+          1,
+        ),
         color: nuclear ? 0xff7a1c : 0x7af6ee,
         radius: nuclear ? 0.58 : 0.26,
         dur: nuclear ? 0.58 : 0.46,
@@ -1413,6 +1596,7 @@ export class GroundBattle {
       if (p < 1) continue;
       this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7);
       if (shell.team && shell.soldierHit) this.hurtSoldiers(shell.to.x, shell.to.z, shell.soldierHit, shell.team);
+      if (this.mode === 'boss' && shell.team !== 'foe') this.splashHitsBoss(shell);
       this.hold = Math.max(0, this.hold - (shell.holdHit ?? 3.1));
       this.crackNearest(shell.to.x, shell.to.z);
       this.shake = Math.min(0.8, this.shake + 0.18);
@@ -1648,7 +1832,7 @@ export class GroundBattle {
     }
     if (unit.kind === 'player' && unit.downT > 1.15) {
       unit.down = false;
-      unit.hp = 8;
+      unit.hp = this.playerMaxHp();
       unit.downT = 0;
       unit.stagger = 0;
       unit.mesh.rotation.x = 0;
@@ -1670,7 +1854,10 @@ export class GroundBattle {
         bestD = dist;
       }
     }
-    if (best) this.strike(best, 1);
+    if (best) {
+      this.strike(best, 1);
+      if (this.mode === 'boss' && team === 'foe') this.voiceLine('foe', 'hit');
+    }
   }
 
   clashSpark(x, z, color) {
@@ -1717,15 +1904,16 @@ export class GroundBattle {
       this.clashSpark(foe.x, foe.z, unit.kind === 'destroyer' ? 0x7af6ee : 0xffd56a);
       this.strike(foe, unit.kind === 'destroyer' ? 2 : 1);
     }
+    this.bumpBoss(unit);
   }
 
   fireTank(unit) {
     const foe = unit.focus && this.troopAlive(unit.focus) ? unit.focus : this.nearestEnemy(unit, 26);
     this.launchShell({
       from: new THREE.Vector3(unit.mesh.position.x, 1.45, unit.mesh.position.z - 1.1),
-      to: foe
+      to: this.bossTarget(foe
         ? new THREE.Vector3(foe.x, 0.7, foe.z)
-        : new THREE.Vector3(unit.x + (Math.random() - 0.5) * 3, 0.45, unit.z - 12),
+        : new THREE.Vector3(unit.x + (Math.random() - 0.5) * 3, 0.45, unit.z - 12)),
       color: 0xffd56a,
       radius: 0.28,
       dur: 0.4,
@@ -1754,12 +1942,13 @@ export class GroundBattle {
       unit.age += dt;
       if (unit.stagger > 0) unit.stagger -= dt;
       if (unit.down) {
-        this.updateDowned(unit, dt);
+        if (unit.kind === 'boss') this.updateBossDown(unit, dt);
+        else this.updateDowned(unit, dt);
         continue;
       }
       this.steerTroop(unit, dt);
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
-      const pop = unit.kind === 'player' ? 2.8 : unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : (unit.kind === 'infantry' || unit.kind === 'defender') ? 2.5 : 0.85;
+      const pop = unit.kind === 'boss' ? 3.35 : unit.kind === 'player' ? 2.8 : unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : (unit.kind === 'infantry' || unit.kind === 'defender') ? 2.5 : 0.85;
       unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro) * (unit.stagger > 0.1 ? 1.08 : 1));
       if (unit.kind !== 'player' && fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
       else if (unit.kind !== 'player' && this.phase !== 'resolve') {
@@ -1778,6 +1967,11 @@ export class GroundBattle {
       }
       if (unit.kind === 'foeCar' && !fallingBack) unit.z = Math.min(unit.z, -6.5);
       unit.z = THREE.MathUtils.clamp(unit.z, -50, 22);
+      if (unit.kind === 'boss' && !fallingBack) {
+        unit.z = Math.min(unit.z, -6.2);
+        unit.x = Math.sin(unit.age * 0.65) * 2.8;
+        unit.mesh.rotation.y = 0;
+      }
       if (this.isTroop(unit)) unit.x = THREE.MathUtils.clamp(unit.x, -18, 18);
       const yBob = Math.sin(unit.age * ((unit.kind === 'infantry' || unit.kind === 'defender') ? 10 : 4)) * unit.bob;
       const drop = unit.special ? (1 - intro) * 14 : (1 - intro) * 0.8;
@@ -1951,6 +2145,136 @@ export class GroundBattle {
     }
   }
 
+  bossUnit() {
+    return this.units.find((unit) => unit.kind === 'boss') || null;
+  }
+
+  /** Aim some friendly shots at the commander so the army visibly fights him. */
+  bossTarget(fallback, chance = 0.75) {
+    const boss = this.bossUnit();
+    if (this.mode !== 'boss' || !boss || boss.down || Math.random() > chance) return fallback;
+    return new THREE.Vector3(
+      boss.x + (Math.random() - 0.5) * 1.8,
+      1.6,
+      boss.z + (Math.random() - 0.5) * 1.2,
+    );
+  }
+
+  voiceLine(side, cue) {
+    const lines = T.voiceLines?.[side];
+    const text = lines?.[cue];
+    if (!text) return;
+    if (cue === 'hit') {
+      if (this.voiceClock < (this.voiceNext[side] || 0)) return;
+      this.voiceNext[side] = this.voiceClock + 1.15;
+    } else {
+      const key = `${side}:${cue}`;
+      if (this.voiceOnce[key]) return;
+      this.voiceOnce[key] = true;
+    }
+    const who = side === 'foe' ? T.voiceFoe : T.voiceFriend;
+    this.bark = `${who}: ${text}`;
+    this.barkSide = side;
+    this.barkT = cue === 'hit' ? 1.15 : 1.7;
+    this.sfx.voiceCue?.(side, cue);
+  }
+
+  splashHitsBoss(shell) {
+    const boss = this.bossUnit();
+    if (!boss || boss.down) return;
+    const dist = Math.hypot(shell.to.x - boss.x, shell.to.z - boss.z);
+    if (dist > 6.4) return;
+    const raw = shell.soldierHit > 0 ? shell.soldierHit : (shell.splash > 5 ? 2.2 : 1.15);
+    this.hurtBoss(raw);
+  }
+
+  hurtBoss(amount) {
+    const boss = this.bossUnit();
+    if (!boss || boss.down || this.phase === 'resolve') return false;
+    if (this.bossHitCd > 0) return false;
+    this.bossHitCd = BOSS_HIT_GAP;
+    const scale = 1 + (this.perks.banner || 0) * 0.15;
+    const chunk = THREE.MathUtils.clamp(amount * 2.2, 3, 11) * scale;
+    boss.hp -= chunk;
+    this.voiceLine('friend', 'hit');
+    this.shake = Math.min(0.8, this.shake + 0.16);
+    if (boss.hp > 0) return true;
+    this.defeatBoss(boss);
+    return true;
+  }
+
+  defeatBoss(boss) {
+    boss.hp = 0;
+    boss.down = true;
+    boss.downT = 0;
+    boss.speed = 0;
+    if (!boss.stars) boss.stars = this.attachStars(boss.mesh);
+    boss.stars.visible = true;
+    boss.stars.scale.setScalar(1.8);
+    this.voiceLine('friend', 'defeat');
+    this.pendingVoices.push({ side: 'foe', cue: 'defeat', at: 0.85 });
+    this.splash(boss.x, boss.z, this.world.glow, 14);
+    this.shake = 1.2;
+    this.sfx.bigBoom?.();
+    this.beginPhase('resolve');
+  }
+
+  bumpBoss(unit) {
+    if (this.mode !== 'boss') return;
+    const reach = unit.kind === 'destroyer' ? 5.2 : unit.kind === 'tank' ? 3.3 : 0;
+    if (!reach) return;
+    const boss = this.bossUnit();
+    if (!boss || boss.down) return;
+    if (Math.hypot(boss.x - unit.x, boss.z - unit.z) > reach) return;
+    this.hurtBoss(unit.kind === 'destroyer' ? 5.5 : 3.4);
+  }
+
+  updateBoss(dt) {
+    const unit = this.bossUnit();
+    if (!unit || !unit.mesh.visible || unit.down || unit.delay > 0) return;
+    if (this.phase === 'resolve' || this.outcome === 'retreat') return;
+    unit.shotCd -= dt;
+    if (unit.shotCd > 0) return;
+    unit.shotCd = 1.4;
+    this.fireBoss(unit);
+  }
+
+  fireBoss(unit) {
+    let target = this.playerUnit();
+    if (!target || target.down) {
+      target = this.units.find((other) => (other.kind === 'infantry' || other.kind === 'player') && !other.down) || null;
+    }
+    const tx = target ? target.x : (Math.random() - 0.5) * 8;
+    const tz = target ? target.z : 4;
+    this.launchShell({
+      from: new THREE.Vector3(unit.x, 3.1, unit.z + 1.1),
+      to: new THREE.Vector3(tx + (Math.random() - 0.5) * 1.4, 1.05, tz),
+      color: this.world.enemy,
+      radius: 0.42,
+      dur: 0.55,
+      holdHit: 0,
+      splash: 3.2,
+      arc: 2.2,
+      silentTubes: true,
+      team: 'foe',
+      soldierHit: 2.6,
+    });
+    this.sfx.enemyShot?.();
+  }
+
+  updateBossDown(unit, dt) {
+    unit.downT += dt;
+    const flop = Math.min(1, unit.downT / 0.45);
+    unit.mesh.rotation.x = -1.15 * flop;
+    unit.mesh.position.set(unit.x, 0.35 * (1 - flop), unit.z);
+    unit.mesh.scale.setScalar(3.35);
+    if (unit.stars) {
+      unit.stars.visible = true;
+      unit.stars.rotation.y += dt * 4.2;
+      unit.stars.position.y = 2.2;
+    }
+  }
+
   updateCamera(dt) {
     const aims = {
       artillery: { pos: [14, 10.5, 18], look: [0, 1.2, -3] },
@@ -1966,6 +2290,14 @@ export class GroundBattle {
       aim = {
         pos: [spot.x, 6.4, spot.z + 10],
         look: [spot.x, 1.3, spot.z - 9],
+      };
+    }
+    if (this.mode === 'boss' && this.phase !== 'resolve') {
+      const boss = this.bossUnit();
+      const spot = player && player.mesh.visible ? player.mesh.position : null;
+      aim = {
+        pos: [spot ? spot.x * 0.35 : 0, 8.2, (spot ? spot.z : 4) + 11],
+        look: [boss ? boss.x : 0, 2.6, boss ? boss.z : -12],
       };
     }
     if (this.phase === 'special') {
@@ -1995,23 +2327,51 @@ export class GroundBattle {
       armor: T.groundArmor,
       infantry: T.groundInfantry,
       special: T.groundSpecial,
+      boss: T.bossPhase,
     }[this.phase] || '';
   }
 
   syncHud() {
     const { dom, world } = this;
     if (!dom.phase) return;
-    dom.world.textContent = world.name;
-    dom.phase.textContent = this.phase === 'special' ? `${T.groundSpecial} · ${T.groundDestroyer}` : this.phaseLabel();
-    if (dom.hold) dom.hold.style.width = `${Math.max(0, this.hold)}%`;
-    if (dom.capture) dom.capture.style.width = `${Math.min(100, this.capture)}%`;
+    const bossFight = this.mode === 'boss' && this.phase === 'boss';
+    dom.world.textContent = this.mode === 'boss' ? `${T.bossName} · ${world.name}` : world.name;
+    dom.phase.textContent = this.phase === 'boss'
+      ? `${T.bossPhase} · ${T.bossName}`
+      : this.phase === 'special'
+        ? `${T.groundSpecial} · ${T.groundDestroyer}`
+        : this.phaseLabel();
+    if (bossFight) {
+      const boss = this.bossUnit();
+      const ratio = boss && boss.maxHp ? Math.max(0, boss.hp) / boss.maxHp : 0;
+      if (dom.hold) dom.hold.style.width = `${ratio * 100}%`;
+      if (dom.capture) dom.capture.style.width = `${(1 - ratio) * 100}%`;
+      if (dom.holdLabel) dom.holdLabel.textContent = T.bossHp;
+      if (dom.captureLabel) dom.captureLabel.textContent = T.bossHits;
+    } else {
+      if (dom.hold) dom.hold.style.width = `${Math.max(0, this.hold)}%`;
+      if (dom.capture) dom.capture.style.width = `${Math.min(100, this.capture)}%`;
+      if (dom.holdLabel) dom.holdLabel.textContent = T.groundHold;
+      if (dom.captureLabel) dom.captureLabel.textContent = T.groundCapture;
+    }
+    if (dom.march) dom.march.textContent = this.marchLabel || '';
+    if (dom.bark) {
+      dom.bark.hidden = this.barkT <= 0;
+      dom.bark.dataset.side = this.barkSide || '';
+      dom.bark.textContent = this.barkT > 0 ? this.bark : '';
+    }
     if (dom.note) {
       dom.note.textContent = this.deployNoteT > 0 ? this.deployNote : {
         artillery: T.groundArtilleryNote,
         armor: T.groundArmorNote,
         infantry: T.groundInfantryNote,
         special: T.groundDestroyerNote,
-        resolve: this.outcome === 'retreat' ? T.groundRetreatNote : T.groundWinNote,
+        boss: T.bossNote,
+        resolve: this.outcome === 'retreat'
+          ? T.groundRetreatNote
+          : this.mode === 'boss'
+            ? T.bossWinNote
+            : T.groundWinNote,
       }[this.phase] || '';
     }
     const locked = !this.active || this.phase === 'resolve';

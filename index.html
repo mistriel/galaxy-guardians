@@ -118,7 +118,9 @@
       <div id="ground-hud" hidden>
         <div class="ground-top">
           <p id="ground-world" class="kicker"></p>
+          <p id="ground-march" class="kicker"></p>
           <p id="ground-phase"></p>
+          <p id="ground-bark" hidden></p>
           <p id="ground-note"></p>
           <div class="meter">
             <span id="ground-hold-label"></span>
@@ -146,6 +148,19 @@
         <button id="ground-left" type="button"></button>
         <button id="ground-right" type="button"></button>
       </div>
+      <section id="tarot" hidden>
+        <div class="tarot-stage">
+          <p id="tarot-kicker" class="kicker"></p>
+          <article id="tarot-card" class="tarot-card">
+            <p id="tarot-numeral"></p>
+            <div id="tarot-glyph" aria-hidden="true"></div>
+            <h2 id="tarot-name"></h2>
+            <p id="tarot-blurb"></p>
+            <p id="tarot-suit"></p>
+          </article>
+          <button id="tarot-take" class="primary" type="button"></button>
+        </div>
+      </section>
       <section id="overlay" hidden>
         <div class="overlay-card">
           <h2 id="overlay-title"></h2>

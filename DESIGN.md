@@ -12,6 +12,22 @@ The menu shows שומרת, יציאה לסיור, and a second button labeled ex
 4. **משמיד** drops in for the climax. It is a turquoise tank wearing heavy cannons, a rack of artillery tubes, and fat glowing nuclear guns — the joke is every gun in the world on one hull. It slams onto the field, lobs a ground barrage (no space trails), and flattens a wide stretch of barricades. The world landmark (אורן הנוצץ, תוף המדבר, or כתר הקרח) still arrives off to the side. The Hebrew label is משמיד.
 5. The beat ends in ניצחון, or נסיגה if you choose to pull back.
 
+### Boss march and tarot gifts
+
+Regular ground wins are counted, including fights opened from the menu, the world list, or a space portal. Retreat does not count. After every three regular victories the next stage is **שומר החומה**, a toy commander on the same world the player just cleared (or the world they enter next, if they left before he arrived). He stands ahead of the enemy line, lobs soft light, and falls onto his back with spinning stars when his stamina bar empties. The phase clock does not skip the fight: only his defeat, or נסיגה, ends it.
+
+Both sides speak in arcade cues. WebAudio tones fire on engage, on a landed hit, and on defeat, and a Hebrew caption shows the line (שלנו / שומר החומה). After the boss falls, a tarot card from חפיסת טאסו flips up and grants one ground gift, saved with the march in `localStorage` (`galaxy-guardians-campaign`):
+
+| Card | Gift |
+| --- | --- |
+| המגן | The player's soldier starts with more health and a light ring |
+| הלהק | Extra friendly soldiers join every later battle |
+| התותח | Tanks can be sent again sooner |
+| הדגל | The flag fills faster, and boss hits land a little harder |
+| המשמיד הקטן | The destroyer can be sent again sooner |
+
+The same gift can be drawn again, up to two ranks. A third draw of that card keeps the rank the player already has.
+
 Soldiers on the two lines close, pair, and fight hand to hand. A hit is a spark. The loser flops onto their back with spinning stars — a toy knockout, no gore. Rifles, tanks, and the destroyer also land on a soldier when the shot reaches one. אחיזת היריב and כיבוש still fill from the phase clock and from each knockout.
 
 The bottom row deploys forces. חייל sends four soldiers streaming in from the rear to engage. טנק sends one tank that rolls the line and bumps warriors. המשמיד drops the turquoise overgunned tank, which slams in and fires. Each press is one deployment. A and D (or the phone side buttons) slide the blue soldier. Space fires. The flight sortie is unchanged.
