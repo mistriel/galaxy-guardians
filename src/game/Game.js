@@ -117,6 +117,9 @@ export class Game {
     this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
+    this.aimView = false;
+    this.grenadeCd = 0;
+    this.grenades = [];
     this.nudgeX = 0;
     this.nudgeY = 0;
     this.state = 'menu';
@@ -267,6 +270,9 @@ export class Game {
       trophyName: document.querySelector('#trophy-name'),
       trophyBlurb: document.querySelector('#trophy-blurb'),
       trophyTake: document.querySelector('#trophy-take'),
+      sideActions: document.querySelector('#side-actions'),
+      aimViewBtn: document.querySelector('#aim-view-btn'),
+      grenadeBtn: document.querySelector('#grenade-btn'),
     };
 
     this.fillText();
@@ -502,6 +508,17 @@ export class Game {
     dom.groundCaptureLabel.textContent = T.groundCapture;
     dom.groundLeftBtn.textContent = T.groundLeft;
     dom.groundRightBtn.textContent = T.groundRight;
+    if (dom.aimViewBtn) {
+      dom.aimViewBtn.replaceChildren();
+      const kicker = document.createElement('span');
+      kicker.className = 'side-kicker';
+      kicker.textContent = T.aimView;
+      const name = document.createElement('span');
+      name.className = 'side-name';
+      name.textContent = T.aimSight;
+      dom.aimViewBtn.append(kicker, name);
+    }
+    if (dom.grenadeBtn) dom.grenadeBtn.textContent = T.grenade;
     dom.groundWorlds.replaceChildren();
     for (const world of GROUND_WORLDS) {
       const button = document.createElement('button');
@@ -555,6 +572,8 @@ export class Game {
     };
     holdLane(dom.groundLeftBtn, -1);
     holdLane(dom.groundRightBtn, 1);
+    dom.aimViewBtn?.addEventListener('click', () => this.toggleAimView());
+    dom.grenadeBtn?.addEventListener('click', () => this.throwGrenade());
 
     window.addEventListener('keydown', (event) => this.onKeyDown(event));
     window.addEventListener('keyup', (event) => {
@@ -862,6 +881,14 @@ export class Game {
         return;
       }
       if (event.code === 'KeyV') {
+        this.toggleAimView();
+        return;
+      }
+      if (event.code === 'KeyB') {
+        this.throwGrenade();
+        return;
+      }
+      if (event.code === 'KeyX') {
         this.ground?.salvo();
         return;
       }
@@ -907,6 +934,14 @@ export class Game {
     }
     if (event.code === 'KeyR' && (this.state === 'dead' || this.state === 'paused')) {
       this.startMission();
+      return;
+    }
+    if (event.code === 'KeyV' && this.state === 'play') {
+      this.toggleAimView();
+      return;
+    }
+    if (event.code === 'KeyB' && this.state === 'play') {
+      this.throwGrenade();
       return;
     }
     this.keys.add(event.code);
@@ -1333,6 +1368,7 @@ export class Game {
         fire: this.groundFire,
         stick: this.coarse ? this.move.x : 0,
       });
+      this.syncSideActions();
       this.render();
       return;
     }
@@ -1378,6 +1414,7 @@ export class Game {
     updateSparks(this.sparks, dt);
     updateRings(this.rings, this.camera, dt);
     this.updateStarParallax();
+    this.updateGrenades(dt);
     this.updateChaseCamera(dt);
     this.updateSpeedTunnel(dt);
     this.syncHud();
@@ -1409,7 +1446,7 @@ export class Game {
       ny = this.aim.y;
       this.aimNudge();
       const stickMag = Math.min(1, Math.hypot(nx, ny));
-      const gain = 0.62 * (1 - Math.min(1, stickMag * 1.15));
+      const gain = (this.aimView ? 0.84 : 0.62) * (1 - Math.min(1, stickMag * 1.15));
       nx = THREE.MathUtils.clamp(nx + this.nudgeX * gain, -1, 1);
       ny = THREE.MathUtils.clamp(ny + this.nudgeY * gain, -1, 1);
       axis = touchAxis;
@@ -1426,6 +1463,7 @@ export class Game {
     if (this.keys.has('ArrowDown')) ny += 0.9;
     nx = THREE.MathUtils.clamp(nx, -1, 1);
     ny = THREE.MathUtils.clamp(ny, -1, 1);
+    if (this.aimView) turn *= 0.78;
 
     // Yaw is a rate so heading stays free. Positive rotation.y swings the −Z nose
     // toward world −X (left), so a rightward stick, mouse, or arrow must decrease yaw.
@@ -1465,6 +1503,7 @@ export class Game {
     this.foldArena(this.player.mesh.position, dt);
 
     this.fireCd = Math.max(0, this.fireCd - dt);
+    this.grenadeCd = Math.max(0, this.grenadeCd - dt);
     this.missileCd = Math.max(0, this.missileCd - dt);
     this.giantCd = Math.max(0, this.giantCd - dt);
     for (const id of HEAVY_ORDER) this.heavyCd[id] = Math.max(0, this.heavyCd[id] - dt);
@@ -1503,6 +1542,89 @@ export class Game {
         burstSparks(this.sparks, this.v1, this.boosting ? 0xfff2a0 : 0xff8a3a, this.boosting ? 3 : 1, this.boosting ? 28 : 10, this.v2);
       }
     }
+  }
+
+  toggleAimView() {
+    if (this.state !== 'play' && this.state !== 'ground') return;
+    this.aimView = !this.aimView;
+    if (this.ground) this.ground.aiming = this.state === 'ground' && this.aimView;
+    if (this.dom.aimViewBtn) this.dom.aimViewBtn.setAttribute('aria-pressed', this.aimView ? 'true' : 'false');
+    this.sfx.ui();
+    this.syncVisibility();
+    this.syncSideActions();
+  }
+
+  throwGrenade() {
+    if (this.state === 'ground') {
+      const thrown = this.ground?.throwGrenade();
+      if (thrown) this.syncSideActions();
+      return;
+    }
+    if (this.state !== 'play' || this.grenadeCd > 0) return;
+    this.grenadeCd = 1.35;
+    this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
+    const origin = this.v2.copy(this.player.mesh.position).addScaledVector(this.nose, 2.6 * this.shipScale());
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.62, 12, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffd27a, fog: false, toneMapped: false }),
+    );
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.84, 0.1, 8, 18),
+      new THREE.MeshBasicMaterial({ color: 0xff8a3a, fog: false, toneMapped: false }),
+    );
+    ring.rotation.y = Math.PI / 2;
+    mesh.add(ring);
+    mesh.position.copy(origin);
+    this.scene.add(mesh);
+    const speed = this.aimView ? 96 : 78;
+    this.grenades.push({
+      mesh,
+      ring,
+      vel: this.nose.clone().multiplyScalar(speed),
+      life: this.aimView ? 0.95 : 0.78,
+      radius: this.aimView ? 52 : 40,
+    });
+    this.sfx.blip({ freq: 280, dur: 0.08, type: 'triangle', vol: 0.07, slide: 180 });
+    this.syncSideActions();
+  }
+
+  updateGrenades(dt) {
+    for (let i = this.grenades.length - 1; i >= 0; i -= 1) {
+      const grenade = this.grenades[i];
+      grenade.life -= dt;
+      grenade.mesh.position.addScaledVector(grenade.vel, dt);
+      if (grenade.ring) grenade.ring.rotation.z += dt * 7;
+      if (grenade.life > 0) continue;
+      const pos = grenade.mesh.position.clone();
+      const radius = grenade.radius;
+      this.scene.remove(grenade.mesh);
+      this.grenades.splice(i, 1);
+      this.bloomGrenade(pos, radius);
+    }
+  }
+
+  bloomGrenade(pos, radius) {
+    spawnRing(this.rings, pos, 0xffd27a, { life: 0.72, grow: 110, scale: 2.4 });
+    spawnRing(this.rings, pos, 0x7af6ee, { life: 0.55, grow: 160, scale: 1.7 });
+    burstSparks(this.sparks, pos, 0xffd27a, 24, 28, null, 1.7, 1.15);
+    this.fxBoom(pos, 0xff8a3a, 'mid');
+    this.addShake(0.32);
+    this.sfx.noise(0.18, 0.2, 480);
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      if (enemy.mesh.position.distanceTo(pos) > radius) continue;
+      this.damageEnemy(enemy, 42);
+    }
+    for (const tower of this.towers) {
+      if (!tower.alive) continue;
+      if (tower.mesh.position.distanceTo(pos) > radius * 0.7) continue;
+      this.damageTower(tower, 30);
+    }
+  }
+
+  clearGrenades() {
+    for (const grenade of this.grenades) this.scene.remove(grenade.mesh);
+    this.grenades.length = 0;
   }
 
   shoot() {
@@ -2123,6 +2245,7 @@ export class Game {
       }
     }
     this.clearHeavy();
+    this.clearGrenades();
     this.player.mesh.visible = false;
     this.bubble.visible = false;
     const pos = this.player.mesh.position.clone();
@@ -2301,11 +2424,17 @@ export class Game {
   updateChaseCamera(dt) {
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
-    const back = 16 + (this.speed / PLAYER.boost) * 5.5;
-    this.camDesired.copy(this.player.mesh.position).addScaledVector(this.nose, -back).addScaledVector(this.upV, 5.4);
+    const rushing = this.boosting && this.state === 'play';
+    const rush = rushing ? this.speed / PLAYER.boost : 0;
+    const aiming = this.aimView && this.state === 'play' && !rushing;
+    // Pulled back so more of the sector stays in frame. The speed rush opens a wider region.
+    const back = rushing ? 30 + rush * 16 : aiming ? 24 : 30;
+    const rise = rushing ? 10 + rush * 3.2 : aiming ? 8.4 : 10.2;
+    const lookAhead = rushing ? 54 + rush * 16 : aiming ? 70 : 52;
+    this.camDesired.copy(this.player.mesh.position).addScaledVector(this.nose, -back).addScaledVector(this.upV, rise);
     const blend = 1 - Math.exp(-3.5 * dt);
     this.camera.position.lerp(this.camDesired, blend);
-    this.look.copy(this.player.mesh.position).addScaledVector(this.nose, 34);
+    this.look.copy(this.player.mesh.position).addScaledVector(this.nose, lookAhead);
     this.camera.lookAt(this.look);
     if (this.shakeAmp > 0) {
       const mag = this.reduceMotion ? this.shakeAmp * 0.15 : this.shakeAmp;
@@ -2313,7 +2442,8 @@ export class Game {
       this.camera.position.y += (Math.random() - 0.5) * mag * 0.7;
       this.shakeAmp = Math.max(0, this.shakeAmp - dt * 1.7);
     }
-    this.dampFov(this.boosting && this.state === 'play' ? 114 : 66);
+    const fov = rushing ? 116 : aiming ? 76 : 82;
+    this.dampFov(fov);
   }
 
   updateSpeedTunnel(dt) {
@@ -2791,6 +2921,7 @@ export class Game {
       button.textContent = heavyName;
     }
     this.dom.flight.textContent = this.boosting ? T.boost : this.braking ? T.brake : T.cruise;
+    this.syncSideActions();
     for (const button of [this.dom.boostBtn, this.dom.boostTouch]) {
       if (!button) continue;
       button.classList.toggle('on', this.boosting);
@@ -2798,11 +2929,22 @@ export class Game {
     this.dom.edge.classList.toggle('show', this.edge > 0);
   }
 
+  syncSideActions() {
+    const aimBtn = this.dom.aimViewBtn;
+    if (aimBtn) aimBtn.classList.toggle('on', this.aimView);
+    const grenadeBtn = this.dom.grenadeBtn;
+    if (!grenadeBtn) return;
+    const left = this.state === 'ground' ? (this.ground?.grenadeCd || 0) : this.grenadeCd;
+    grenadeBtn.classList.toggle('cooling', left > 0.08);
+    grenadeBtn.textContent = left > 0.15 ? `${T.grenade} ${Math.ceil(left)}` : T.grenade;
+  }
+
   syncVisibility() {
     const playing = this.state === 'play';
     const ground = this.state === 'ground';
     const picking = this.state === 'ground-pick';
     const spaceHud = playing || this.state === 'paused' || this.state === 'dead';
+    const sideOn = playing || ground;
     this.dom.menu.hidden = this.state !== 'menu';
     this.dom.hud.hidden = !spaceHud;
     this.dom.radar.hidden = !spaceHud;
@@ -2810,7 +2952,9 @@ export class Game {
     this.dom.groundHud.hidden = !ground;
     this.dom.groundTouch.hidden = !(ground && this.coarse);
     this.dom.groundPick.hidden = !picking;
-    this.dom.crosshair.hidden = !playing;
+    if (this.dom.sideActions) this.dom.sideActions.hidden = !sideOn;
+    this.dom.crosshair.hidden = !(playing || (ground && this.aimView));
+    document.body.classList.toggle('aiming', this.aimView && sideOn);
     this.dom.overlay.hidden = this.state !== 'paused' && this.state !== 'dead';
     document.body.classList.toggle('playing', playing);
     document.body.classList.toggle('touch', this.coarse);
@@ -3074,6 +3218,9 @@ export class Game {
     this.giantCd = 0;
     this.heavyIndex = 0;
     this.heavyCd = { atoms: 0, shells: 0, ultra: 0 };
+    this.grenadeCd = 0;
+    this.aimView = false;
+    this.clearGrenades();
     this.giftAt = 16;
     this.chain = [];
     this.rapidUntil = 0;
@@ -3222,6 +3369,8 @@ export class Game {
     this.trophyAt = 0;
     this.groundFire = false;
     this.state = 'ground';
+    this.aimView = false;
+    this.ground.aiming = false;
     const world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
     this.ground.start(worldId, {
       boss,
@@ -3364,6 +3513,8 @@ export class Game {
     this.groundRight = false;
     this.pendingBoss = null;
     this.hideTrophy();
+    this.aimView = false;
+    if (this.ground) this.ground.aiming = false;
     this.ground?.stop();
     this.closeGroundPick();
     if (this.portals) {
