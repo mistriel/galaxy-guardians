@@ -18,7 +18,7 @@ export const PLAYER = {
   visualScale: 3,
   radius: 6.2,
   cruise: 24,
-  boost: 240,
+  boost: 420,
   brake: 8,
   strafe: 20,
   turn: 1.75,
@@ -35,8 +35,8 @@ export const PLAYER = {
 /** Hangar catalog. Shomeret and the thick laser are free. */
 export const SHIPS = {
   shomeret: { id: 'shomeret', cost: 0, scale: 3 },
-  netz: { id: 'netz', cost: 1200, scale: 1.75 },
-  ogen: { id: 'ogen', cost: 2200, scale: 2.35 },
+  netz: { id: 'netz', cost: 0, scale: 1.75 },
+  ogen: { id: 'ogen', cost: 0, scale: 2.35 },
 };
 
 /**

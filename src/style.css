@@ -294,6 +294,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.05; color: v
 .menu-actions .world-open[data-world="desert"] { border-color: #ffb15a; }
 #hangar { margin-top: 12px; }
 #hangar h2 { margin: 0 0 4px; font-size: 1.05rem; }
+#ship-picker-title { margin: 8px 0 4px; font-size: 1.05rem; color: var(--teal); }
 #meta-points { margin: 0 0 8px; color: var(--amber); font-weight: 800; }
 .picks { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
 .pick {
