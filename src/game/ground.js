@@ -1948,7 +1948,15 @@ export class GroundBattle {
         if (shell.area) this.hurtSoldiersArea(shell.to.x, shell.to.z, shell.area, shell.team, shell.areaDamage || 2);
         else if (shell.team && shell.soldierHit) this.hurtSoldiers(shell.to.x, shell.to.z, shell.soldierHit, shell.team);
       }
-      if (this.mode === 'boss' && shell.team !== 'foe') this.splashHitsBoss(shell);
+      if (this.mode === 'boss' && shell.team !== 'foe') {
+        if (shell.grenade) {
+          const boss = this.bossUnit();
+          const reach = shell.soldierHit || 3.6;
+          if (boss && !boss.down && Math.hypot(shell.to.x - boss.x, shell.to.z - boss.z) <= reach) {
+            this.hurtBoss(4);
+          }
+        } else this.splashHitsBoss(shell);
+      }
       this.hold = Math.max(0, this.hold - (shell.holdHit ?? 3.1));
       this.crackNearest(shell.to.x, shell.to.z);
       this.shake = Math.min(0.8, this.shake + (shell.shake ?? 0.18));
@@ -2673,9 +2681,11 @@ export class GroundBattle {
     if (this.mode === 'boss' && this.phase !== 'resolve' && !this.aiming) {
       const boss = this.bossUnit();
       const spot = player && player.mesh.visible ? player.mesh.position : null;
+      const sx = spot ? spot.x : 0;
+      const sz = spot ? spot.z : 4;
       aim = {
-        pos: [spot ? spot.x * 0.35 : 0, 8.2, (spot ? spot.z : 4) + 11],
-        look: [boss ? boss.x : 0, 2.6, boss ? boss.z : -12],
+        pos: [sx * 0.2, 38, sz + 50],
+        look: [boss ? boss.x : sx * 0.1, 2.2, boss ? boss.z : -16],
       };
     }
     if (this.phase === 'special' && !this.aiming) {
