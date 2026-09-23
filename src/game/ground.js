@@ -337,44 +337,44 @@ function makeGunCar(accent, foe = false, gun = 'machine') {
 }
 
 /** Chunky toy rifle. Local −Z is the muzzle. Both hands stay on the weapon. */
-function makeToyRifle(foe, steel) {
+function makeToyRifle(foe) {
   const rifle = new THREE.Group();
-  const metal = mat(0xd5dee8, steel?.emissive?.getHex?.() || 0x243040, 0.62);
+  const paint = foe ? 0xff4ad8 : 0xffe14a;
+  const bright = new THREE.MeshBasicMaterial({ color: paint, fog: false });
   const wood = mat(foe ? 0x6a3050 : 0xc4843a, foe ? 0x3a1428 : 0x5a3010, 0.4);
-  const glow = mat(foe ? 0xffb0e0 : 0xfff1a8, foe ? 0xff8ab8 : 0xffe08a, 0.95);
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.1, 0.32), wood);
-  stock.position.set(0, 0.02, 0.18);
-  const pistol = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.07), wood);
-  pistol.position.set(0, -0.07, 0.04);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, 0.36), metal);
-  body.position.set(0, 0.035, -0.14);
-  const band = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.045, 0.08), glow);
-  band.position.set(0, 0.07, -0.08);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.7, 8), metal);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.42), wood);
+  stock.position.set(0, 0.02, 0.22);
+  const pistol = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.2, 0.1), wood);
+  pistol.position.set(0, -0.1, 0.04);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.46), bright);
+  body.position.set(0, 0.04, -0.16);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.95, 8), bright);
   barrel.rotation.x = -Math.PI / 2;
-  barrel.position.set(0, 0.035, -0.52);
-  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), glow);
-  tip.position.set(0, 0.035, -0.9);
-  const fore = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.08, 0.12), wood);
-  fore.position.set(0, -0.02, -0.3);
+  barrel.position.set(0, 0.04, -0.68);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), bright);
+  tip.position.set(0, 0.04, -1.18);
+  const fore = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.16), wood);
+  fore.position.set(0, -0.04, -0.36);
   const support = new THREE.Mesh(
-    new THREE.SphereGeometry(0.058, 8, 6),
+    new THREE.SphereGeometry(0.08, 8, 6),
     mat(0xffd2b0, 0x5a3020, 0.1),
   );
-  support.position.set(0.02, -0.07, -0.3);
+  support.position.set(0.02, -0.1, -0.36);
   const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.11, 8, 6),
+    new THREE.SphereGeometry(0.14, 8, 6),
     new THREE.MeshBasicMaterial({
       color: foe ? 0xffd0ea : 0xfff6c8,
       transparent: true,
       opacity: 0,
       depthWrite: false,
+      fog: false,
     }),
   );
-  flash.position.set(0, 0.035, -0.98);
+  flash.position.set(0, 0.04, -1.28);
   const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, 0.035, -1.02);
-  rifle.add(stock, pistol, body, band, barrel, tip, fore, support, flash, muzzle);
+  muzzle.position.set(0, 0.04, -1.32);
+  rifle.add(stock, pistol, body, barrel, tip, fore, support, flash, muzzle);
+  rifle.scale.setScalar(1.65);
   rifle.userData.flash = flash;
   rifle.userData.muzzle = muzzle;
   return rifle;
@@ -396,7 +396,6 @@ function makeInfantry(accent, foe = false) {
   const boot = mat(foe ? 0x1a1422 : 0x3a2a22, 0x100c0a, 0.16);
   const helm = mat(foe ? 0x4a2848 : 0xf7fbff, accent, 0.42);
   const sashMat = mat(foe ? 0xff8ab8 : 0xffd56a, foe ? 0xff8ab8 : 0xffe08a, 0.6);
-  const steel = mat(0x2a3442, 0x101820, 0.35);
 
   const pivotLimb = (x, y, material, radius, length) => {
     const pivot = new THREE.Group();
@@ -441,7 +440,7 @@ function makeInfantry(accent, foe = false) {
   const gripHand = new THREE.Mesh(new THREE.SphereGeometry(0.064, 8, 6), skin);
   gripHand.position.set(0, -0.34, -0.02);
   armR.add(gripHand);
-  const rifle = makeToyRifle(foe, steel);
+  const rifle = makeToyRifle(foe);
   gripHand.add(rifle);
   armR.rotation.set(1.08, 0.18, -0.18);
   armL.rotation.set(0.86, 0.55, 0.72);
@@ -2042,10 +2041,10 @@ export class GroundBattle {
     if (player && player.mesh.visible && this.phase !== 'resolve') {
       const spot = spotOf(player);
       if (this.aiming) {
-        // Zoom window stays a wide slice of the valley, much larger than the old tight crop.
+        // Aim window is only a gentle push-in. It still covers most of the valley.
         aim = {
-          pos: [spot.x * 0.4, 24, spot.z + 34],
-          look: [spot.x * 0.3, 1.5, spot.z - 26],
+          pos: [spot.x * 0.28, 36, spot.z + 48],
+          look: [spot.x * 0.18, 1.5, spot.z - 28],
         };
       } else {
         aim = {
@@ -2071,7 +2070,7 @@ export class GroundBattle {
     const mag = this.shake * 0.35;
     this.camera.position.x += (Math.random() - 0.5) * mag;
     this.camera.position.y += (Math.random() - 0.5) * mag;
-    const fov = this.aiming ? 70 : 78;
+    const fov = this.aiming ? 74 : 78;
     if (Math.abs(this.camera.fov - fov) > 0.05) {
       this.camera.fov += (fov - this.camera.fov) * (1 - Math.exp(-2.4 * dt));
       this.camera.updateProjectionMatrix();
