@@ -1,17 +1,17 @@
-/** Ground-battle march: three regular wins, then a boss, then a tarot gift. */
+/** Ground-battle march: three regular wins, then a boss, then a trophy. */
 
 export const BOSS_EVERY = 3;
 export const PERK_CAP = 2;
 
 export const PERK_IDS = ['shield', 'company', 'cannon', 'banner', 'destroyer'];
 
-/** Tarot / Tasso deck. Copy lives in i18n; this is the draw order and numeral. */
-export const TAROT = [
-  { id: 'shield', numeral: 'א׳' },
-  { id: 'company', numeral: 'ב׳' },
-  { id: 'cannon', numeral: 'ג׳' },
-  { id: 'banner', numeral: 'ד׳' },
-  { id: 'destroyer', numeral: 'ה׳' },
+/** Trophy cups. Hebrew copy lives in i18n. */
+export const TROPHIES = [
+  { id: 'shield' },
+  { id: 'company' },
+  { id: 'cannon' },
+  { id: 'banner' },
+  { id: 'destroyer' },
 ];
 
 export function emptyPerks() {
@@ -61,17 +61,17 @@ export function noteRegularWin(state) {
   return { ...current, sinceBoss: since, bossDue: false };
 }
 
-/** Prefer the gift the player has least of, so the deck stays varied. */
-export function drawTarot(state, rng = Math.random) {
+/** Prefer the cup the player has least of, so the prizes stay varied. */
+export function drawTrophy(state, rng = Math.random) {
   const perks = normalizeCampaign(state).perks;
   let min = PERK_CAP;
-  for (const card of TAROT) min = Math.min(min, perks[card.id] || 0);
-  const pool = TAROT.filter((card) => (perks[card.id] || 0) === min);
+  for (const cup of TROPHIES) min = Math.min(min, perks[cup.id] || 0);
+  const pool = TROPHIES.filter((cup) => (perks[cup.id] || 0) === min);
   const index = Math.min(pool.length - 1, Math.floor(rng() * pool.length));
   return pool[Math.max(0, index)];
 }
 
-export function grantTarot(state, id) {
+export function grantTrophy(state, id) {
   const current = normalizeCampaign(state);
   if (!PERK_IDS.includes(id)) return { state: current, tier: 0, grew: false };
   const before = current.perks[id] || 0;

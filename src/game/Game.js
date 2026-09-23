@@ -23,9 +23,9 @@ import {
 } from './balance.js';
 import { Sfx } from './audio.js';
 import {
-  drawTarot,
+  drawTrophy,
   emptyCampaign,
-  grantTarot,
+  grantTrophy,
   normalizeCampaign,
   noteRegularWin,
 } from './campaign.js';
@@ -125,9 +125,9 @@ export class Game {
     this.best = this.readBest();
     this.campaign = this.readCampaign();
     this.pendingBoss = null;
-    this.tarotOpen = false;
-    this.tarotAt = 0;
-    this.tarotGranted = false;
+    this.trophyOpen = false;
+    this.trophyAt = 0;
+    this.trophyGranted = false;
     this.newBest = false;
     this.combo = 1;
     this.comboUntil = 0;
@@ -260,14 +260,12 @@ export class Game {
       groundTouch: document.querySelector('#ground-touch'),
       groundLeftBtn: document.querySelector('#ground-left'),
       groundRightBtn: document.querySelector('#ground-right'),
-      tarot: document.querySelector('#tarot'),
-      tarotCard: document.querySelector('#tarot-card'),
-      tarotKicker: document.querySelector('#tarot-kicker'),
-      tarotNumeral: document.querySelector('#tarot-numeral'),
-      tarotName: document.querySelector('#tarot-name'),
-      tarotBlurb: document.querySelector('#tarot-blurb'),
-      tarotSuit: document.querySelector('#tarot-suit'),
-      tarotTake: document.querySelector('#tarot-take'),
+      trophy: document.querySelector('#trophy'),
+      trophyCup: document.querySelector('#trophy-cup'),
+      trophyKicker: document.querySelector('#trophy-kicker'),
+      trophyName: document.querySelector('#trophy-name'),
+      trophyBlurb: document.querySelector('#trophy-blurb'),
+      trophyTake: document.querySelector('#trophy-take'),
     };
 
     this.fillText();
@@ -489,8 +487,8 @@ export class Game {
     if (dom.openDesert) dom.openDesert.textContent = T.openDesert;
     dom.groundTitle.textContent = T.groundBattles;
     this.refreshGroundBlurb();
-    if (dom.tarotKicker) dom.tarotKicker.textContent = T.tarotKicker;
-    if (dom.tarotTake) dom.tarotTake.textContent = T.tarotTake;
+    if (dom.trophyKicker) dom.trophyKicker.textContent = T.trophyKicker;
+    if (dom.trophyTake) dom.trophyTake.textContent = T.trophyTake;
     dom.groundClose.textContent = T.groundClose;
     dom.groundSoldierBtn.textContent = T.groundSoldier;
     dom.groundTankBtn.textContent = T.groundTank;
@@ -533,7 +531,7 @@ export class Game {
     dom.groundBack.addEventListener('click', () => this.exitGround());
     dom.groundSpace.addEventListener('click', () => this.returnToSpace());
     dom.groundRetreat.addEventListener('click', () => this.ground?.retreat());
-    if (dom.tarotTake) dom.tarotTake.addEventListener('click', () => this.acceptTarot());
+    if (dom.trophyTake) dom.trophyTake.addEventListener('click', () => this.acceptTrophy());
     dom.groundSoldierBtn.addEventListener('click', () => this.ground?.deploy('infantry'));
     dom.groundTankBtn.addEventListener('click', () => this.ground?.deploy('tank'));
     dom.groundDestroyerBtn.addEventListener('click', () => this.ground?.deploy('destroyer'));
@@ -835,10 +833,10 @@ export class Game {
       return;
     }
     if (this.state === 'ground') {
-      if (this.tarotOpen) {
+      if (this.trophyOpen) {
         if (event.code === 'Enter' || event.code === 'Escape' || event.code === 'Space') {
           event.preventDefault();
-          this.acceptTarot();
+          this.acceptTrophy();
         }
         return;
       }
@@ -1318,7 +1316,7 @@ export class Game {
     }
     if (this.state === 'ground') {
       this.tickGroundShow(dt);
-      if (!this.tarotOpen) this.ground?.update(dt, {
+      if (!this.trophyOpen) this.ground?.update(dt, {
         left: this.groundLeft || this.keys.has('KeyA') || this.keys.has('ArrowLeft'),
         right: this.groundRight || this.keys.has('KeyD') || this.keys.has('ArrowRight'),
         forward: this.keys.has('KeyW') || this.keys.has('ArrowUp'),
@@ -3210,9 +3208,9 @@ export class Game {
     else if (this.state === 'menu') this.spaceLive = false;
     this.sfx.unlock();
     this.closeGroundPick();
-    this.hideTarot();
+    this.hideTrophy();
     this.pendingBoss = null;
-    this.tarotAt = 0;
+    this.trophyAt = 0;
     this.groundFire = false;
     this.state = 'ground';
     const world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
@@ -3260,8 +3258,8 @@ export class Game {
       this.campaign = { ...this.campaign, bossDue: false, sinceBoss: 0 };
       this.saveCampaign();
       this.refreshGroundBlurb();
-      this.tarotGranted = false;
-      this.tarotAt = 1.15;
+      this.trophyGranted = false;
+      this.trophyAt = 1.15;
       return;
     }
     this.campaign = noteRegularWin(this.campaign);
@@ -3276,11 +3274,11 @@ export class Game {
   }
 
   tickGroundShow(dt) {
-    if (this.tarotAt > 0 && !this.tarotOpen) {
-      this.tarotAt -= dt;
-      if (this.tarotAt <= 0) this.openTarot();
+    if (this.trophyAt > 0 && !this.trophyOpen) {
+      this.trophyAt -= dt;
+      if (this.trophyAt <= 0) this.openTrophy();
     }
-    if (!this.pendingBoss || this.tarotOpen || this.state !== 'ground') return;
+    if (!this.pendingBoss || this.trophyOpen || this.state !== 'ground') return;
     this.pendingBoss.at -= dt;
     if (this.pendingBoss.at > 0) return;
     const worldId = this.pendingBoss.worldId;
@@ -3288,51 +3286,49 @@ export class Game {
     this.startBoss(worldId);
   }
 
-  openTarot() {
-    if (this.tarotGranted || !this.dom.tarot) return;
-    const card = drawTarot(this.campaign);
-    const granted = grantTarot(this.campaign, card.id);
+  openTrophy() {
+    if (this.trophyGranted || !this.dom.trophy) return;
+    const cup = drawTrophy(this.campaign);
+    const granted = grantTrophy(this.campaign, cup.id);
     this.campaign = granted.state;
     this.saveCampaign();
     this.refreshGroundBlurb();
-    this.tarotGranted = true;
-    this.tarotOpen = true;
-    this.tarotAt = 0;
+    this.trophyGranted = true;
+    this.trophyOpen = true;
+    this.trophyAt = 0;
     this.groundFire = false;
-    const copy = T.tarotCards[card.id];
+    const copy = T.trophies[cup.id];
     let blurb = copy.blurb;
-    if (!granted.grew) blurb = `${blurb} ${T.tarotKept}`;
-    else if (granted.tier > 1) blurb = `${blurb} ${T.tarotStronger}`;
-    this.dom.tarotKicker.textContent = T.tarotKicker;
-    this.dom.tarotNumeral.textContent = card.numeral;
-    this.dom.tarotName.textContent = copy.name;
-    this.dom.tarotBlurb.textContent = blurb;
-    this.dom.tarotSuit.textContent = T.tarotDeck;
-    this.dom.tarotCard.dataset.suit = card.id;
-    this.dom.tarot.classList.remove('show');
-    this.dom.tarot.hidden = false;
+    if (!granted.grew) blurb = `${blurb} ${T.trophyKept}`;
+    else if (granted.tier > 1) blurb = `${blurb} ${T.trophyStronger}`;
+    this.dom.trophyKicker.textContent = T.trophyKicker;
+    this.dom.trophyName.textContent = copy.name;
+    this.dom.trophyBlurb.textContent = blurb;
+    if (this.dom.trophyCup) this.dom.trophyCup.dataset.cup = cup.id;
+    this.dom.trophy.classList.remove('show');
+    this.dom.trophy.hidden = false;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => this.dom.tarot?.classList.add('show'));
+      requestAnimationFrame(() => this.dom.trophy?.classList.add('show'));
     });
     this.sfx.pickup();
   }
 
-  hideTarot() {
-    this.tarotOpen = false;
-    this.tarotAt = 0;
-    if (!this.dom?.tarot) return;
-    this.dom.tarot.classList.remove('show');
-    this.dom.tarot.hidden = true;
+  hideTrophy() {
+    this.trophyOpen = false;
+    this.trophyAt = 0;
+    if (!this.dom?.trophy) return;
+    this.dom.trophy.classList.remove('show');
+    this.dom.trophy.hidden = true;
   }
 
-  acceptTarot() {
-    if (!this.tarotOpen) return;
+  acceptTrophy() {
+    if (!this.trophyOpen) return;
     this.sfx.ui();
-    this.tarotOpen = false;
-    this.tarotAt = 0;
-    if (this.dom?.tarot) {
-      this.dom.tarot.classList.remove('show');
-      this.dom.tarot.hidden = true;
+    this.trophyOpen = false;
+    this.trophyAt = 0;
+    if (this.dom?.trophy) {
+      this.dom.trophy.classList.remove('show');
+      this.dom.trophy.hidden = true;
     }
     this.groundFire = false;
     this.groundLeft = false;
@@ -3353,12 +3349,12 @@ export class Game {
   }
 
   returnToSpace() {
-    if (this.holdForTarot()) return;
+    if (this.holdForTrophy()) return;
     this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
     this.pendingBoss = null;
-    this.hideTarot();
+    this.hideTrophy();
     this.ground?.stop();
     this.closeGroundPick();
     if (this.portals) {
@@ -3420,22 +3416,22 @@ export class Game {
   }
 
   exitGround() {
-    if (this.holdForTarot()) return;
+    if (this.holdForTrophy()) return;
     this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
     this.pendingBoss = null;
-    this.hideTarot();
+    this.hideTrophy();
     this.refreshGroundBlurb();
     this.state = 'ground-pick';
     this.syncVisibility();
   }
 
-  /** Keep the tarot gift on screen until the player takes the card. */
-  holdForTarot() {
-    if (this.tarotOpen) return true;
-    if (this.tarotAt > 0) {
-      this.openTarot();
+  /** Keep the trophy on screen until the player takes the cup. */
+  holdForTrophy() {
+    if (this.trophyOpen) return true;
+    if (this.trophyAt > 0) {
+      this.openTrophy();
       return true;
     }
     return false;
