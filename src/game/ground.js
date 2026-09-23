@@ -827,7 +827,8 @@ export class GroundBattle {
     this.active = true;
     this.buildField();
     [-12, 0, 12].forEach((x, i) => this.spawn('artillery', x, 0.05 + i * 0.08, { speed: 0, laneFollow: 0.15, bob: 0, z: 10 }));
-    [[-9, 9.2], [-3, 10.4], [3.2, 9.6], [9, 8.8]].forEach(([x, z], i) => this.spawn('tank', x, 0.08 + i * 0.1, { z, speed: 5.8 }));
+    [[-9, 9.2], [-3, 10.4], [3.2, 9.6], [9, 8.8]].forEach(([x, z], i) => this.spawn('tank', x, 0, { z, speed: 5.8 }));
+    this.spawn('player', 0, 0, { z: 4.2, speed: 0, laneFollow: 0 });
     const friendGuns = ['machine', 'cannon', 'mortar', 'machine', 'cannon', 'machine'];
     [[-11, 5.2], [-6.5, 6.4], [-2, 7.2], [2.4, 6.8], [6.6, 5.6], [11, 4.8]].forEach(([x, z], i) => this.spawn('gunCar', x, 0.05 + i * 0.05, {
       z,
@@ -973,6 +974,7 @@ export class GroundBattle {
     else if (kind === 'gunCar') mesh = makeGunCar(this.world.accent, false, extra.gun || 'machine');
     else if (kind === 'foeCar') mesh = makeGunCar(this.world.enemy, true, extra.gun || 'machine');
     else if (kind === 'infantry') mesh = makeInfantry(this.world.accent, false);
+    else if (kind === 'player') mesh = makeInfantry(0x2a62f0, false);
     else if (kind === 'defender') mesh = makeInfantry(this.world.enemy, true);
     else if (kind === 'destroyer') mesh = makeDestroyer();
     else mesh = makeSpecial(kind, this.world);
@@ -980,6 +982,16 @@ export class GroundBattle {
     if (kind === 'defender') mesh.rotation.y = Math.PI - 0.42;
     else if (kind === 'foeCar') mesh.rotation.y = Math.PI;
     else if (kind === 'infantry') mesh.rotation.y = 0.48;
+    else if (kind === 'player') {
+      mesh.rotation.y = 0;
+      const mark = new THREE.Mesh(
+        new THREE.TorusGeometry(0.46, 0.05, 6, 14),
+        new THREE.MeshBasicMaterial({ color: 0x8eb6ff }),
+      );
+      mark.rotation.x = Math.PI / 2;
+      mark.position.y = 0.06;
+      mesh.add(mark);
+    }
     mesh.traverse((obj) => {
       if (obj.isMesh) {
         obj.castShadow = true;
@@ -1063,16 +1075,45 @@ export class GroundBattle {
     this.pushPulse = 0.35;
   }
 
+  playerUnit() {
+    return this.units.find((unit) => unit.kind === 'player') || null;
+  }
+
+  drivePlayer(dt, input) {
+    const player = this.playerUnit();
+    if (!player || this.phase === 'resolve') return;
+    player.shotCd = Math.max(0, (player.shotCd || 0) - dt);
+    const step = 11 * dt;
+    let x = 0;
+    let z = 0;
+    if (input?.left) x -= 1;
+    if (input?.right) x += 1;
+    x += input?.stick || 0;
+    if (input?.forward) z -= 1;
+    if (input?.back) z += 1;
+    if (x || z) {
+      const len = Math.hypot(x, z) || 1;
+      player.x += (x / len) * step;
+      player.z += (z / len) * step;
+    }
+    player.x = THREE.MathUtils.clamp(player.x, -16, 16);
+    player.z = THREE.MathUtils.clamp(player.z, -36, 16);
+    if (input?.fire) this.firePlayer(player);
+  }
+
+  firePlayer(player) {
+    if (player.shotCd > 0) return;
+    player.shotCd = 0.22;
+    player.attackT = 0.2;
+    this.fireRifle(player);
+  }
+
   update(dt, input) {
     if (!this.active) return;
     const pushing = Boolean(input?.push) || this.pushPulse > 0;
     this.pushPulse = Math.max(0, this.pushPulse - dt);
-    let axis = 0;
-    if (input?.left) axis -= 1;
-    if (input?.right) axis += 1;
-    axis += input?.stick || 0;
-    const targetLane = THREE.MathUtils.clamp(axis, -1, 1) * 12;
-    this.lane = THREE.MathUtils.damp(this.lane, targetLane, 4, dt);
+    this.drivePlayer(dt, input);
+    this.lane = THREE.MathUtils.damp(this.lane, 0, 4, dt);
 
     if (this.phase !== 'resolve') {
       this.phaseT += dt * (pushing ? 1.28 : 1);
@@ -1309,10 +1350,10 @@ export class GroundBattle {
       unit.age += dt;
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
       const people = unit.kind === 'infantry' || unit.kind === 'defender';
-      const pop = unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : people ? 2.5 : 0.85;
+      const pop = unit.kind === 'player' ? 2.8 : unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : people ? 2.5 : 0.85;
       unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro));
-      if (fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
-      else if (this.phase !== 'resolve') unit.z -= unit.speed * pace * dt;
+      if (unit.kind !== 'player' && fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
+      else if (unit.kind !== 'player' && this.phase !== 'resolve') unit.z -= unit.speed * pace * dt;
       if (unit.kind === 'defender' && this.capture > 50 && !fallingBack) unit.z += 8 * dt;
       if (unit.kind === 'foeCar' && !fallingBack) unit.z = Math.min(unit.z, -6.5);
       unit.z = THREE.MathUtils.clamp(unit.z, -50, 22);
@@ -1455,7 +1496,15 @@ export class GroundBattle {
       special: { pos: [-6, 12, 18], look: [0, 2.2, -6] },
       resolve: { pos: [0, 12, 22], look: [0, 2, -10] },
     };
+    const player = this.playerUnit();
     let aim = aims[this.phase] || aims.artillery;
+    if (player && player.mesh.visible && this.phase !== 'resolve') {
+      const spot = player.mesh.position;
+      aim = {
+        pos: [spot.x, 6.4, spot.z + 10],
+        look: [spot.x, 1.3, spot.z - 9],
+      };
+    }
     if (this.phase === 'special') {
       const hero = this.units.find((unit) => unit.kind === 'destroyer' && unit.mesh.visible);
       if (hero) {

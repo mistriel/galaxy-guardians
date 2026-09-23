@@ -107,6 +107,7 @@ export class Game {
     this.boostPointer = null;
     this.boostHeld = false;
     this.groundPush = false;
+    this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
     this.nudgeX = 0;
@@ -498,7 +499,7 @@ export class Game {
     dom.resumeBtn.addEventListener('click', () => this.togglePause());
     dom.restartBtn.addEventListener('click', () => this.startMission());
     dom.menuBtn.addEventListener('click', () => this.showMenu());
-    dom.groundMenu.addEventListener('click', () => this.openGroundPick());
+    dom.groundMenu.addEventListener('click', () => this.startGround('forest'));
     if (dom.openForest) dom.openForest.addEventListener('click', () => this.startGround('forest'));
     if (dom.openDesert) dom.openDesert.addEventListener('click', () => this.startGround('desert'));
     dom.groundClose.addEventListener('click', () => this.startGround(this.ground?.world?.id || 'forest'));
@@ -533,11 +534,15 @@ export class Game {
     window.addEventListener('keydown', (event) => this.onKeyDown(event));
     window.addEventListener('keyup', (event) => {
       this.keys.delete(event.code);
-      if (event.code === 'Space') this.groundPush = false;
+      if (event.code === 'Space') {
+        this.groundPush = false;
+        this.groundFire = false;
+      }
     });
     window.addEventListener('blur', () => {
       this.keys.clear();
       this.groundPush = false;
+      this.groundFire = false;
       this.groundLeft = false;
       this.groundRight = false;
       this.releaseStick(true);
@@ -819,8 +824,7 @@ export class Game {
         return;
       }
       if (event.code === 'Space') {
-        this.ground?.boostPush();
-        this.groundPush = true;
+        this.groundFire = true;
         return;
       }
       if (event.code === 'KeyG') {
@@ -1289,7 +1293,10 @@ export class Game {
       this.ground?.update(dt, {
         left: this.groundLeft || this.keys.has('KeyA') || this.keys.has('ArrowLeft'),
         right: this.groundRight || this.keys.has('KeyD') || this.keys.has('ArrowRight'),
-        push: this.groundPush || this.keys.has('Space'),
+        forward: this.keys.has('KeyW') || this.keys.has('ArrowUp'),
+        back: this.keys.has('KeyS') || this.keys.has('ArrowDown'),
+        fire: this.groundFire,
+        push: this.groundPush,
         stick: this.coarse ? this.move.x : 0,
       });
       this.render();
@@ -3186,6 +3193,7 @@ export class Game {
 
   returnToSpace() {
     this.groundPush = false;
+    this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
     this.ground?.stop();
@@ -3250,6 +3258,7 @@ export class Game {
 
   exitGround() {
     this.groundPush = false;
+    this.groundFire = false;
     this.groundLeft = false;
     this.groundRight = false;
     this.state = 'ground-pick';
