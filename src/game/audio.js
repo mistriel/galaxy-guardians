@@ -24,9 +24,9 @@ export class Sfx {
     return this.muted;
   }
 
-  blip({ freq = 440, dur = 0.08, type = 'square', vol = 0.2, slide = 0 }) {
+  blip({ freq = 440, dur = 0.08, type = 'square', vol = 0.2, slide = 0, at = 0 }) {
     if (this.muted || !this.ctx) return;
-    const t = this.ctx.currentTime;
+    const t = this.ctx.currentTime + Math.max(0, at);
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type;
@@ -135,5 +135,44 @@ export class Sfx {
     this.noise(0.34, 0.28, 1600);
     this.blip({ freq: 160, dur: 0.28, type: 'sine', vol: 0.05, slide: 380 });
     this.blip({ freq: 90, dur: 0.2, type: 'triangle', vol: 0.04, slide: 140 });
+  }
+
+  /**
+   * Boss-battle voice cues. WebAudio tones stand in for spoken lines;
+   * the Hebrew caption is shown by the battle. side: friend | foe.
+   * cue: engage | hit | defeat.
+   */
+  voiceCue(side, cue) {
+    const friend = side !== 'foe';
+    if (cue === 'engage') {
+      if (friend) {
+        this.blip({ freq: 523, dur: 0.11, type: 'triangle', vol: 0.08 });
+        this.blip({ freq: 659, dur: 0.12, type: 'triangle', vol: 0.075, at: 0.12 });
+        this.blip({ freq: 784, dur: 0.16, type: 'sine', vol: 0.07, at: 0.24 });
+      } else {
+        this.blip({ freq: 196, dur: 0.14, type: 'sawtooth', vol: 0.07, slide: -30 });
+        this.blip({ freq: 146, dur: 0.18, type: 'square', vol: 0.06, slide: -20, at: 0.16 });
+      }
+      return;
+    }
+    if (cue === 'hit') {
+      if (friend) {
+        this.blip({ freq: 740, dur: 0.07, type: 'square', vol: 0.06, slide: 180 });
+        this.blip({ freq: 988, dur: 0.09, type: 'triangle', vol: 0.05, at: 0.06 });
+      } else {
+        this.noise(0.09, 0.16, 420);
+        this.blip({ freq: 168, dur: 0.1, type: 'sawtooth', vol: 0.07, slide: -60 });
+      }
+      return;
+    }
+    if (friend) {
+      this.blip({ freq: 523, dur: 0.1, type: 'triangle', vol: 0.08 });
+      this.blip({ freq: 659, dur: 0.12, type: 'triangle', vol: 0.08, at: 0.1 });
+      this.blip({ freq: 784, dur: 0.14, type: 'triangle', vol: 0.07, at: 0.2 });
+      this.blip({ freq: 1046, dur: 0.22, type: 'sine', vol: 0.06, at: 0.32 });
+      return;
+    }
+    this.blip({ freq: 220, dur: 0.16, type: 'triangle', vol: 0.07, slide: -90 });
+    this.blip({ freq: 130, dur: 0.28, type: 'sine', vol: 0.06, slide: -40, at: 0.12 });
   }
 }

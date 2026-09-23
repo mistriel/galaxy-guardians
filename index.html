@@ -128,7 +128,9 @@
       <div id="ground-hud" hidden>
         <div class="ground-top">
           <p id="ground-world" class="kicker"></p>
+          <p id="ground-march" class="kicker"></p>
           <p id="ground-phase"></p>
+          <p id="ground-bark" hidden></p>
           <p id="ground-note"></p>
           <div class="meter">
             <span id="ground-hold-label"></span>
@@ -157,6 +159,24 @@
         <button id="ground-left" type="button"></button>
         <button id="ground-right" type="button"></button>
       </div>
+      <section id="trophy" hidden>
+        <div class="trophy-stage">
+          <p id="trophy-kicker" class="kicker"></p>
+          <div id="trophy-cup" class="trophy-cup" aria-hidden="true">
+            <span class="trophy-star star-a"></span>
+            <span class="trophy-star star-b"></span>
+            <span class="trophy-star star-c"></span>
+            <div class="cup-handle cup-handle-left"></div>
+            <div class="cup-handle cup-handle-right"></div>
+            <div class="cup-bowl"></div>
+            <div class="cup-stem"></div>
+            <div class="cup-base"></div>
+          </div>
+          <h2 id="trophy-name"></h2>
+          <p id="trophy-blurb"></p>
+          <button id="trophy-take" class="primary" type="button"></button>
+        </div>
+      </section>
       <div id="side-actions" hidden>
         <button id="aim-view-btn" type="button" aria-pressed="false"></button>
         <button id="grenade-btn" type="button"></button>
