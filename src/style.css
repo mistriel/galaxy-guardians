@@ -23,6 +23,21 @@ html, body {
 
 button, input { font-family: inherit; }
 
+/* Long-press must not select a control's label or raise the mobile copy
+   callout. Descendants are included because some mobile browsers apply
+   selection to the text inside the button. touch-action stays
+   manipulation so a drag that starts on a menu button can still scroll;
+   hold controls and sticks override it with touch-action: none. */
+button,
+button * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button { touch-action: manipulation; }
+
 #app, #app canvas {
   position: fixed;
   inset: 0;
@@ -395,6 +410,10 @@ body.touch #crosshair span:nth-child(4) {
   height: 168px;
   pointer-events: auto;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 #move-stick {
   left: max(8px, env(safe-area-inset-left));
@@ -604,11 +623,6 @@ body.touch #flight-row {
   font-size: 0.85rem;
   padding: 0;
 }
-.joy, #fire-btn, #missile-btn, #nuke-btn, #giant-btn, #giant-touch, #boost-btn, #boost-touch, #ordnance-btn, #ordnance-touch, #ordnance-cycle, #ordnance-cycle-touch {
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
 #fire-btn:active, #missile-btn:active { transform: scale(0.96); }
 
 @media (max-height: 500px) {
@@ -711,6 +725,7 @@ body.touch #flight-row {
   pointer-events: auto;
 }
 #ground-touch { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+#ground-push { touch-action: none; }
 #ground-left, #ground-right {
   position: absolute;
   bottom: max(24px, env(safe-area-inset-bottom));
