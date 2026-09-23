@@ -456,32 +456,40 @@ function makeGunCar(accent, foe = false, gun = 'machine') {
   return root;
 }
 
-/** Chunky toy rifle. Local −Z is the muzzle. Both hands stay on the weapon. */
+/** Service rifle. Local −Z is the muzzle. Both hands stay on the weapon. */
 function makeToyRifle(foe) {
   const rifle = new THREE.Group();
   const paint = foe ? 0xff4ad8 : 0xffe14a;
   const bright = new THREE.MeshBasicMaterial({ color: paint, fog: false });
-  const wood = mat(foe ? 0x6a3050 : 0xc4843a, foe ? 0x3a1428 : 0x5a3010, 0.4);
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.42), wood);
-  stock.position.set(0, 0.02, 0.22);
-  const pistol = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.2, 0.1), wood);
-  pistol.position.set(0, -0.1, 0.04);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.46), bright);
-  body.position.set(0, 0.04, -0.16);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.95, 8), bright);
+  const stockMat = mat(foe ? 0x3a2434 : 0x3a3428, foe ? 0x1a1018 : 0x1a140e, 0.2);
+  const glove = mat(foe ? 0x2a1824 : 0x2c2418, 0x100c08, 0.16);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.18, 0.36), stockMat);
+  stock.position.set(0, 0.01, 0.3);
+  const comb = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.2), stockMat);
+  comb.position.set(0, 0.11, 0.24);
+  const pistol = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, 0.08), stockMat);
+  pistol.position.set(0, -0.1, 0.08);
+  pistol.rotation.x = -0.4;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.1, 0.34), bright);
+  body.position.set(0, 0.05, -0.06);
+  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.18, 0.09), bright);
+  mag.position.set(0, -0.1, -0.02);
+  const fore = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.36), stockMat);
+  fore.position.set(0, 0.03, -0.36);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.038, 0.78, 8), bright);
   barrel.rotation.x = -Math.PI / 2;
-  barrel.position.set(0, 0.04, -0.68);
-  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), bright);
-  tip.position.set(0, 0.04, -1.18);
-  const fore = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.16), wood);
-  fore.position.set(0, -0.04, -0.36);
-  const support = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08, 8, 6),
-    mat(0xffd2b0, 0x5a3020, 0.1),
-  );
-  support.position.set(0.02, -0.1, -0.36);
+  barrel.position.set(0, 0.055, -0.78);
+  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.034, 0.1, 8), bright);
+  tip.rotation.x = -Math.PI / 2;
+  tip.position.set(0, 0.055, -1.16);
+  const sight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.07, 0.02), bright);
+  sight.position.set(0, 0.11, -1.05);
+  const rear = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.045, 0.02), bright);
+  rear.position.set(0, 0.11, 0.02);
+  const support = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.1), glove);
+  support.position.set(0.01, -0.02, -0.34);
   const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 8, 6),
+    new THREE.SphereGeometry(0.12, 8, 6),
     new THREE.MeshBasicMaterial({
       color: foe ? 0xffd0ea : 0xfff6c8,
       transparent: true,
@@ -490,11 +498,11 @@ function makeToyRifle(foe) {
       fog: false,
     }),
   );
-  flash.position.set(0, 0.04, -1.28);
+  flash.position.set(0, 0.055, -1.24);
   const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, 0.04, -1.32);
-  rifle.add(stock, pistol, body, barrel, tip, fore, support, flash, muzzle);
-  rifle.scale.setScalar(1.65);
+  muzzle.position.set(0, 0.055, -1.28);
+  rifle.add(stock, comb, pistol, body, mag, fore, barrel, tip, sight, rear, support, flash, muzzle);
+  rifle.scale.setScalar(1.72);
   rifle.userData.flash = flash;
   rifle.userData.muzzle = muzzle;
   return rifle;
@@ -519,18 +527,23 @@ function faceNegZ(mesh, x, z) {
   mesh.rotation.y = Math.atan2(-dx, -dz);
 }
 
-/** Original toy soldier. Tunic, pants, and a rifle read at battle distance. */
+/** Arcade soldier: helmet, vest, boots, and a rifle, still smiling. */
 function makeInfantry(accent, foe = false) {
   const root = new THREE.Group();
   const tunicColor = squadTint(accent, foe);
-  const cloth = mat(tunicColor, tunicColor, foe ? 0.32 : 0.5);
-  const pants = mat(foe ? 0x2a2236 : 0xf4efe2, foe ? 0x120c18 : 0xc8b89a, 0.12);
+  const cloth = mat(tunicColor, tunicColor, foe ? 0.28 : 0.42);
+  const pants = mat(foe ? 0x241820 : 0x3c4632, foe ? 0x120c14 : 0x1c2418, 0.14);
   const skin = mat(0xffd2b0, 0x5a3020, 0.1);
-  const boot = mat(foe ? 0x1a1422 : 0x3a2a22, 0x100c0a, 0.16);
+  const boot = mat(foe ? 0x1a121c : 0x241810, 0x080604, 0.18);
+  const sole = mat(0x3a3028, 0x100c08, 0.1);
+  const glove = mat(foe ? 0x2a1824 : 0x2c2418, 0x100c08, 0.16);
+  const vestMat = mat(foe ? 0x1a1218 : 0x6e6248, foe ? 0x3a1830 : 0x3a3420, foe ? 0.35 : 0.28);
+  const pouchMat = mat(foe ? 0x120c12 : 0x4a4030, 0x080604, 0.12);
   const helm = foe
-    ? mat(0x4a2848, accent, 0.42)
+    ? new THREE.MeshBasicMaterial({ color: 0x5a1844, fog: false })
     : new THREE.MeshBasicMaterial({ color: 0xff2d35, fog: false });
-  const sashMat = mat(foe ? 0xff8ab8 : 0xffd56a, foe ? 0xff8ab8 : 0xffe08a, 0.6);
+  const teamMark = new THREE.MeshBasicMaterial({ color: foe ? 0xff4ad8 : 0xff2d35, fog: false });
+  const headY = 1.64;
 
   const pivotLimb = (x, y, material, radius, length) => {
     const pivot = new THREE.Group();
@@ -542,95 +555,106 @@ function makeInfantry(accent, foe = false) {
     return pivot;
   };
 
-  const legL = pivotLimb(-0.14, 0.64, pants, 0.08, 0.36);
-  const legR = pivotLimb(0.14, 0.64, pants, 0.08, 0.36);
-  for (const x of [-0.14, 0.14]) {
-    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), boot);
-    foot.scale.set(1, 0.5, 1.35);
-    foot.position.set(x, 0.05, 0.03);
-    root.add(foot);
+  const legL = pivotLimb(-0.14, 0.7, pants, 0.095, 0.4);
+  const legR = pivotLimb(0.14, 0.7, pants, 0.095, 0.4);
+  for (const leg of [legL, legR]) {
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.26), boot);
+    shoe.position.set(0, -0.5, 0.04);
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.09), pouchMat);
+    pad.position.set(0, -0.2, -0.08);
+    const soleMesh = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.045, 0.28), sole);
+    soleMesh.position.set(0, -0.59, 0.05);
+    leg.add(shoe, pad, soleMesh);
   }
-  const hips = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), pants);
-  hips.scale.set(1.25, 0.7, 0.9);
-  hips.position.set(0, 0.66, 0);
+  const hips = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), pants);
+  hips.scale.set(1.35, 0.62, 0.95);
+  hips.position.set(0, 0.72, 0);
   root.add(hips);
-  const chest = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.32, 4, 10), cloth);
-  chest.position.set(0, 1.08, 0);
-  chest.userData.baseY = 1.08;
-  root.add(chest);
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.08), sashMat);
-  stripe.position.set(0, 1.12, -0.16);
-  root.add(stripe);
-  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.028, 6, 14), sashMat);
-  belt.rotation.x = Math.PI / 2;
-  belt.position.set(0, 0.9, 0);
-  root.add(belt);
-  const cape = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.32, 3, 6), sashMat);
-  cape.scale.set(1.6, 1, 0.28);
-  cape.position.set(0, 1.05, 0.16);
-  root.add(cape);
 
-  const armL = pivotLimb(-0.32, 1.22, cloth, 0.055, 0.28);
-  const armR = pivotLimb(0.32, 1.22, cloth, 0.055, 0.26);
-  const gripHand = new THREE.Mesh(new THREE.SphereGeometry(0.064, 8, 6), skin);
-  gripHand.position.set(0, -0.34, -0.02);
+  const chest = new THREE.Group();
+  chest.position.set(0, 1.16, 0);
+  chest.userData.baseY = 1.16;
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.34, 4, 10), cloth);
+  chest.add(torso);
+  const vest = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.32, 0.12), vestMat);
+  vest.position.set(0, 0.02, -0.16);
+  chest.add(vest);
+  for (const x of [-0.08, 0.08]) {
+    const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.11, 0.06), pouchMat);
+    pouch.position.set(x, -0.08, -0.2);
+    chest.add(pouch);
+  }
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.04), teamMark);
+  buckle.position.set(0, -0.2, -0.18);
+  chest.add(buckle);
+  const pack = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.26, 0.1), pouchMat);
+  pack.position.set(0, 0.04, 0.16);
+  chest.add(pack);
+  root.add(chest);
+
+  const armL = pivotLimb(-0.36, 1.32, cloth, 0.068, 0.3);
+  const armR = pivotLimb(0.36, 1.32, cloth, 0.068, 0.28);
+  const gripHand = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.09), glove);
+  gripHand.position.set(0, -0.36, -0.02);
   armR.add(gripHand);
   const rifle = makeToyRifle(foe);
   gripHand.add(rifle);
   armR.rotation.set(1.08, 0.18, -0.18);
   armL.rotation.set(0.86, 0.55, 0.72);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), skin);
-  head.position.set(0, 1.52, 0);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.08, 8), skin);
+  neck.position.set(0, headY - 0.16, 0);
+  root.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), skin);
+  head.position.set(0, headY, 0);
   root.add(head);
   const eyeWhite = mat(0xfff8f2, 0x000000, 0);
   const pupil = mat(0x2a211c, 0x000000, 0);
-  for (const x of [-0.075, 0.075]) {
-    const white = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 6), eyeWhite);
-    white.position.set(x, 1.55, -0.19);
-    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 5), pupil);
-    dot.position.set(x, 1.55, -0.22);
+  for (const x of [-0.055, 0.055]) {
+    const white = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 6), eyeWhite);
+    white.position.set(x, headY + 0.02, -0.145);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 5), pupil);
+    dot.position.set(x, headY + 0.02, -0.168);
     root.add(white, dot);
   }
   const cheekMat = mat(0xff9a8a, 0xff9a8a, 0.28);
-  for (const x of [-0.11, 0.11]) {
-    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 5), cheekMat);
-    cheek.position.set(x, 1.46, -0.17);
+  for (const x of [-0.09, 0.09]) {
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 5), cheekMat);
+    cheek.position.set(x, headY - 0.04, -0.13);
     root.add(cheek);
   }
   const smile = new THREE.Mesh(
-    new THREE.TorusGeometry(0.05, 0.011, 6, 10, Math.PI),
+    new THREE.TorusGeometry(0.04, 0.009, 6, 10, Math.PI),
     mat(0x6a3030, 0x000000, 0),
   );
-  smile.position.set(0, 1.42, -0.19);
+  smile.position.set(0, headY - 0.07, -0.14);
   smile.rotation.z = Math.PI;
   root.add(smile);
 
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.19, 14, 10), helm);
+  cap.scale.set(1.12, 0.7, 1.16);
+  cap.position.set(0, headY + 0.1, 0.01);
+  const brim = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.035, 0.12), helm);
+  brim.position.set(0, headY + 0.02, -0.14);
+  const band = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.045, 0.04), teamMark);
+  band.position.set(0, headY + 0.02, -0.16);
+  root.add(cap, brim, band);
+
   if (foe) {
-    for (const x of [-0.3, 0.3]) {
-      const pad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), helm);
-      pad.scale.y = 0.5;
-      pad.position.set(x, 1.26, 0);
+    for (const x of [-0.32, 0.32]) {
+      const pad = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), helm);
+      pad.scale.set(1.1, 0.45, 0.9);
+      pad.position.set(x, 1.36, 0);
       root.add(pad);
     }
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 8), helm);
-    cap.scale.set(1.05, 0.45, 1.05);
-    cap.position.set(0, 1.66, 0);
-    root.add(cap);
-    const crest = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.18, 2, 6), sashMat);
-    crest.position.set(0, 1.8, 0);
+    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.08), teamMark);
+    crest.position.set(0, headY + 0.26, 0);
     root.add(crest);
   } else {
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), helm);
-    cap.scale.y = 0.48;
-    cap.position.set(0, 1.66, 0.01);
-    root.add(cap);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.42, 6), boot);
-    pole.position.set(0.3, 1.35, 0);
-    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.02), mat(0xf7fbff, accent, 0.5));
-    flag.position.set(0.42, 1.5, 0);
-    root.add(pole, flag);
-    root.userData.flag = flag;
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.03), teamMark);
+    tab.position.set(-0.2, 1.28, -0.08);
+    root.add(tab);
+    root.userData.flag = tab;
   }
   root.userData.swing = { legL, legR, armL, armR, chest, rifle };
   root.userData.flash = rifle.userData.flash;
