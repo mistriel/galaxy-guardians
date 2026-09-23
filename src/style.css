@@ -741,6 +741,11 @@ body.touch #flight-row {
 #ground-soldier { background: #7dffb2; color: #12301c; }
 #ground-tank { background: #ffd27a; color: #2a1c08; }
 #ground-destroyer { background: #1ad4c8; color: #04221f; }
+#ground-salvo {
+  background: linear-gradient(180deg, #ffe14a, #ff4ad8);
+  color: #2a0820;
+  flex-basis: 148px;
+}
 .ground-actions button:disabled {
   opacity: 0.42;
   filter: grayscale(0.35);

@@ -14,7 +14,7 @@ The menu shows שומרת, יציאה לסיור, and a second button labeled ex
 
 Soldiers on the two lines close, pair, and fight hand to hand. A hit is a spark. The loser flops onto their back with spinning stars — a toy knockout, no gore. Rifles, tanks, and the destroyer also land on a soldier when the shot reaches one. אחיזת היריב and כיבוש still fill from the phase clock and from each knockout.
 
-The bottom row deploys forces. חייל sends four soldiers streaming in from the rear to engage. טנק sends one tank that rolls the line and bumps warriors. המשמיד drops the larger turquoise overgunned tank, which slams in and fires every barrel in its own direction. Each press is one deployment. The button label stays המשמיד. A and D (or the phone side buttons) slide the blue soldier. Space fires. The flight sortie is unchanged.
+The bottom row deploys forces. חייל sends four soldiers streaming in from the rear to engage. טנק sends one tank that rolls the line and bumps warriors. המשמיד drops the larger turquoise overgunned tank, which slams in and fires every barrel in its own direction. Each press is one deployment. The button label stays המשמיד. מטח טילים · V (the same button, or the V key) launches a ring of gold-and-magenta missiles from the destroyer, one along each compass barrel. They leave a bright trail and bloom into a wide spark splash that hits every warrior in the burst, not a single soldier. The button waits until a משמיד is on the field, then cools down. A and D (or the phone side buttons) slide the blue soldier. Space fires. The flight sortie is unchanged.
 
 ## Ship
 
