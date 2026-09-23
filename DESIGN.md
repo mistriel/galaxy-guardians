@@ -68,7 +68,7 @@ The play space is a closed sphere of radius **430** that feels open. Stars and d
 | Shot bolt | About 0.5 thick and 20 long, bright tracer, small muzzle flash |
 | Shot speed / life | 145 u/s, 1.15s |
 | Fire interval | 0.15s (0.075s with rapid fire) |
-| Missile | Speed 900. Lifetime 32s, so it travels 28800 units before it blooms. Body radius 0.014 aft and 0.009 at the nose, nose cone radius 0.01, fin thickness 0.005, plume radius 0.015, scale 1. No contact fuse and no arena-edge fuse. Blast radius 29200 still clears the sector it crossed. Cooldown 4s |
+| Missile | Speed 900. Lifetime 32s, so it travels 28800 units before it blooms. Body radius 0.010 aft and 0.006 at the nose, nose cone radius 0.007, collar radius 0.012, fin thickness 0.004 and fin span about 0.043, plume radius 0.009, scale 1. No contact fuse and no arena-edge fuse. Blast radius 29200 still clears the sector it crossed. Cooldown 4s |
 
 Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding מהירות על־חלל jumps the ship to 420, opens the view to FOV 114, and draws pale streaks plus a glow along the whole hull. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
 
@@ -76,7 +76,7 @@ Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4
 
 טיל ענק is the fat special. The mesh is a thick gold body at scale 3.4. It flies for 1.7 seconds at 160 (about 270 units) and only then blooms. Blast radius 150. It does not hurt שומרת, the blue triangles, or the friendly carrier.
 
-טילים גרעיניים are a hairline movie dart (body radius 0.014 aft and 0.009 at the nose, nose cone radius 0.01, fin thickness 0.005, plume radius 0.015, scale 1, speed 900, life 32s, range 28800). Lifetime fuse only: no contact fuse and no arena-edge fuse, so it cannot pop early. At the end of that flight the bloom is an energy mushroom drawn ahead of the camera so it still fills the view: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 29200, and it still skips allies.
+טילים גרעיניים are a narrower hairline movie dart (body radius 0.010 aft and 0.006 at the nose, nose cone radius 0.007, collar radius 0.012, fin thickness 0.004 and fin span about 0.043, plume radius 0.009, scale 1, speed 900, life 32s, range 28800). Lifetime fuse only: no contact fuse and no arena-edge fuse, so it cannot pop early. At the end of that flight the bloom is an energy mushroom drawn ahead of the camera so it still fills the view: a wide base, a rising stem of rings, and a bright cap. Family-friendly gold and orange, no gore. The wipe still clears enemies, towers, and the red carrier inside blast 29200, and it still skips allies.
 
 A separate heavy cycle sits beside those two. **E** or the חימוש button fires the selected one. **C** or **הבא** steps אטומים → פגזים → פצצות אולטרה גרעיניות. Atoms are a spinning cluster of pastel beads (speed 175, life 1.35s, blast 78). Shells are short gold rounds (speed 230, life 0.95s, blast 62). Ultra is a glowing orb with two rings that opens into a local festival of light (speed 120, life 2.15s, blast 280), not the sector-wide nuclear wipe. Each has its own cooldown. No gore.
 

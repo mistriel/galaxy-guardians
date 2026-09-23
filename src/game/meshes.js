@@ -509,9 +509,9 @@ export function createPickup(type, softMap) {
 export const boltGeometry = geo('bolt', () => new THREE.BoxGeometry(0.34, 0.34, 3.4));
 
 /**
- * Movie-missile needle. Hairline body, sharp nose, tiny tail fins, axial plume.
- * Local −Z is the nose. Body radius is 0.014 aft and 0.009 at the nose
- * before MISSILE.visualScale (1). The plume is a cone, not a billboard.
+ * Movie-missile needle. Narrower hairline body, sharp nose, tiny tail fins, axial plume.
+ * Local −Z is the nose. Body radius is 0.010 aft and 0.006 at the nose
+ * before MISSILE.visualScale (1). Fin span is about 0.043. The plume is a cone, not a billboard.
  */
 export function createMissile() {
   const root = new THREE.Group();
@@ -530,30 +530,30 @@ export function createMissile() {
   });
 
   const bodyLen = 18;
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.009, bodyLen, 6), hull);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.006, bodyLen, 6), hull);
   body.rotation.x = Math.PI / 2;
   root.add(body);
 
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.16, 6), bandMat);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.16, 6), bandMat);
   collar.rotation.x = Math.PI / 2;
   collar.position.z = bodyLen * 0.12;
   root.add(collar);
 
   const noseLen = 4.4;
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.01, noseLen, 6), hot);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.007, noseLen, 6), hot);
   nose.rotation.x = -Math.PI / 2;
   nose.position.z = -(bodyLen / 2 + noseLen / 2) + 0.02;
   root.add(nose);
 
   for (let i = 0; i < 4; i += 1) {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.055, 0.5), finMat);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.03, 0.42), finMat);
     const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    blade.position.set(Math.cos(angle) * 0.05, Math.sin(angle) * 0.05, bodyLen / 2 - 0.4);
+    blade.position.set(Math.cos(angle) * 0.028, Math.sin(angle) * 0.028, bodyLen / 2 - 0.4);
     blade.rotation.z = angle;
     root.add(blade);
   }
 
-  const plume = new THREE.Mesh(new THREE.ConeGeometry(0.015, 5.5, 5), plumeMat);
+  const plume = new THREE.Mesh(new THREE.ConeGeometry(0.009, 5.5, 5), plumeMat);
   plume.rotation.x = Math.PI / 2;
   plume.position.z = bodyLen / 2 + 2.5;
   root.add(plume);
