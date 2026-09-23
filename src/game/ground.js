@@ -12,6 +12,14 @@ const PHASE_LEN = {
 
 const PHASE_ORDER = ['artillery', 'armor', 'infantry', 'special', 'resolve'];
 
+/** משמיד battle scale. The previous read was 3.15; this is 1.5×. */
+const DESTROYER_POP = 4.725;
+/** Body reach for barricades (was 8) and warriors (was 3.5), both 1.5×. */
+const DESTROYER_REACH = 12;
+const DESTROYER_ROLL = 5.25;
+/** Hold drained by one full destroyer volley, matching the old seven-shot barrage. */
+const DESTROYER_HOLD_BUDGET = 10.6;
+
 export const GROUND_WORLDS = [
   {
     id: 'forest',
@@ -135,6 +143,18 @@ function fieldTexture(base, lite, speck) {
   return tex;
 }
 
+const shellGeos = new Map();
+
+function shellGeometry(radius) {
+  const key = Math.round(radius * 100);
+  let geo = shellGeos.get(key);
+  if (!geo) {
+    geo = new THREE.SphereGeometry(key / 100, 10, 8);
+    shellGeos.set(key, geo);
+  }
+  return geo;
+}
+
 function mat(color, emissive = 0x000000, intensity = 0.2) {
   return new THREE.MeshStandardMaterial({
     color,
@@ -177,6 +197,12 @@ function addGun(parent, radius, length, material, x, y, z, yaw = 0, pitch = 0) {
   lip.rotation.x = Math.PI / 2;
   lip.position.z = -length;
   mount.add(lip);
+  const muzzle = new THREE.Object3D();
+  muzzle.position.z = -length - Math.max(0.08, radius * 0.35);
+  muzzle.rotation.y = Math.PI;
+  mount.add(muzzle);
+  mount.userData.muzzle = muzzle;
+  mount.userData.radius = radius;
   parent.add(mount);
   return mount;
 }
@@ -209,7 +235,8 @@ function makeTank(accent) {
 
 /**
  * משמיד — one turquoise hull wearing every gun.
- * Heavy cannons, an artillery rack, and fat nuclear tubes. Ground lob only.
+ * Heavy cannons, an artillery rack, fat nuclear tubes, and a belt aimed
+ * front, back, left, right, and on the diagonals. Each barrel lobs along its bore.
  */
 function makeDestroyer() {
   const root = new THREE.Group();
@@ -220,7 +247,20 @@ function makeDestroyer() {
   const brass = mat(0xd4a017, 0x6a4808, 0.45);
   const nuke = mat(0xff7a1c, 0xff4a00, 0.85);
   const coreMat = mat(0xfff1b0, 0xff6a00, 1.15);
+  const flashMat = new THREE.MeshBasicMaterial({
+    color: 0xfff6c8,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+  });
+  const nukeFlashMat = new THREE.MeshBasicMaterial({
+    color: 0xffb060,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+  });
   const cores = [];
+  const guns = [];
 
   const track = (x) => {
     addBox(root, 0.78, 0.58, 5.6, dark, x, 0.34, 0);
@@ -240,6 +280,16 @@ function makeDestroyer() {
 
   const gun = (radius, length, material, x, y, z, yaw, pitch, nuclear) => {
     const mount = addGun(root, radius, length, material, x, y, z, yaw, pitch);
+    mount.userData.nuclear = Boolean(nuclear);
+    const flash = new THREE.Mesh(
+      new THREE.SphereGeometry(Math.max(0.2, radius * 1.85), 8, 6),
+      nuclear ? nukeFlashMat : flashMat,
+    );
+    flash.position.z = -length - 0.06;
+    flash.userData.noShadow = true;
+    mount.add(flash);
+    mount.userData.flash = flash;
+    guns.push(mount);
     if (!nuclear) return mount;
     const core = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.12, radius * 0.55), 8, 8), coreMat);
     core.position.z = -length - 0.08;
@@ -271,10 +321,37 @@ function makeDestroyer() {
   gun(0.1, 1.25, steel, 0.45, 1.45, 2.15, Math.PI, 0.2, false);
   gun(0.26, 1.15, nuke, 0.15, 2.7, 0.15, 0, 1.15, true);
 
+  const hullRim = (yaw) => {
+    const sx = Math.sin(yaw);
+    const cx = Math.cos(yaw);
+    const ax = Math.abs(sx);
+    const az = Math.abs(cx);
+    const tx = ax < 1e-3 ? 40 : 1.88 / ax;
+    const tz = az < 1e-3 ? 40 : 2.48 / az;
+    const t = Math.min(tx, tz) + 0.12;
+    return [-sx * t, -cx * t];
+  };
+  const compass = [
+    { yaw: 0, pitch: 0.05, radius: 0.2, length: 1.85, nuclear: false, material: steel },
+    { yaw: Math.PI, pitch: 0.07, radius: 0.26, length: 1.9, nuclear: true, material: nuke },
+    { yaw: Math.PI / 2, pitch: 0.04, radius: 0.26, length: 1.9, nuclear: true, material: nuke },
+    { yaw: -Math.PI / 2, pitch: 0.04, radius: 0.26, length: 1.9, nuclear: true, material: nuke },
+    { yaw: Math.PI / 4, pitch: 0.06, radius: 0.16, length: 1.6, nuclear: false, material: brass },
+    { yaw: -Math.PI / 4, pitch: 0.06, radius: 0.16, length: 1.6, nuclear: false, material: brass },
+    { yaw: (3 * Math.PI) / 4, pitch: 0.06, radius: 0.16, length: 1.6, nuclear: false, material: brass },
+    { yaw: (-3 * Math.PI) / 4, pitch: 0.06, radius: 0.16, length: 1.6, nuclear: false, material: brass },
+  ];
+  for (const spec of compass) {
+    const [x, z] = hullRim(spec.yaw);
+    gun(spec.radius, spec.length, spec.material, x, 1.28, z, spec.yaw, spec.pitch, spec.nuclear);
+  }
+
   addBox(root, 0.85, 0.4, 0.7, dark, 1.15, 1.55, 1.35);
   addBox(root, 0.6, 0.32, 0.55, white, -1.2, 1.5, 1.15);
 
   root.userData.cores = cores;
+  root.userData.guns = guns;
+  root.userData.flashMats = [flashMat, nukeFlashMat];
   return root;
 }
 
@@ -1002,7 +1079,7 @@ export class GroundBattle {
       mesh.add(mark);
     }
     mesh.traverse((obj) => {
-      if (obj.isMesh) {
+      if (obj.isMesh && !obj.userData.noShadow) {
         obj.castShadow = true;
         obj.receiveShadow = true;
       }
@@ -1063,7 +1140,7 @@ export class GroundBattle {
     } else if (id === 'special') {
       this.spawn('destroyer', 0, 0.18);
       this.spawn(this.world.special, 20, 0.45);
-      this.splash(0, 6, 0x1ad4c8, 18);
+      this.splash(0, 6, 0x1ad4c8, 27);
       this.shake = Math.min(1.6, this.shake + 0.9);
       this.destroyerCd = 0.85;
       this.sfx.wave?.();
@@ -1157,7 +1234,7 @@ export class GroundBattle {
       speed: 6.2,
       shotCd: 0.45,
     });
-    this.splash(unit.x, unit.z, 0x1ad4c8, 14);
+    this.splash(unit.x, unit.z, 0x1ad4c8, 21);
     this.shake = Math.min(1.6, this.shake + 0.7);
     this.flashDeploy(T.groundDestroyerIn);
     this.sfx.wave?.();
@@ -1334,8 +1411,9 @@ export class GroundBattle {
     const from = spec.from || new THREE.Vector3((Math.random() - 0.5) * 10, 1.4, 18);
     const to = spec.to || new THREE.Vector3(this.lane + (Math.random() - 0.5) * 16, 0.4, -26 - Math.random() * 14);
     const color = spec.color ?? this.world.glow;
+    const radius = spec.radius ?? 0.35;
     const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(spec.radius ?? 0.35, 10, 8),
+      shellGeometry(radius),
       mat(color, color, 0.9),
     );
     mesh.position.copy(from);
@@ -1352,6 +1430,9 @@ export class GroundBattle {
       arc: spec.arc ?? 9,
       team: spec.team || null,
       soldierHit: spec.soldierHit || 0,
+      bits: spec.bits,
+      shake: spec.shake,
+      quiet: Boolean(spec.quiet),
     });
     if (spec.silentTubes) return;
     for (const tube of this.tubes) {
@@ -1361,23 +1442,49 @@ export class GroundBattle {
   }
 
   fireDestroyer(unit) {
-    const origin = unit.mesh.position;
-    const shots = 7;
-    for (let i = 0; i < shots; i += 1) {
-      const nuclear = i % 3 === 0;
-      const spread = (i - (shots - 1) / 2) * 2.4;
+    const guns = unit.mesh.userData.guns || [];
+    if (!guns.length) return;
+    unit.mesh.updateMatrixWorld(true);
+    const from = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    const scale = unit.mesh.scale.x || DESTROYER_POP;
+    let weight = 0;
+    for (const mount of guns) {
+      const radius = mount.userData.radius || 0.1;
+      weight += mount.userData.nuclear ? 2.2 : Math.max(0.45, radius * 4);
+    }
+    for (const mount of guns) {
+      const muzzle = mount.userData.muzzle;
+      if (!muzzle) continue;
+      muzzle.getWorldPosition(from);
+      muzzle.getWorldDirection(dir);
+      if (dir.lengthSq() < 1e-8) dir.set(0, 0, -1);
+      else dir.normalize();
+      const nuclear = Boolean(mount.userData.nuclear);
+      const localR = mount.userData.radius || 0.1;
+      const share = (nuclear ? 2.2 : Math.max(0.45, localR * 4)) / weight;
+      const travel = nuclear ? 15 : localR >= 0.1 ? 12 : 9;
+      const to = new THREE.Vector3(from.x + dir.x * travel, 0.45, from.z + dir.z * travel);
+      const deltaY = to.y - from.y;
+      const arc = Math.max(0.2, (travel * dir.y - deltaY) / Math.PI);
       this.launchShell({
-        from: new THREE.Vector3(origin.x + spread * 0.28, 3.4, origin.z - 2.2),
-        to: new THREE.Vector3(origin.x + spread, 0.4, origin.z - 16 - (i % 3) * 3.5),
+        from: from.clone(),
+        to,
         color: nuclear ? 0xff7a1c : 0x7af6ee,
-        radius: nuclear ? 0.58 : 0.26,
-        dur: nuclear ? 0.58 : 0.46,
-        holdHit: nuclear ? 2.2 : 1,
-        splash: nuclear ? 10 : 5.5,
+        radius: THREE.MathUtils.clamp(localR * scale * 0.32, 0.12, nuclear ? 0.62 : 0.4),
+        dur: THREE.MathUtils.clamp(0.32 + travel * 0.015, 0.34, 0.72),
+        holdHit: DESTROYER_HOLD_BUDGET * share,
+        splash: nuclear ? 5.5 : localR >= 0.1 ? 3.2 : 1.6,
+        arc,
         silentTubes: true,
         team: 'friend',
-        soldierHit: nuclear ? 3.3 : 2.2,
+        soldierHit: nuclear ? 2.5 : localR >= 0.1 ? 1.75 : 0,
+        bits: nuclear ? 3 : localR >= 0.1 ? 2 : 1,
+        shake: nuclear ? 0.06 : 0.02,
+        quiet: !nuclear,
       });
+      const flash = mount.userData.flash;
+      if (flash) flash.material.opacity = 1;
     }
     this.shake = Math.min(1.3, this.shake + 0.24);
     this.sfx.blip?.({ freq: 130, dur: 0.12, type: 'sawtooth', vol: 0.06, slide: -60 });
@@ -1391,6 +1498,9 @@ export class GroundBattle {
       for (const core of unit.mesh.userData.cores || []) {
         core.material.emissiveIntensity = pulse;
         core.scale.setScalar(0.9 + Math.sin(unit.age * 10) * 0.18);
+      }
+      for (const material of unit.mesh.userData.flashMats || []) {
+        material.opacity = Math.max(0, material.opacity - dt * 4.8);
       }
       if (this.phase === 'resolve' || this.outcome === 'retreat' || unit.age < 0.7) continue;
       unit.shotCd -= dt;
@@ -1411,14 +1521,14 @@ export class GroundBattle {
       shell.mesh.position.lerpVectors(shell.from, shell.to, p);
       shell.mesh.position.y += Math.sin(p * Math.PI) * (shell.arc ?? 9);
       if (p < 1) continue;
-      this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7);
+      this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7, shell.bits ?? 5);
       if (shell.team && shell.soldierHit) this.hurtSoldiers(shell.to.x, shell.to.z, shell.soldierHit, shell.team);
       this.hold = Math.max(0, this.hold - (shell.holdHit ?? 3.1));
       this.crackNearest(shell.to.x, shell.to.z);
-      this.shake = Math.min(0.8, this.shake + 0.18);
+      this.shake = Math.min(0.8, this.shake + (shell.shake ?? 0.18));
       this.root.remove(shell.mesh);
       this.shells.splice(i, 1);
-      this.sfx.noise?.(0.12, 0.18, 700);
+      if (!shell.quiet) this.sfx.noise?.(0.12, 0.18, 700);
     }
   }
 
@@ -1703,7 +1813,7 @@ export class GroundBattle {
   }
 
   rollThrough(unit) {
-    const reach = unit.kind === 'destroyer' ? 3.5 : unit.kind === 'tank' ? 2.05 : 0;
+    const reach = unit.kind === 'destroyer' ? DESTROYER_ROLL : unit.kind === 'tank' ? 2.05 : 0;
     if (!reach) return;
     for (const foe of this.units) {
       if (!this.troopAlive(foe) || foe.kind !== 'defender') continue;
@@ -1759,7 +1869,7 @@ export class GroundBattle {
       }
       this.steerTroop(unit, dt);
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
-      const pop = unit.kind === 'player' ? 2.8 : unit.kind === 'destroyer' ? 3.15 : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : (unit.kind === 'infantry' || unit.kind === 'defender') ? 2.5 : 0.85;
+      const pop = unit.kind === 'player' ? 2.8 : unit.kind === 'destroyer' ? DESTROYER_POP : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : (unit.kind === 'infantry' || unit.kind === 'defender') ? 2.5 : 0.85;
       unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro) * (unit.stagger > 0.1 ? 1.08 : 1));
       if (unit.kind !== 'player' && fallingBack && unit.kind !== 'artillery') unit.z += 11 * dt;
       else if (unit.kind !== 'player' && this.phase !== 'resolve') {
@@ -1877,7 +1987,7 @@ export class GroundBattle {
       }
       if (unit.kind === 'destroyer' && !unit.boomed && unit.age >= 0.62 && !fallingBack) {
         unit.boomed = true;
-        this.splash(unit.mesh.position.x, unit.mesh.position.z, 0x1ad4c8, 16);
+        this.splash(unit.mesh.position.x, unit.mesh.position.z, 0x1ad4c8, 24);
         this.shake = Math.min(1.5, this.shake + 0.85);
         this.sfx.noise?.(0.22, 0.2, 160);
       }
@@ -1889,8 +1999,9 @@ export class GroundBattle {
     const x = unit.x + this.lane * unit.laneFollow;
     for (const block of this.barricades) {
       if (block.popped) continue;
-      if (unit.z > block.z + 1.5) continue;
-      const reach = unit.kind === 'destroyer' ? 8 : 3.4;
+      const nose = unit.kind === 'destroyer' ? 2.25 : 1.5;
+      if (unit.z > block.z + nose) continue;
+      const reach = unit.kind === 'destroyer' ? DESTROYER_REACH : 3.4;
       if (Math.abs(x - block.x) > reach) continue;
       block.popped = true;
       this.splash(block.x, block.z, unit.kind === 'destroyer' ? 0x1ad4c8 : this.world.enemy, unit.kind === 'destroyer' ? 12 : 9);
@@ -1901,7 +2012,7 @@ export class GroundBattle {
     }
   }
 
-  splash(x, z, color, grow) {
+  splash(x, z, color, grow, bits = 5) {
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.4, 0.7, 20),
       new THREE.MeshBasicMaterial({
@@ -1916,7 +2027,7 @@ export class GroundBattle {
     ring.position.set(x, 0.3, z);
     this.root.add(ring);
     this.bits.push({ mesh: ring, life: 0.55, max: 0.55, grow });
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < bits; i += 1) {
       const bit = new THREE.Mesh(
         new THREE.BoxGeometry(0.22, 0.22, 0.22),
         mat(color, color, 0.6),
@@ -1961,20 +2072,26 @@ export class GroundBattle {
     };
     const player = this.playerUnit();
     let aim = aims[this.phase] || aims.artillery;
+    const destroyerOut = this.units.some((unit) => unit.kind === 'destroyer' && unit.mesh.visible);
     if (player && player.mesh.visible && this.phase !== 'resolve') {
       const spot = player.mesh.position;
-      aim = {
-        pos: [spot.x, 6.4, spot.z + 10],
-        look: [spot.x, 1.3, spot.z - 9],
-      };
+      aim = destroyerOut
+        ? {
+          pos: [spot.x, 18, spot.z + 34],
+          look: [spot.x, 4, spot.z - 6],
+        }
+        : {
+          pos: [spot.x, 6.4, spot.z + 10],
+          look: [spot.x, 1.3, spot.z - 9],
+        };
     }
     if (this.phase === 'special') {
       const hero = this.units.find((unit) => unit.kind === 'destroyer' && unit.mesh.visible);
       if (hero) {
         const spot = hero.mesh.position;
         aim = {
-          pos: [spot.x - 12, 15, spot.z + 18],
-          look: [spot.x + 1, 2.8, spot.z - 2],
+          pos: [spot.x - 18, 22.5, spot.z + 27],
+          look: [spot.x + 1.5, 4.2, spot.z - 3],
         };
       }
     }
