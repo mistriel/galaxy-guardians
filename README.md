@@ -73,7 +73,7 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Strafe | `A` / `D` |
 | Lasers | Space, left click, or the red ירי button. Small bright tracers |
 | Giant missile | Gold טיל ענק button or `Q` |
-| Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin dart, then an energy mushroom |
+| Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Thin movie dart, long flight, then an energy mushroom |
 | Factions | Blues are triangles (your army). Reds are circles that loiter on rings in their sector so you can shoot them. The menu says כחולים: משולשים · אדומים: עיגולים |
 | Phone | Left stick moves (up מהירות על חלל, down brake, sideways strafe). Right stick aims |
 | Hangar | מספנה spends נקודות on נץ, עוגן, מניפה, and מחט. שומרת and the thick laser stay free |

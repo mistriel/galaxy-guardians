@@ -98,15 +98,16 @@ export const WEAPONS = {
 };
 
 /**
- * Secondary weapon. A needle that crosses the sector before it blooms.
+ * Secondary weapon. A thin movie dart that crosses the sector and keeps going.
  * No contact fuse: it never pops on the first ship it passes.
- * Travel is speed × life (250 × 6.4 = 1600), past the 860-wide arena.
+ * Travel is speed × life (260 × 12.5 = 3250), well past the 860-wide arena.
+ * Blast reaches back over that whole flight so the sector it crossed still clears.
  */
 export const MISSILE = {
   cooldown: 4,
-  speed: 250,
-  life: 6.4,
-  blast: 1900,
+  speed: 260,
+  life: 12.5,
+  blast: 3600,
   damage: 9999,
   visualScale: 1,
 };
