@@ -88,8 +88,8 @@ function addMesh(parent, geometry, material, x, y, z) {
 }
 
 /**
- * Shomeret (playerShip) — original split-beak swallow, painted entirely blue.
- * Two forward prongs, swept wings, twin aft engines. Nose is local −Z.
+ * Shomeret (playerShip) — original ring-wing dart, painted entirely blue.
+ * One nose, a hoop around the spine, short aft tails. Nose is local −Z.
  * Game.js scales by PLAYER.visualScale.
  */
 export function createPlayerShip(softMap) {
@@ -108,42 +108,55 @@ export function createPlayerShip(softMap) {
     roughness: 0.12,
   });
 
-  addMesh(root, box(0.55, 0.32, 1.85), hull, 0, 0, 0.45);
-  addMesh(root, box(0.18, 0.1, 1.6), deep, 0, 0.22, 0.4);
+  addMesh(root, box(0.36, 0.18, 3.15), hull, 0, 0, 0.2);
+  addMesh(root, box(0.1, 0.08, 2.1), deep, 0, 0.14, 0.25);
 
-  const prongL = addMesh(root, box(0.28, 0.14, 2.55), pale, -0.46, 0.02, -1.05);
-  prongL.rotation.y = 0.32;
-  const prongR = addMesh(root, box(0.28, 0.14, 2.55), pale, 0.46, 0.02, -1.05);
-  prongR.rotation.y = -0.32;
-  const tipL = addMesh(root, box(0.12, 0.08, 0.72), accent, -0.86, 0.02, -2.35);
-  tipL.rotation.y = 0.48;
-  const tipR = addMesh(root, box(0.12, 0.08, 0.72), accent, 0.86, 0.02, -2.35);
-  tipR.rotation.y = -0.48;
+  const nose = addMesh(
+    root,
+    geo('shomeret-nose', () => new THREE.ConeGeometry(0.2, 1.4, 8)),
+    pale,
+    0,
+    0,
+    -2.05,
+  );
+  nose.rotation.x = -Math.PI / 2;
 
-  const wingL = addMesh(root, box(1.55, 0.07, 0.72), accent, -1.2, 0, 0.95);
-  wingL.rotation.y = -0.62;
-  const wingR = addMesh(root, box(1.55, 0.07, 0.72), accent, 1.2, 0, 0.95);
-  wingR.rotation.y = 0.62;
-  addMesh(root, box(0.9, 0.06, 0.35), deep, 0, 0.16, -0.15);
+  const hoop = addMesh(
+    root,
+    geo('shomeret-ring', () => new THREE.TorusGeometry(1.08, 0.075, 8, 28)),
+    accent,
+    0,
+    0,
+    0.05,
+  );
+  hoop.rotation.y = 0.08;
+
+  const canardL = addMesh(root, box(0.55, 0.04, 0.18), pale, -0.48, 0, -0.72);
+  canardL.rotation.y = 0.4;
+  const canardR = addMesh(root, box(0.55, 0.04, 0.18), pale, 0.48, 0, -0.72);
+  canardR.rotation.y = -0.4;
+
+  const tailL = addMesh(root, box(0.62, 0.045, 0.22), deep, -0.58, 0, 1.2);
+  tailL.rotation.y = -0.85;
+  const tailR = addMesh(root, box(0.62, 0.045, 0.22), deep, 0.58, 0, 1.2);
+  tailR.rotation.y = 0.85;
 
   const cockpit = addMesh(
     root,
-    geo('cockpit', () => new THREE.SphereGeometry(0.28, 16, 12)),
+    geo('shomeret-pit', () => new THREE.SphereGeometry(0.2, 16, 12)),
     glass,
     0,
-    0.28,
-    -0.25,
+    0.2,
+    -0.45,
   );
-  cockpit.scale.set(0.9, 0.55, 1.25);
+  cockpit.scale.set(0.8, 0.5, 1.3);
 
-  const engineL = addMesh(root, cyl(0.2, 0.26, 0.72, 12), dark, -0.28, 0, 1.55);
-  engineL.rotation.x = Math.PI / 2;
-  const ringL = addMesh(root, cyl(0.3, 0.3, 0.08, 12), accent, -0.28, 0, 1.22);
-  ringL.rotation.x = Math.PI / 2;
-  const engineR = addMesh(root, cyl(0.2, 0.26, 0.72, 12), dark, 0.28, 0, 1.55);
-  engineR.rotation.x = Math.PI / 2;
-  const ringR = addMesh(root, cyl(0.3, 0.3, 0.08, 12), pale, 0.28, 0, 1.22);
-  ringR.rotation.x = Math.PI / 2;
+  const engine = addMesh(root, cyl(0.16, 0.22, 0.62, 12), dark, 0, 0, 1.82);
+  engine.rotation.x = Math.PI / 2;
+  const collar = addMesh(root, cyl(0.26, 0.26, 0.07, 12), accent, 0, 0, 1.52);
+  collar.rotation.x = Math.PI / 2;
+  const engineLow = addMesh(root, cyl(0.09, 0.12, 0.38, 10), dark, 0, -0.14, 1.68);
+  engineLow.rotation.x = Math.PI / 2;
 
   const glowMat = (color, opacity) => new THREE.SpriteMaterial({
     map: softMap,
@@ -155,23 +168,23 @@ export function createPlayerShip(softMap) {
     fog: false,
   });
   const bigGlow = new THREE.Sprite(glowMat(0x7eb6ff, 0.95));
-  bigGlow.position.set(-0.28, 0, 1.95);
-  bigGlow.scale.set(0.7, 0.7, 1);
+  bigGlow.position.set(0, 0, 2.18);
+  bigGlow.scale.set(0.72, 0.72, 1);
   root.add(bigGlow);
   const smallGlow = new THREE.Sprite(glowMat(0x7eb6ff, 0.95));
-  smallGlow.position.set(0.28, 0, 1.95);
-  smallGlow.scale.set(0.7, 0.7, 1);
+  smallGlow.position.set(0, -0.14, 1.95);
+  smallGlow.scale.set(0.42, 0.42, 1);
   root.add(smallGlow);
 
   const muzzleFlash = new THREE.Sprite(glowMat(0xd6e8ff, 0.95));
-  muzzleFlash.position.set(0, 0.04, -2.85);
+  muzzleFlash.position.set(0, 0.02, -2.8);
   muzzleFlash.scale.setScalar(0.001);
   muzzleFlash.visible = false;
   root.add(muzzleFlash);
   root.userData.muzzleFlash = muzzleFlash;
 
   const light = new THREE.PointLight(0x4d86ff, 1.4, 8, 2);
-  light.position.set(0, 0.1, 1.5);
+  light.position.set(0, 0.08, 1.7);
   root.add(light);
 
   root.userData.glows = [bigGlow, smallGlow];

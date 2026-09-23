@@ -18,12 +18,12 @@ A and D (or the phone side buttons) slide the push. דחיפה or Space hurries 
 
 **Shomeret / שומרת**
 
-A split-beak swallow, scaled to 3 so she reads large in the chase view. Symmetric silhouette, all blue:
+A ring-wing dart, scaled to 3 so she reads large in the chase view. Symmetric silhouette, all blue:
 
-- Two long prongs reach forward and open into a fork
-- A glass canopy sits in the fork
-- Swept wings angle back from the spine
-- Twin blue engines sit side by side at the tail
+- One cone nose, not a split beak
+- A blue hoop wraps the middle of the spine
+- Short canards sit ahead of the hoop, and two small tails sweep aft
+- A glass canopy sits on the spine, with blue engines at the tail
 
 The nose points down the mesh's local −Z axis. The whole mesh is scaled by 3. Nothing about the shape is taken from an existing film or comic vehicle.
 
@@ -82,7 +82,7 @@ A separate heavy cycle sits beside those two. **E** or the חימוש button fir
 
 ## Enemies
 
-Two factions fill the sector. Blues are triangles and fight with שומרת: 44 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the all-blue split-beak swallow at scale 3.
+Two factions fill the sector. Blues are triangles and fight with שומרת: 44 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that dumps another 14 circles into each wave. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the all-blue ring-wing dart at scale 3.
 
 Waves arrive as squads of eight. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is 32 red circles. Later waves climb slowly, and Judge Vorak stays at one until well after wave 6. Pool caps still hold a second wave (nib 56, glint 36, howler 18, slab 8, vorak 2). Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
 
