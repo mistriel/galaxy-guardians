@@ -957,7 +957,7 @@ export class Game {
 
   makeMissiles() {
     const missiles = [];
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 10; i += 1) {
       const mesh = createMissile();
       mesh.visible = false;
       this.scene.add(mesh);
@@ -1128,8 +1128,9 @@ export class Game {
       if (spinner) spinner.rotation.y += dt * 5;
       const trail = this.v1.copy(missile.vel).multiplyScalar(-1);
       if (trail.lengthSq() > 0.001) trail.normalize();
-      if (Math.random() < 0.35) {
-        burstSparks(this.sparks, missile.pos, trailColor, 1, 6, trail, 0.45, 0.7);
+      const hairline = scale <= 1.01;
+      if (Math.random() < (hairline ? 0.2 : 0.35)) {
+        burstSparks(this.sparks, missile.pos, trailColor, 1, hairline ? 4 : 6, trail, hairline ? 0.1 : 0.45, hairline ? 0.4 : 0.7);
       }
       if (missile.life > 0) continue;
       const pos = missile.pos.clone();
