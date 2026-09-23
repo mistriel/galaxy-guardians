@@ -77,7 +77,7 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Factions | Blues are triangles (your army). Reds are circles that loiter on rings in their sector so you can shoot them. The menu says כחולים: משולשים · אדומים: עיגולים |
 | Phone | Left stick moves (up מהירות על־חלל, down brake, sideways strafe). Right stick aims |
 | Hangar | בחרו ספינה on the menu: שומרת, נץ, and עוגן are free. מספנה spends נקודות on מניפה and מחט |
-| Ground battles | קרבות קרקע drops into יער זוהר. Walk with arrows or WASD, shoot with Space. חייל, טנק, and המשמיד each send that unit into the fight. נסיגה pulls back. Every three wins, שומר החומה arrives; beating him raises a trophy cup (גביע) with a gift for later battles |
+| Ground battles | קרבות קרקע drops into יער זוהר. Walk with arrows or WASD, shoot with Space. חייל, טנק, and המשמיד each send that unit into the fight. מטח טילים or `V` fires the destroyer's missile ring. נסיגה pulls back. Every three wins, שומר החומה arrives; beating him raises a trophy cup (גביע) with a gift for later battles |
 | Pause | `Esc` or `P` |
 | Mute | `M`, or קול on the HUD and the menu |
 | Restart after game over | Enter, `R`, or the on-screen button |
