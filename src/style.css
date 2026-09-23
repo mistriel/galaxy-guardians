@@ -162,6 +162,10 @@ body.playing button { cursor: pointer; }
 .hud-actions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 320px; }
 #nuke-btn, #boost-btn, #ordnance-btn { flex: 1 0 100%; }
 
+/* Phone and tablet already have the edge controls. The header copies
+   of those same abilities were stacking down the playfield. */
+body.touch #hud .hud-actions > :not(.tiny) { display: none !important; }
+
 button.tiny, button.ghost, button.primary {
   border-radius: 999px;
   font-weight: 800;
@@ -404,10 +408,35 @@ body.touch #crosshair span:nth-child(4) {
 }
 
 #touch { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
-.joy {
+.touch-edge {
   position: absolute;
-  width: 168px;
-  height: 168px;
+  bottom: max(6px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 156px;
+  pointer-events: none;
+}
+.touch-edge-move { left: max(6px, env(safe-area-inset-left)); }
+.touch-edge-aim { right: max(6px, env(safe-area-inset-right)); }
+.touch-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+.touch-pill-row {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+.joy {
+  position: relative;
+  align-self: center;
+  width: 140px;
+  height: 140px;
+  flex: 0 0 auto;
   pointer-events: auto;
   touch-action: none;
   -webkit-user-select: none;
@@ -415,27 +444,19 @@ body.touch #crosshair span:nth-child(4) {
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
-#move-stick {
-  left: max(8px, env(safe-area-inset-left));
-  bottom: max(8px, env(safe-area-inset-bottom));
-}
-#aim-stick {
-  right: max(8px, env(safe-area-inset-right));
-  bottom: max(8px, env(safe-area-inset-bottom));
-}
 #aim-stick .stick-base { border-color: rgba(255, 210, 122, 0.75); }
 #aim-stick .stick-knob {
   background: rgba(255, 210, 122, 0.95);
-  box-shadow: 0 0 16px rgba(255, 210, 122, 0.45);
+  box-shadow: 0 0 12px rgba(255, 210, 122, 0.4);
 }
 .joy::after {
   content: attr(data-label);
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 8px;
+  bottom: 6px;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   font-weight: 800;
   color: #e8fff8;
   pointer-events: none;
@@ -450,41 +471,71 @@ body.touch #crosshair span:nth-child(4) {
   pointer-events: none;
 }
 .stick-base {
-  width: 136px;
-  height: 136px;
-  border: 3px solid rgba(46, 230, 199, 0.6);
+  width: 81%;
+  height: 81%;
+  border: 2px solid rgba(46, 230, 199, 0.6);
   background: rgba(8, 16, 32, 0.38);
 }
 .stick-knob {
-  width: 72px;
-  height: 72px;
+  width: 43%;
+  height: 43%;
   background: rgba(46, 230, 199, 0.92);
-  box-shadow: 0 0 16px rgba(46, 230, 199, 0.45);
+  box-shadow: 0 0 12px rgba(46, 230, 199, 0.4);
 }
 #fire-btn {
-  position: absolute;
-  right: max(22px, env(safe-area-inset-right));
-  bottom: max(184px, calc(env(safe-area-inset-bottom) + 176px));
-  width: 96px;
-  height: 96px;
+  position: relative;
+  align-self: center;
+  width: 78px;
+  height: 78px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 210, 122, 0.85);
+  border: 2px solid rgba(255, 210, 122, 0.85);
   background: rgba(226, 49, 58, 0.88);
   color: #fff8f4;
-  font-size: 1.7rem;
+  font-size: 1.15rem;
   font-weight: 900;
   pointer-events: auto;
   touch-action: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 body.touch #radar {
-  bottom: 340px;
-  width: 92px;
-  height: 92px;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  width: 64px;
+  height: 64px;
+  transform: translateX(-50%);
 }
 body.touch #flight-row {
-  bottom: 292px;
-  max-width: calc(100% - 220px);
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 8px;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: center;
+}
+body.touch #flight { flex: 0 0 auto; order: -1; }
+body.touch #weapon {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.touch #hud button.tiny {
+  min-height: 0;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
 }
 #giant-btn, #giant-touch {
   border: 3px solid rgba(255, 244, 210, 0.95);
@@ -502,15 +553,30 @@ body.touch #flight-row {
   font-size: 1.05rem;
 }
 #giant-btn.cooling, #giant-touch.cooling { filter: grayscale(0.35) brightness(0.72); }
-#giant-touch {
-  position: absolute;
-  left: max(24px, env(safe-area-inset-left));
-  bottom: max(210px, calc(env(safe-area-inset-bottom) + 202px));
-  min-width: 118px;
-  height: 64px;
+#touch .touch-pills button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  min-height: 40px;
+  height: auto;
+  padding: 3px 8px;
+  border-width: 2px;
   border-radius: 999px;
-  font-size: 1.05rem;
-  padding: 6px 10px;
+  font-size: 0.72rem;
+  line-height: 1.1;
+  white-space: normal;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+#touch .touch-pills > button { width: 100%; }
+#boost-btn.on, #touch #boost-touch.on {
+  background: #fff7a4;
+  box-shadow: 0 0 16px rgba(230, 255, 80, 0.95);
 }
 #nuke-btn, #missile-btn {
   border: 3px solid rgba(255, 236, 190, 0.95);
@@ -529,17 +595,7 @@ body.touch #flight-row {
   line-height: 1.15;
 }
 #nuke-btn.cooling, #missile-btn.cooling { filter: grayscale(0.35) brightness(0.72); }
-#missile-btn {
-  position: absolute;
-  right: max(128px, calc(env(safe-area-inset-right) + 116px));
-  bottom: max(196px, calc(env(safe-area-inset-bottom) + 188px));
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  font-size: 0.92rem;
-  line-height: 1.05;
-  padding: 8px;
-}
+#missile-btn { border-radius: 999px; }
 #boost-btn, #boost-touch {
   border: 3px solid rgba(255, 255, 214, 0.95);
   background: rgba(198, 255, 46, 0.96);
@@ -556,25 +612,11 @@ body.touch #flight-row {
   font-size: 1.02rem;
   line-height: 1.15;
 }
-#boost-btn.on, #boost-touch.on {
+#boost-btn.on {
   background: #fff7a4;
   box-shadow: 0 0 24px rgba(230, 255, 80, 0.95);
 }
-#boost-touch {
-  position: absolute;
-  right: max(22px, calc(env(safe-area-inset-right) + 8px));
-  bottom: max(292px, calc(env(safe-area-inset-bottom) + 284px));
-  width: 118px;
-  min-width: 118px;
-  max-width: 124px;
-  height: 72px;
-  border-radius: 18px;
-  font-size: 0.72rem;
-  line-height: 1.12;
-  padding: 4px 8px;
-  white-space: normal;
-  text-align: center;
-}
+#boost-touch { border-radius: 999px; }
 #ordnance-btn, #ordnance-touch, #ordnance-cycle, #ordnance-cycle-touch {
   border: 3px solid rgba(220, 255, 255, 0.95);
   background: rgba(90, 220, 255, 0.96);
@@ -602,62 +644,82 @@ body.touch #flight-row {
 }
 #ordnance-cycle { flex: 0 0 auto; }
 #ordnance-btn.cooling, #ordnance-touch.cooling { filter: grayscale(0.35) brightness(0.72); }
-#ordnance-touch {
-  position: absolute;
-  left: max(16px, env(safe-area-inset-left));
-  bottom: max(286px, calc(env(safe-area-inset-bottom) + 278px));
-  min-width: 108px;
-  height: 52px;
-  border-radius: 999px;
-  font-size: 0.95rem;
-  padding: 4px 8px;
-}
-#ordnance-cycle-touch {
-  position: absolute;
-  left: max(126px, calc(env(safe-area-inset-left) + 114px));
-  bottom: max(286px, calc(env(safe-area-inset-bottom) + 278px));
-  width: 40px;
-  min-width: 40px;
-  height: 52px;
-  border-radius: 999px;
-  font-size: 0.85rem;
+#touch #ordnance-touch { min-width: 0; }
+#touch #ordnance-cycle-touch {
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
   padding: 0;
 }
 #fire-btn:active, #missile-btn:active { transform: scale(0.96); }
 
-@media (max-height: 500px) {
-  .joy { width: 128px; height: 128px; }
-  .stick-base { width: 100px; height: 100px; }
-  .stick-knob { width: 54px; height: 54px; }
-  #fire-btn { width: 72px; height: 72px; font-size: 1.05rem; bottom: max(140px, env(safe-area-inset-bottom)); }
-  #missile-btn {
-    width: 64px;
-    height: 64px;
-    font-size: 0.75rem;
-    bottom: max(146px, calc(env(safe-area-inset-bottom) + 138px));
-  }
-  #boost-touch {
-    width: 100px;
-    min-width: 100px;
-    max-width: 108px;
-    height: 52px;
-    font-size: 0.62rem;
+/* Portrait phones: keep both edges in a slim strip and leave the center open. */
+@media (max-width: 560px) {
+  #hud { padding: 8px 10px 0; gap: 8px; }
+  .hud-ship { font-size: 0.95rem; }
+  .stats strong { font-size: 1.2rem; }
+  .meter span { width: 2.4rem; font-size: 0.75rem; }
+  .track { height: 8px; }
+  .touch-edge { width: 112px; gap: 4px; }
+  .joy { width: 100px; height: 100px; }
+  .joy::after { font-size: 0.62rem; bottom: 3px; }
+  #fire-btn { width: 58px; height: 58px; font-size: 0.95rem; }
+  #touch .touch-pills button {
+    min-height: 38px;
+    padding: 2px 6px;
+    font-size: 0.64rem;
     line-height: 1.05;
-    bottom: max(220px, calc(env(safe-area-inset-bottom) + 212px));
   }
-  #giant-touch {
-    min-width: 92px;
-    height: 44px;
-    font-size: 0.85rem;
-    bottom: max(136px, calc(env(safe-area-inset-bottom) + 128px));
+  #touch #ordnance-cycle-touch { flex-basis: 32px; width: 32px; min-width: 32px; }
+  body.touch #radar { width: 46px; height: 46px; }
+  body.touch #flight-row { font-size: 0.58rem; }
+  body.touch #crosshair { width: 36px; height: 36px; }
+  body.touch #crosshair span:nth-child(1),
+  body.touch #crosshair span:nth-child(2) { width: 10px; top: 17px; }
+  body.touch #crosshair span:nth-child(3),
+  body.touch #crosshair span:nth-child(4) { height: 10px; left: 17px; }
+}
+
+@media (max-height: 500px) {
+  .touch-edge {
+    width: auto;
+    max-width: 46vw;
+    gap: 4px;
   }
-  #ordnance-touch, #ordnance-cycle-touch {
-    height: 40px;
-    font-size: 0.8rem;
-    bottom: max(188px, calc(env(safe-area-inset-bottom) + 180px));
+  .touch-edge-move { align-items: flex-start; }
+  .touch-edge-aim {
+    display: grid;
+    grid-template-columns: auto auto;
+    grid-template-areas:
+      "pills pills"
+      "fire stick";
+    justify-content: end;
+    justify-items: end;
+    align-items: end;
   }
-  body.touch #radar { bottom: 250px; width: 64px; height: 64px; }
-  body.touch #flight-row { bottom: 210px; max-width: calc(100% - 180px); }
+  .touch-edge-aim .touch-pills { grid-area: pills; }
+  .touch-edge-aim #fire-btn { grid-area: fire; align-self: end; }
+  .touch-edge-aim #aim-stick { grid-area: stick; }
+  .touch-pills {
+    flex-direction: row;
+    width: auto;
+    max-width: 46vw;
+  }
+  #touch .touch-pills > button {
+    width: auto;
+    max-width: 124px;
+  }
+  .touch-pill-row { width: auto; }
+  .joy { width: 84px; height: 84px; }
+  .joy::after { font-size: 0.58rem; bottom: 2px; }
+  #fire-btn { width: 50px; height: 50px; font-size: 0.85rem; }
+  #touch .touch-pills button {
+    min-height: 30px;
+    font-size: 0.58rem;
+    padding: 1px 6px;
+  }
+  body.touch #radar { width: 40px; height: 40px; }
+  body.touch #flight-row { font-size: 0.58rem; }
 }
 
 #ground-menu-btn {
@@ -741,6 +803,11 @@ body.touch #flight-row {
 #ground-soldier { background: #7dffb2; color: #12301c; }
 #ground-tank { background: #ffd27a; color: #2a1c08; }
 #ground-destroyer { background: #1ad4c8; color: #04221f; }
+#ground-salvo {
+  background: linear-gradient(180deg, #ffe14a, #ff4ad8);
+  color: #2a0820;
+  flex-basis: 148px;
+}
 .ground-actions button:disabled {
   opacity: 0.42;
   filter: grayscale(0.35);

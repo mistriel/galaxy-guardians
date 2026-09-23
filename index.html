@@ -60,20 +60,30 @@
       <div id="toast"></div>
       <div id="edge"></div>
       <div id="touch" hidden>
-        <div id="move-stick" class="joy">
-          <div class="stick-base"></div>
-          <div class="stick-knob"></div>
+        <div class="touch-edge touch-edge-move">
+          <div class="touch-pills">
+            <div class="touch-pill-row">
+              <button id="ordnance-touch" type="button"></button>
+              <button id="ordnance-cycle-touch" type="button"></button>
+            </div>
+            <button id="giant-touch" type="button"></button>
+          </div>
+          <div id="move-stick" class="joy">
+            <div class="stick-base"></div>
+            <div class="stick-knob"></div>
+          </div>
         </div>
-        <div id="aim-stick" class="joy">
-          <div class="stick-base"></div>
-          <div class="stick-knob"></div>
+        <div class="touch-edge touch-edge-aim">
+          <div class="touch-pills">
+            <button id="boost-touch" type="button"></button>
+            <button id="missile-btn" type="button"></button>
+          </div>
+          <button id="fire-btn" type="button"></button>
+          <div id="aim-stick" class="joy">
+            <div class="stick-base"></div>
+            <div class="stick-knob"></div>
+          </div>
         </div>
-        <button id="giant-touch" type="button"></button>
-        <button id="ordnance-cycle-touch" type="button"></button>
-        <button id="ordnance-touch" type="button"></button>
-        <button id="missile-btn" type="button"></button>
-        <button id="boost-touch" type="button"></button>
-        <button id="fire-btn" type="button"></button>
       </div>
       <section id="menu">
         <div class="card">
@@ -134,6 +144,7 @@
             <button id="ground-soldier" class="primary deploy" type="button"></button>
             <button id="ground-tank" class="primary deploy" type="button"></button>
             <button id="ground-destroyer" class="primary deploy" type="button"></button>
+            <button id="ground-salvo" class="primary deploy" type="button"></button>
           </div>
           <div class="deploy-row">
             <button id="ground-retreat" class="ghost" type="button"></button>

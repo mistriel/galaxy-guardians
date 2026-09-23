@@ -241,6 +241,7 @@ export class Game {
       groundSoldierBtn: document.querySelector('#ground-soldier'),
       groundTankBtn: document.querySelector('#ground-tank'),
       groundDestroyerBtn: document.querySelector('#ground-destroyer'),
+      groundSalvoBtn: document.querySelector('#ground-salvo'),
       groundRetreat: document.querySelector('#ground-retreat'),
       groundBack: document.querySelector('#ground-back'),
       groundSpace: document.querySelector('#ground-space'),
@@ -477,6 +478,7 @@ export class Game {
     dom.groundSoldierBtn.textContent = T.groundSoldier;
     dom.groundTankBtn.textContent = T.groundTank;
     dom.groundDestroyerBtn.textContent = T.groundDeployDestroyer;
+    if (dom.groundSalvoBtn) dom.groundSalvoBtn.textContent = T.groundSalvo;
     dom.groundRetreat.textContent = T.groundRetreat;
     dom.groundBack.textContent = T.groundWorlds;
     dom.groundSpace.textContent = T.groundSpace;
@@ -529,6 +531,7 @@ export class Game {
     dom.groundSoldierBtn.addEventListener('click', () => this.ground?.deploy('infantry'));
     dom.groundTankBtn.addEventListener('click', () => this.ground?.deploy('tank'));
     dom.groundDestroyerBtn.addEventListener('click', () => this.ground?.deploy('destroyer'));
+    if (dom.groundSalvoBtn) dom.groundSalvoBtn.addEventListener('click', () => this.ground?.salvo());
     const holdLane = (button, side) => {
       button.addEventListener('pointerdown', (event) => {
         event.preventDefault();
@@ -641,8 +644,9 @@ export class Game {
     const rect = stick.root.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const shiftX = THREE.MathUtils.clamp(event.clientX - cx, -28, 28);
-    const shiftY = THREE.MathUtils.clamp(event.clientY - cy, -28, 28);
+    const grab = (rect.width || 168) * (28 / 168);
+    const shiftX = THREE.MathUtils.clamp(event.clientX - cx, -grab, grab);
+    const shiftY = THREE.MathUtils.clamp(event.clientY - cy, -grab, grab);
     stick.id = event.pointerId;
     stick.originX = cx + shiftX;
     stick.originY = cy + shiftY;
@@ -662,7 +666,8 @@ export class Game {
   }
 
   applyJoy(stick, clientX, clientY) {
-    const maxThrow = 64;
+    const width = stick.root?.getBoundingClientRect().width || 168;
+    const maxThrow = width * (64 / 168);
     const dead = 0.3;
     let dx = clientX - stick.originX;
     let dy = clientY - stick.originY;
@@ -851,6 +856,10 @@ export class Game {
       }
       if (event.code === 'KeyB') {
         this.throwGrenade();
+        return;
+      }
+      if (event.code === 'KeyX') {
+        this.ground?.salvo();
         return;
       }
       this.keys.add(event.code);
