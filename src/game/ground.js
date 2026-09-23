@@ -12,11 +12,13 @@ const PHASE_LEN = {
 
 const PHASE_ORDER = ['artillery', 'armor', 'infantry', 'special', 'resolve'];
 
-/** משמיד battle scale. The previous read was 3.15; this is 1.5×. */
-const DESTROYER_POP = 4.725;
-/** Body reach for barricades (was 8) and warriors (was 3.5), both 1.5×. */
-const DESTROYER_REACH = 12;
-const DESTROYER_ROLL = 5.25;
+/** משמיד battle scale. Original was 3.15; this is 0.85× so the hull reads smaller. */
+const DESTROYER_POP = 2.6775;
+/** Body reach for barricades (original 8) and warriors (original 3.5), both 0.85×. */
+const DESTROYER_REACH = 6.8;
+const DESTROYER_ROLL = 2.975;
+/** How far ahead of the hull center a barricade still counts as in front. Original offset was 1.5. */
+const DESTROYER_NOSE = 1.275;
 /** Hold drained by one full destroyer volley, matching the old seven-shot barrage. */
 const DESTROYER_HOLD_BUDGET = 10.6;
 
@@ -1194,7 +1196,7 @@ export class GroundBattle {
     } else if (id === 'special') {
       this.spawn('destroyer', 0, 0.18);
       this.spawn(this.world.special, 20, 0.45);
-      this.splash(0, 6, 0x1ad4c8, 27);
+      this.splash(0, 6, 0x1ad4c8, 15.3);
       this.shake = Math.min(1.6, this.shake + 0.9);
       this.destroyerCd = 0.85;
       this.sfx.wave?.();
@@ -1288,7 +1290,7 @@ export class GroundBattle {
       speed: 6.2,
       shotCd: 0.45,
     });
-    this.splash(unit.x, unit.z, 0x1ad4c8, 21);
+    this.splash(unit.x, unit.z, 0x1ad4c8, 11.9);
     this.shake = Math.min(1.6, this.shake + 0.7);
     this.flashDeploy(T.groundDestroyerIn);
     this.sfx.wave?.();
@@ -2167,7 +2169,7 @@ export class GroundBattle {
       }
       if (unit.kind === 'destroyer' && !unit.boomed && unit.age >= 0.62 && !fallingBack) {
         unit.boomed = true;
-        this.splash(unit.mesh.position.x, unit.mesh.position.z, 0x1ad4c8, 24);
+        this.splash(unit.mesh.position.x, unit.mesh.position.z, 0x1ad4c8, 13.6);
         this.shake = Math.min(1.5, this.shake + 0.85);
         this.sfx.noise?.(0.22, 0.2, 160);
       }
@@ -2179,7 +2181,7 @@ export class GroundBattle {
     const x = unit.x + this.lane * unit.laneFollow;
     for (const block of this.barricades) {
       if (block.popped) continue;
-      const nose = unit.kind === 'destroyer' ? 2.25 : 1.5;
+      const nose = unit.kind === 'destroyer' ? DESTROYER_NOSE : 1.5;
       if (unit.z > block.z + nose) continue;
       const reach = unit.kind === 'destroyer' ? DESTROYER_REACH : 3.4;
       if (Math.abs(x - block.x) > reach) continue;
@@ -2257,8 +2259,8 @@ export class GroundBattle {
       const spot = player.mesh.position;
       aim = destroyerOut
         ? {
-          pos: [spot.x, 18, spot.z + 34],
-          look: [spot.x, 4, spot.z - 6],
+          pos: [spot.x, 10.2, spot.z + 19.27],
+          look: [spot.x, 2.27, spot.z - 3.4],
         }
         : {
           pos: [spot.x, 6.4, spot.z + 10],
@@ -2270,8 +2272,8 @@ export class GroundBattle {
       if (hero) {
         const spot = hero.mesh.position;
         aim = {
-          pos: [spot.x - 18, 22.5, spot.z + 27],
-          look: [spot.x + 1.5, 4.2, spot.z - 3],
+          pos: [spot.x - 10.2, 12.75, spot.z + 15.3],
+          look: [spot.x + 0.85, 2.38, spot.z - 1.7],
         };
       }
     }
