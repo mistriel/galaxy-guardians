@@ -54,7 +54,7 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Action | Input |
 | --- | --- |
 | Steer yaw / pitch | Mouse offset from center, or arrow keys |
-| Speed rush | Hold `W`, Shift, the מהירות על־חלל button on the HUD, or the phone מהירות על־חלל button (420 u/s). Streaks and a soft glow wrap the whole hull, and the view opens to FOV 114 |
+| Speed rush | Hold `W`, Shift, the מהירות על־חלל button on the HUD, or the phone מהירות על־חלל button (4200 u/s). White streaks and points rush inward from every edge of the view, a soft glow wraps the hull, and the view opens to about FOV 122 with a brief wider punch |
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
@@ -88,7 +88,7 @@ The play space is a closed sphere of radius **430** that feels open. Stars and d
 | Fire interval | 0.15s (0.075s with rapid fire) |
 | Missile | Speed 900. Lifetime 32s, so it travels 28800 units before it blooms. Body radius 0.010 aft and 0.006 at the nose, nose cone radius 0.007, collar radius 0.012, fin thickness 0.004 and fin span about 0.043, plume radius 0.009, scale 1. No contact fuse and no arena-edge fuse. Blast radius 29200 still clears the sector it crossed. Cooldown 4s |
 
-Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding מהירות על־חלל jumps the ship to 420, opens the view to FOV 114, and draws pale streaks plus a glow along the whole hull. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
+Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding מהירות על־חלל jumps the ship to 4200, opens the view to about FOV 122, and fills the view with white streaks and points rushing inward. A glow still wraps the hull. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
 
 Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4 bolt, so it reads as a bright streak rather than a slab. Damage stays 36.
 
