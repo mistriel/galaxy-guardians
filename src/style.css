@@ -658,7 +658,9 @@ body.touch #hud button.tiny {
 @media (max-width: 560px) {
   .ground-top { padding: 8px 10px 0; }
   #ground-phase { font-size: 1.35rem; }
-  #ground-note, #ground-score, #ground-stars, .difficulty-note { font-size: 0.82rem; }
+  #ground-note, #ground-stars, .difficulty-note { font-size: 0.82rem; }
+  #ground-score { font-size: 1.2rem; }
+  #ground-score-pop { font-size: 1.05rem; }
   #ground-bark { font-size: 1.05rem; }
   #hud { padding: 8px 10px 0; gap: 8px; }
   .hud-ship { font-size: 0.95rem; }
@@ -770,7 +772,31 @@ body.touch #hud button.tiny {
   font-size: 1.02rem;
 }
 #ground-stars { color: #ffe08a; }
-#ground-score { color: #f4fbff; }
+#ground-score {
+  color: #ffe08a;
+  font-size: 1.55rem;
+  line-height: 1.1;
+  transition: transform 0.12s ease;
+}
+#ground-score.bump { transform: scale(1.08); }
+#ground-score-pop {
+  min-height: 1.6rem;
+  margin: 0 0 6px;
+  font-weight: 900;
+  font-size: 1.35rem;
+  color: #fff6c8;
+  text-shadow: 0 2px 0 #5a3a08;
+  opacity: 0;
+}
+#ground-score-pop.show {
+  opacity: 1;
+  animation: score-pop 0.42s ease;
+}
+@keyframes score-pop {
+  0% { transform: translateY(8px) scale(0.82); opacity: 0; }
+  45% { transform: translateY(0) scale(1.14); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
 .world-btn {
   display: flex;
   flex-direction: column;

@@ -1288,6 +1288,7 @@ export class GroundBattle {
       holdLabel: q('#ground-hold-label'),
       captureLabel: q('#ground-capture-label'),
       score: q('#ground-score'),
+      scorePop: q('#ground-score-pop'),
       stars: q('#ground-stars'),
       soldierBtn: q('#ground-soldier'),
       tankBtn: q('#ground-tank'),
@@ -1905,6 +1906,14 @@ export class GroundBattle {
     this.grenadeCd = Math.max(0, this.grenadeCd - dt);
     this.streakT = Math.max(0, this.streakT - dt);
     if (this.streakT <= 0) this.streak = 0;
+    this.scorePulse = Math.max(0, (this.scorePulse || 0) - dt);
+    this.scoreFloatCd = Math.max(0, (this.scoreFloatCd || 0) - dt);
+    if (this.floaters) {
+      for (let i = this.floaters.length - 1; i >= 0; i -= 1) {
+        this.floaters[i].life -= dt;
+        if (this.floaters[i].life <= 0) this.floaters.splice(i, 1);
+      }
+    }
     this.playerGrace = Math.max(0, this.playerGrace - dt);
     this.drivePlayer(dt, input);
     this.lane = THREE.MathUtils.damp(this.lane, 0, 4, dt);
@@ -1961,27 +1970,30 @@ export class GroundBattle {
     }
     const forward = unit.kind === 'defender' ? 1 : -1;
     const color = unit.kind === 'defender' ? this.world.enemy : this.world.accent;
-    const foe = unit.focus && this.troopAlive(unit.focus) ? unit.focus : this.nearestEnemy(unit, 20);
+    const foe = unit.focus && this.troopAlive(unit.focus) ? unit.focus : this.nearestEnemy(unit, 22);
+    const aimed = Boolean(foe);
+    const jitter = aimed ? (Math.random() - 0.5) * 0.28 : (Math.random() - 0.5) * 1.6;
     let to = new THREE.Vector3(
-      foe ? foe.x : unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 3.2,
+      foe ? foe.x + jitter : unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 2.2,
       1.05,
-      foe ? foe.z : unit.z + forward * (8 + Math.random() * 5),
+      foe ? foe.z : unit.z + forward * (8 + Math.random() * 4),
     );
     if (unit.kind !== 'defender') to = this.bossTarget(to);
+    const friendShot = unit.kind !== 'defender';
     this.launchShell({
       from,
       to,
       color,
       radius: 0.14,
-      dur: 0.34,
-      holdHit: unit.kind === 'defender' ? 0 : 0.12,
+      dur: 0.28,
+      holdHit: unit.kind === 'defender' ? 0 : 0.16,
       splash: 2.4,
-      arc: 0.85,
+      arc: aimed ? 0.45 : 0.85,
       silentTubes: true,
       team: unit.kind === 'defender' ? 'foe' : 'friend',
-      soldierHit: unit.kind === 'player' ? 1.8 : unit.kind === 'defender' ? this.defenderReach() : 0,
-      troopDamage: unit.kind === 'player' ? 1 : this.defenderChip(),
-      role: unit.kind === 'player' ? 'soldier' : undefined,
+      soldierHit: unit.kind === 'player' ? 2.15 : unit.kind === 'defender' ? this.defenderReach() : 2.45,
+      troopDamage: unit.kind === 'player' ? 2 : unit.kind === 'defender' ? this.defenderChip() : 1,
+      role: friendShot ? 'soldier' : undefined,
     });
     const flash = unit.mesh.userData.flash;
     if (flash) flash.material.opacity = 1;
@@ -2063,18 +2075,36 @@ export class GroundBattle {
     this.balanced = false;
     this.gold = false;
     this.stars = { tank: false, soldier: false, destroyer: false };
+    this.floaters = [];
+    this.scorePulse = 0;
+    this.scoreFloatCd = 0;
     this.playerGrace = 0;
     this.playerOut = false;
     this.livesLeft = 0;
   }
 
-  addBattleScore(amount) {
-    if (!(amount > 0) || this.outcome === 'retreat') return;
-    if (this.streakT > 0) this.streak = Math.min(4, this.streak + 1);
-    else this.streak = 1;
-    this.streakT = 2.8;
-    if (this.streak > this.bestStreak) this.bestStreak = this.streak;
-    this.score += Math.round(amount * this.streak);
+  addBattleScore(amount, opts = {}) {
+    if (!(amount > 0) || this.outcome === 'retreat') return 0;
+    const countStreak = opts.streak !== false;
+    if (countStreak) {
+      if (this.streakT > 0) this.streak = Math.min(4, this.streak + 1);
+      else this.streak = 1;
+      this.streakT = 2.8;
+      if (this.streak > this.bestStreak) this.bestStreak = this.streak;
+    }
+    const mult = countStreak ? Math.max(1, this.streak) : 1;
+    const gained = Math.round(amount * mult);
+    this.score += gained;
+    this.scorePulse = 0.45;
+    const show = opts.float || gained >= 15 || (this.scoreFloatCd || 0) <= 0;
+    if (show) {
+      if (!this.floaters) this.floaters = [];
+      const text = mult > 1 ? `+${gained} ×${mult}` : `+${gained}`;
+      this.floaters.push({ text, life: 1.05 });
+      if (this.floaters.length > 3) this.floaters.shift();
+      this.scoreFloatCd = gained >= 15 ? 0.08 : 0.32;
+    }
+    return gained;
   }
 
   creditRole(role) {
@@ -2126,6 +2156,7 @@ export class GroundBattle {
     if (this.phase === 'armor') this.stars.tank = true;
     else if (this.phase === 'infantry') this.stars.soldier = true;
     else if (this.phase === 'special') this.stars.destroyer = true;
+    this.addBattleScore(60, { float: true });
   }
 
   defenderChip() {
@@ -2192,7 +2223,7 @@ export class GroundBattle {
       const dist = Math.hypot(other.x - unit.x, other.z - unit.z);
       if (dist > 26) continue;
       let score = dist;
-      if (other.hp < other.maxHp) score -= 3;
+      if (other.hp < other.maxHp) score -= 6;
       if (score < bestScore) {
         bestCar = other;
         bestScore = score;
@@ -2230,12 +2261,13 @@ export class GroundBattle {
       }
     }
     unit.x = THREE.MathUtils.clamp(
-      unit.x + THREE.MathUtils.clamp(desired - unit.x, -1, 1) * 5.4 * dt + spacing * dt,
+      unit.x + THREE.MathUtils.clamp(desired - unit.x, -1, 1) * 7.6 * dt + spacing * dt,
       -16,
       16,
     );
-    const lining = aim && (aim.kind === 'armor' || aim.kind === 'wall') && Math.abs(desired - unit.x) > 1.5;
-    unit._slow = lining ? 0.62 : 1;
+    const lining = aim && (aim.kind === 'armor' || aim.kind === 'wall') && Math.abs(desired - unit.x) > 1.2;
+    const charging = aim && aim.z < unit.z - 1.1;
+    unit._slow = lining ? 0.8 : charging ? 1.4 : 1.12;
   }
 
   vehicleAlive(unit) {
@@ -2402,13 +2434,16 @@ export class GroundBattle {
       best._coverX = THREE.MathUtils.clamp(best.x + flank * 5.5, -15, 15);
       best._coverT = 0.85;
     }
-    if (best.hp > 0) return;
+    if (best.hp > 0) {
+      if (team === 'friend' && best.kind === 'foeCar') this.addBattleScore(12);
+      return;
+    }
     best.wrecked = true;
     best.wreckT = 0;
     best.speed = 0;
     this.splash(best.x, best.z, team === 'foe' ? this.world.enemy : 0xffd56a, 6);
     if (best.kind === 'foeCar') {
-      this.addBattleScore(40);
+      this.addBattleScore(80, { float: true });
       this.hold = Math.max(0, this.hold - 4);
       this.capture = Math.min(100, this.capture + 3);
       if (role) this.creditRole(role);
@@ -2427,7 +2462,8 @@ export class GroundBattle {
         if (mate === unit || !this.troopAlive(mate) || mate.kind === 'defender') continue;
         if (mate.focus === other || mate.duel === other) crowd += 1;
       }
-      const score = dist + crowd * 3.2 + Math.abs(unit.x - other.x) * 0.35;
+      const wounded = other.hp < other.maxHp ? 2.4 : 0;
+      const score = dist + crowd * 3.2 + Math.abs(unit.x - other.x) * 0.35 - wounded;
       if (score < bestScore) {
         best = other;
         bestScore = score;
@@ -2817,6 +2853,7 @@ export class GroundBattle {
       const dist = Math.hypot(dx, dz);
       if (dist > range) continue;
       let score = dist + dx * 0.85;
+      if (other.hp < other.maxHp && other.kind === 'defender') score -= 2.2;
       if (other.duel && other.duel !== unit) score += 5;
       // Warriors shoot the line. The player draws fire by stepping out ahead of it.
       if (other.kind === 'player' && unit.kind === 'defender') {
@@ -2849,10 +2886,15 @@ export class GroundBattle {
       const dist = Math.hypot(unit.x - foe.x, unit.z - foe.z);
       if (!this.troopAlive(foe) || foe.duel !== unit || dist > 4.8) this.breakDuel(unit);
     }
+    let liveDuels = 0;
+    for (const unit of this.units) {
+      if (unit.kind !== 'defender' && unit.duel && this.troopAlive(unit)) liveDuels += 1;
+    }
     for (const unit of this.units) {
       if (!this.troopAlive(unit) || unit.duel || unit.kind === 'defender') continue;
+      if (liveDuels >= 6) break;
       let best = null;
-      let bestD = 3.15;
+      let bestD = 4.15;
       for (const other of this.units) {
         if (!this.troopAlive(other) || other.kind !== 'defender' || other.duel) continue;
         const dist = Math.hypot(unit.x - other.x, unit.z - other.z);
@@ -2864,6 +2906,7 @@ export class GroundBattle {
       if (!best) continue;
       unit.duel = best;
       best.duel = unit;
+      liveDuels += 1;
       unit.meleeCd = Math.min(unit.meleeCd, 0.32);
       unit.attackT = 0.24;
       best.attackT = 0.24;
@@ -2904,12 +2947,14 @@ export class GroundBattle {
     }
     const dx = foe.x - unit.x;
     const closing = unit.kind === 'defender' ? foe.z - unit.z : unit.z - foe.z;
-    unit.x += THREE.MathUtils.clamp(dx, -1, 1) * (unit.kind === 'defender' ? 2.5 : 3.6) * dt;
+    unit.x += THREE.MathUtils.clamp(dx, -1, 1) * (unit.kind === 'defender' ? 2.8 : 4.4) * dt;
     if (unit.kind === 'defender') {
       const press = this.difficulty?.id === 'hard' ? 1.28 : this.difficulty?.id === 'easy' ? 0.82 : 1;
       if (closing > 0.45 && closing < 12) unit._step = 2.3 * press;
-    } else if (closing < 5.5 && Math.abs(dx) > 1.05) unit._slow = 0.72;
-    else if (closing < 2.2) unit._slow = 0.4;
+    } else if (closing > 10) unit._slow = 1.48;
+    else if (closing > 2.2) unit._slow = 1.15;
+    else if (closing < 1.55) unit._slow = 0.5;
+    else unit._slow = 0.9;
   }
 
   separateTroops() {
@@ -2961,7 +3006,10 @@ export class GroundBattle {
     }
     unit.hp -= dealt;
     unit.stagger = Math.max(unit.stagger || 0, 0.16);
-    if (unit.hp > 0) return;
+    if (unit.hp > 0) {
+      if (unit.kind === 'defender' && meta.role) this.addBattleScore(6, { streak: false });
+      return;
+    }
     this.knockOut(unit, meta);
   }
 
@@ -2977,7 +3025,7 @@ export class GroundBattle {
     if (foe) {
       this.hold = Math.max(0, this.hold - 0.85);
       this.capture = Math.min(100, this.capture + 1);
-      this.addBattleScore(10);
+      this.addBattleScore(30, { float: true });
       if (meta.role) this.creditRole(meta.role);
     } else if (unit.kind === 'player' && (this.difficulty?.lives || 0) > 0) {
       this.livesLeft -= 1;
@@ -3137,50 +3185,56 @@ export class GroundBattle {
         from,
         to: new THREE.Vector3(aim.unit.x, 0.8, aim.unit.z),
         color: 0xffd56a,
-        radius: 0.32,
-        dur: 0.36,
-        holdHit: 0.45,
-        splash: 4.2,
-        arc: 0.7,
+        radius: 0.38,
+        dur: 0.32,
+        holdHit: 0.55,
+        splash: 5.2,
+        arc: 0.55,
         silentTubes: true,
         team: 'friend',
-        soldierHit: 1.6,
+        soldierHit: 1.15,
         troopDamage: 1,
-        vehicleHit: 4.6,
-        vehicleRadius: 2.8,
+        vehicleHit: 8,
+        vehicleRadius: 3.6,
         role: 'tank',
       });
     } else if (aim?.kind === 'wall') {
+      const block = this.barricades.find((item) => (
+        !item.popped && Math.hypot(item.x - aim.x, item.z - aim.z) < 4.4
+      ));
+      if (block) this.breakBarricade(block, 'tank');
       this.launchShell({
         from,
         to: new THREE.Vector3(aim.x, 0.55, aim.z),
         color: 0xffd56a,
-        radius: 0.3,
-        dur: 0.38,
-        holdHit: 0.2,
-        splash: 3.6,
-        arc: 1.05,
+        radius: 0.36,
+        dur: 0.32,
+        holdHit: 0.35,
+        splash: 4.4,
+        arc: 0.7,
         silentTubes: true,
         team: 'friend',
         role: 'tank',
       });
     } else {
-      const foe = aim?.unit && this.troopAlive(aim.unit) ? aim.unit : this.nearestEnemy(unit, 26);
+      const foe = aim?.unit && this.troopAlive(aim.unit) ? aim.unit : this.nearestEnemy(unit, 28);
+      const burst = (unit._burst || 0) % 3 === 2 ? 1.35 : 0;
+      unit._burst = (unit._burst || 0) + 1;
       this.launchShell({
         from,
         to: this.bossTarget(foe
-          ? new THREE.Vector3(foe.x, 0.7, foe.z)
-          : new THREE.Vector3(unit.x + (Math.random() - 0.5) * 3, 0.45, unit.z - 12)),
+          ? new THREE.Vector3(foe.x + burst, 0.7, foe.z)
+          : new THREE.Vector3(unit.x + (Math.random() - 0.5) * 2, 0.45, unit.z - 14)),
         color: 0xffd56a,
-        radius: 0.28,
-        dur: 0.4,
-        holdHit: 0.32,
-        splash: 3.4,
-        arc: 1.15,
+        radius: 0.34,
+        dur: 0.34,
+        holdHit: 0.4,
+        splash: 4.6,
+        arc: 0.85,
         silentTubes: true,
         team: 'friend',
-        soldierHit: 2.6,
-        troopDamage: 3,
+        soldierHit: 3.2,
+        troopDamage: 6,
         role: 'tank',
       });
     }
@@ -3290,7 +3344,7 @@ export class GroundBattle {
         unit.shotCd -= dt;
         if (unit.shotCd <= 0) {
           const aimingArmor = unit._aim?.kind === 'armor';
-          unit.shotCd = aimingArmor ? 0.95 : 1.15;
+          unit.shotCd = aimingArmor ? 0.68 : 1.85;
           this.fireTank(unit);
         }
         this.rollThrough(unit);
@@ -3300,17 +3354,27 @@ export class GroundBattle {
       if (dueling && unit.kind !== 'defender' && this.outcome !== 'retreat') {
         unit.meleeCd -= dt;
         if (unit.meleeCd <= 0 && unit.duel && !unit.duel.down) {
-          unit.meleeCd = 0.64;
+          unit.meleeCd = 0.62;
           this.exchange(unit, unit.duel);
         }
       } else if ((unit.kind === 'infantry' || unit.kind === 'defender') && !unit.duel && this.outcome !== 'retreat' && unit.age > 0.25) {
         const focus = unit.focus;
         const dist = focus ? Math.hypot(unit.x - focus.x, unit.z - focus.z) : 99;
-        if (dist > 6.5) {
+        const rifleReach = unit.kind === 'defender' ? 16 : 10.5;
+        const front = unit.kind === 'defender' ? null : this.friendlyFront();
+        const inRank = unit.kind === 'defender' || (front != null && unit.z <= front + 3.6);
+        if (inRank && dist > 3.15 && dist < rifleReach) {
           unit.shotCd -= dt;
           if (unit.shotCd <= 0) {
+            let rank = 0;
+            if (unit.kind !== 'defender' && front != null) {
+              for (const other of this.units) {
+                if (other.kind === 'infantry' && this.troopAlive(other) && other.z <= front + 3.6) rank += 1;
+              }
+            }
+            const crowd = unit.kind === 'defender' ? 1 : 1 + Math.max(0, rank - 6) * 0.22;
             const pace = unit.kind === 'defender' ? this.difficulty.cadence : 1;
-            unit.shotCd = ((unit.kind === 'defender' ? 1.55 : 0.9) + (Math.abs(unit.x) % 0.35)) * pace;
+            unit.shotCd = ((unit.kind === 'defender' ? 1.55 : 1.15) + (Math.abs(unit.x) % 0.22)) * pace * crowd;
             unit.attackT = 0.34;
             this.fireRifle(unit);
           }
@@ -3347,7 +3411,7 @@ export class GroundBattle {
       if (unit.kind === 'infantry' && unit.z < -32 && !unit.scored && !fallingBack && !unit.down) {
         unit.scored = true;
         this.capture = Math.min(100, this.capture + 3.5);
-        this.addBattleScore(8);
+        this.addBattleScore(20, { float: true });
         this.creditRole('soldier');
       }
       if (unit.kind === 'destroyer' && !unit.boomed && unit.age >= 0.62 && !fallingBack) {
@@ -3368,17 +3432,23 @@ export class GroundBattle {
       if (unit.z > block.z + nose) continue;
       const reach = unit.kind === 'destroyer' ? DESTROYER_REACH : 3.4;
       if (Math.abs(x - block.x) > reach) continue;
-      block.popped = true;
-      this.splash(block.x, block.z, unit.kind === 'destroyer' ? 0x1ad4c8 : this.world.enemy, unit.kind === 'destroyer' ? 12 : 9);
-      this.root.remove(block.mesh);
-      this.hold = Math.max(0, this.hold - (unit.kind === 'destroyer' ? 10 : 6));
-      this.capture = Math.min(100, this.capture + 4);
-      if (unit.kind === 'tank' || unit.kind === 'destroyer' || unit.kind === 'gunCar') {
-        this.addBattleScore(unit.kind === 'destroyer' ? 20 : 15);
-        this.creditRole(unit.kind === 'destroyer' ? 'destroyer' : 'tank');
-      }
-      this.shake = Math.min(1, this.shake + 0.28);
+      this.breakBarricade(block, unit.kind);
     }
+  }
+
+  breakBarricade(block, kind) {
+    if (!block || block.popped) return false;
+    block.popped = true;
+    this.splash(block.x, block.z, kind === 'destroyer' ? 0x1ad4c8 : this.world.enemy, kind === 'destroyer' ? 12 : 9);
+    this.root.remove(block.mesh);
+    this.hold = Math.max(0, this.hold - (kind === 'destroyer' ? 10 : 6));
+    this.capture = Math.min(100, this.capture + 4);
+    if (kind === 'tank' || kind === 'destroyer' || kind === 'gunCar') {
+      this.addBattleScore(kind === 'destroyer' ? 45 : 35, { float: true });
+      this.creditRole(kind === 'destroyer' ? 'destroyer' : 'tank');
+    }
+    this.shake = Math.min(1, this.shake + 0.28);
+    return true;
   }
 
   splash(x, z, color, grow, bits = 5) {
@@ -3695,6 +3765,19 @@ export class GroundBattle {
         : '';
       const force = this.fullForce ? ` · ${T.groundFullForceShort}` : '';
       dom.score.textContent = `${T.groundScore} ${this.score}${streak}${lives}${force}`;
+      dom.score.classList.toggle('bump', (this.scorePulse || 0) > 0);
+    }
+    if (dom.scorePop) {
+      const chips = (this.floaters || []).filter((item) => item.life > 0);
+      const text = chips.map((item) => item.text).join('   ');
+      if (dom.scorePop.textContent !== text) {
+        dom.scorePop.textContent = text;
+        dom.scorePop.classList.remove('show');
+        if (chips.length) {
+          void dom.scorePop.offsetWidth;
+          dom.scorePop.classList.add('show');
+        }
+      }
     }
     if (dom.stars) {
       if (bossFight) dom.stars.textContent = '';
