@@ -96,6 +96,15 @@
             <p id="goal" class="goal"></p>
             <p id="roster" class="goal"></p>
             <div class="menu-actions">
+              <div class="difficulty-row" id="menu-difficulty">
+                <span id="menu-difficulty-label"></span>
+                <div class="difficulty-picks">
+                  <button type="button" data-difficulty="easy"></button>
+                  <button type="button" data-difficulty="medium"></button>
+                  <button type="button" data-difficulty="hard"></button>
+                </div>
+                <p id="menu-difficulty-note" class="difficulty-note"></p>
+              </div>
               <button id="start-btn" class="primary" type="button"></button>
               <button id="ground-menu-btn" class="primary battle" type="button"></button>
               <button id="open-forest" class="ghost world-open" type="button" data-world="forest"></button>
@@ -121,6 +130,15 @@
         <div class="overlay-card ground-card">
           <h2 id="ground-title"></h2>
           <p id="ground-blurb" class="goal"></p>
+          <div class="difficulty-row" id="pick-difficulty">
+            <span id="pick-difficulty-label"></span>
+            <div class="difficulty-picks">
+              <button type="button" data-difficulty="easy"></button>
+              <button type="button" data-difficulty="medium"></button>
+              <button type="button" data-difficulty="hard"></button>
+            </div>
+            <p id="pick-difficulty-note" class="difficulty-note"></p>
+          </div>
           <div id="ground-worlds"></div>
           <button id="ground-close" class="ghost" type="button"></button>
         </div>
@@ -130,6 +148,8 @@
           <p id="ground-world" class="kicker"></p>
           <p id="ground-march" class="kicker"></p>
           <p id="ground-phase"></p>
+          <p id="ground-stars"></p>
+          <p id="ground-score"></p>
           <p id="ground-bark" hidden></p>
           <p id="ground-note"></p>
           <div class="meter">

@@ -326,16 +326,10 @@ export const WAVES = [
   { nib: 30, glint: 18, howler: 10, slab: 4, vorak: 1 },
 ];
 
+/** Authored waves only. There is no endless climb after the last row. */
 export function waveSpec(n) {
-  if (n <= WAVES.length) return WAVES[n - 1];
-  const extra = n - WAVES.length;
-  return {
-    nib: Math.min(36, 30 + extra * 2),
-    glint: Math.min(22, 18 + extra),
-    howler: Math.min(12, 10 + Math.floor(extra * 0.4)),
-    slab: Math.min(5, 4 + Math.floor(extra * 0.25)),
-    vorak: extra >= 3 ? 2 : 1,
-  };
+  if (n < 1 || n > WAVES.length) return null;
+  return WAVES[n - 1];
 }
 
 export const WAVE_BONUS = 150;

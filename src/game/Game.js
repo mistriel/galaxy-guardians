@@ -27,7 +27,9 @@ import {
   emptyCampaign,
   grantTrophy,
   normalizeCampaign,
+  noteGoldCharge,
   noteRegularWin,
+  takeGoldCharge,
 } from './campaign.js';
 import { GROUND_WORLDS, GroundBattle } from './ground.js';
 import { bonusHome, buildLayout } from './layout.js';
@@ -67,6 +69,7 @@ import {
 
 const BEST_KEY = 'galaxy-guardians-best';
 const CAMPAIGN_KEY = 'galaxy-guardians-campaign';
+const DIFFICULTY_KEY = 'galaxy-guardians-difficulty';
 const META_KEY = 'galaxy-guardians-meta';
 
 function blankStick() {
@@ -127,6 +130,7 @@ export class Game {
     this.score = 0;
     this.best = this.readBest();
     this.campaign = this.readCampaign();
+    this.difficulty = this.readDifficulty();
     this.pendingBoss = null;
     this.trophyOpen = false;
     this.trophyAt = 0;
@@ -136,6 +140,9 @@ export class Game {
     this.comboUntil = 0;
     this.wave = 0;
     this.queue = [];
+    this.threats = [];
+    this.threatIndex = 0;
+    this.sortieClear = false;
     this.restAt = 0;
     this.kills = 0;
     this.structures = 0;
@@ -249,6 +256,10 @@ export class Game {
       groundTitle: document.querySelector('#ground-title'),
       groundBlurb: document.querySelector('#ground-blurb'),
       groundWorlds: document.querySelector('#ground-worlds'),
+      menuDifficultyLabel: document.querySelector('#menu-difficulty-label'),
+      menuDifficultyNote: document.querySelector('#menu-difficulty-note'),
+      pickDifficultyLabel: document.querySelector('#pick-difficulty-label'),
+      pickDifficultyNote: document.querySelector('#pick-difficulty-note'),
       groundClose: document.querySelector('#ground-close'),
       groundHud: document.querySelector('#ground-hud'),
       groundSoldierBtn: document.querySelector('#ground-soldier'),
@@ -506,6 +517,7 @@ export class Game {
     dom.groundSpace.textContent = T.groundSpace;
     dom.groundHoldLabel.textContent = T.groundHold;
     dom.groundCaptureLabel.textContent = T.groundCapture;
+    this.paintDifficulty();
     dom.groundLeftBtn.textContent = T.groundLeft;
     dom.groundRightBtn.textContent = T.groundRight;
     if (dom.aimViewBtn) {
@@ -543,6 +555,9 @@ export class Game {
     dom.resumeBtn.addEventListener('click', () => this.togglePause());
     dom.restartBtn.addEventListener('click', () => this.startMission());
     dom.menuBtn.addEventListener('click', () => this.showMenu());
+    document.querySelectorAll('[data-difficulty]').forEach((button) => {
+      button.addEventListener('click', () => this.setDifficulty(button.dataset.difficulty));
+    });
     dom.groundMenu.addEventListener('click', () => this.startGround('forest'));
     if (dom.openForest) dom.openForest.addEventListener('click', () => this.startGround('forest'));
     if (dom.openDesert) dom.openDesert.addEventListener('click', () => this.startGround('desert'));
@@ -2291,71 +2306,102 @@ export class Game {
   }
 
   checkWaveClear() {
-    if (this.state !== 'play') return;
+    if (this.state !== 'play' || this.sortieClear) return;
     const enemiesAlive = this.enemies.some((enemy) => enemy.alive);
     if (this.queue.length || enemiesAlive) {
       this.restAt = 0;
       return;
     }
-    if (!this.restAt) this.restAt = this.time + 2;
-    if (this.time >= this.restAt) {
-      this.restAt = 0;
-      this.addScore(WAVE_BONUS * this.wave, this.player.mesh.position.clone(), false);
-      this.beginWave();
+    if (!this.restAt) this.restAt = this.time + 1.6;
+    if (this.time < this.restAt) return;
+    this.restAt = 0;
+    if (this.threatIndex < this.threats.length) {
+      this.releaseThreat();
+      return;
     }
+    this.addScore(WAVE_BONUS * this.wave, this.player.mesh.position.clone(), false);
+    this.beginWave();
   }
 
   beginWave() {
+    if (this.sortieClear) return;
     this.wave += 1;
     const spec = waveSpec(this.wave);
+    if (!spec) {
+      this.sortieClear = true;
+      this.threats = [];
+      this.queue = [];
+      this.showBanner(T.sectorClear);
+      this.sfx.wave();
+      return;
+    }
     const types = [];
     for (const [type, count] of Object.entries(spec)) {
       for (let i = 0; i < count; i += 1) types.push(type);
     }
     const squadSize = 8;
+    this.threats = [];
+    for (let i = 0; i < types.length; i += squadSize) {
+      this.threats.push({ kind: 'squad', types: types.slice(i, i + squadSize), vorak: types.slice(i, i + squadSize).includes('vorak') });
+    }
+    this.threats.push({ kind: 'volley' });
+    this.threatIndex = 0;
+    this.supportWave();
+    if (this.wave > 1 && this.wave % 2 === 0) this.spawnBonusStructures();
+    this.releaseThreat();
+  }
+
+  /** One squad, or one carrier volley. The next waits until this one is gone. */
+  releaseThreat() {
+    const threat = this.threats[this.threatIndex];
+    if (!threat) return;
+    this.threatIndex += 1;
     this.queue = [];
-    let at = this.time + 0.4;
+    if (threat.kind === 'volley') {
+      this.launchVolley();
+      this.showBanner(`${T.wave} ${this.wave} · ${T.carrierEnemy}`);
+    } else {
+      this.placeSquad(threat.types, this.threatIndex);
+      const named = threat.vorak ? ` · ${T.enemyNames.vorak}` : '';
+      this.showBanner(`${T.wave} ${this.wave} · ${T.threat} ${this.threatIndex}${named}`);
+    }
+    this.sfx.wave();
+  }
+
+  placeSquad(types, squadIndex) {
     const playerPos = this.player.mesh.position;
     const nose = new THREE.Vector3(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.player.mesh.quaternion);
     const lift = new THREE.Vector3(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
-    for (let i = 0; i < types.length; i += squadSize) {
-      const squad = types.slice(i, i + squadSize);
-      const sway = ((i / squadSize) % 7) - 3;
-      const dir = nose.clone()
-        .addScaledVector(right, sway * 0.16)
-        .addScaledVector(lift, (Math.random() - 0.45) * 0.1);
-      if (dir.lengthSq() < 0.04) dir.copy(nose);
-      dir.normalize();
-      const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 102 + Math.random() * 22);
-      center.y = THREE.MathUtils.clamp(center.y, -36, 64);
-      if (center.length() > WORLD.bounds - 90) center.setLength(WORLD.bounds - 90);
-      const spin = (i / squadSize) % 2 === 0 ? 1 : -1;
-      const anchor = center.clone();
-      squad.forEach((type, k) => {
-        const band = (ENEMIES[type].band ?? 22) + (k % 5);
-        const ang = (k / Math.max(1, squad.length)) * Math.PI * 2 + sway * 0.4;
-        const pos = center.clone();
-        pos.x += Math.cos(ang) * band;
-        pos.z += Math.sin(ang) * band;
-        pos.y += ((k % 3) - 1) * 6;
-        if (pos.length() > WORLD.bounds - 24) pos.setLength(WORLD.bounds - 24);
-        this.queue.push({
-          type,
-          at: at + k * 0.05,
-          pos,
-          anchor,
-          orbit: band,
-          spin,
-        });
+    const sway = (squadIndex % 7) - 3;
+    const dir = nose.clone()
+      .addScaledVector(right, sway * 0.16)
+      .addScaledVector(lift, (Math.random() - 0.45) * 0.1);
+    if (dir.lengthSq() < 0.04) dir.copy(nose);
+    dir.normalize();
+    const center = new THREE.Vector3().copy(playerPos).addScaledVector(dir, 102 + Math.random() * 22);
+    center.y = THREE.MathUtils.clamp(center.y, -36, 64);
+    if (center.length() > WORLD.bounds - 90) center.setLength(WORLD.bounds - 90);
+    const spin = squadIndex % 2 === 0 ? 1 : -1;
+    const anchor = center.clone();
+    const at = this.time + 0.4;
+    types.forEach((type, k) => {
+      const band = (ENEMIES[type].band ?? 22) + (k % 5);
+      const ang = (k / Math.max(1, types.length)) * Math.PI * 2 + sway * 0.4;
+      const pos = center.clone();
+      pos.x += Math.cos(ang) * band;
+      pos.z += Math.sin(ang) * band;
+      pos.y += ((k % 3) - 1) * 6;
+      if (pos.length() > WORLD.bounds - 24) pos.setLength(WORLD.bounds - 24);
+      this.queue.push({
+        type,
+        at: at + k * 0.05,
+        pos,
+        anchor,
+        orbit: band,
+        spin,
       });
-      at += 0.32;
-    }
-    this.supportWave();
-    const named = types.includes('vorak') ? ` · ${T.enemyNames.vorak}` : '';
-    this.showBanner(`${T.wave} ${this.wave}${named}`);
-    this.sfx.wave();
-    if (this.wave > 1 && this.wave % 2 === 0) this.spawnBonusStructures();
+    });
   }
 
   spawnBonusStructures() {
@@ -2571,7 +2617,6 @@ export class Game {
     if (!this.carriers || this.state === 'menu') return;
     this.reviveCarrier(this.carriers.ally, -46, 8, 34);
     this.reviveCarrier(this.carriers.enemy, 26, 14, 148);
-    this.launchVolley();
     this.fillAllies(true);
   }
 
@@ -3208,6 +3253,9 @@ export class Game {
     this.comboUntil = 0;
     this.wave = 0;
     this.queue = [];
+    this.threats = [];
+    this.threatIndex = 0;
+    this.sortieClear = false;
     this.restAt = 0;
     this.kills = 0;
     this.structures = 0;
@@ -3376,6 +3424,7 @@ export class Game {
       boss,
       perks: this.campaign?.perks,
       marchLabel: boss ? T.bossPhase : this.marchText(),
+      difficulty: this.difficulty,
     });
     this.fadeWorld(boss ? `${T.bossWelcome} · ${world.name}` : `${T.groundWelcome} ${world.name}`);
     this.syncVisibility();
@@ -3392,6 +3441,50 @@ export class Game {
     this.dom.groundBlurb.textContent = this.campaign?.bossDue
       ? `${T.groundBlurb} ${T.bossDueBlurb}`
       : `${T.groundBlurb} ${this.marchText()}.`;
+  }
+
+  readDifficulty() {
+    try {
+      const id = localStorage.getItem(DIFFICULTY_KEY);
+      if (id === 'easy' || id === 'medium' || id === 'hard') return id;
+    } catch (err) {
+      /* private mode */
+    }
+    return 'medium';
+  }
+
+  setDifficulty(id) {
+    if (id !== 'easy' && id !== 'medium' && id !== 'hard') return;
+    this.difficulty = id;
+    try {
+      localStorage.setItem(DIFFICULTY_KEY, id);
+    } catch (err) {
+      /* private mode */
+    }
+    this.paintDifficulty();
+    this.sfx?.ui?.();
+  }
+
+  paintDifficulty() {
+    const labels = {
+      easy: T.difficultyEasy,
+      medium: T.difficultyMedium,
+      hard: T.difficultyHard,
+    };
+    const notes = {
+      easy: T.difficultyEasyNote,
+      medium: T.difficultyMediumNote,
+      hard: T.difficultyHardNote,
+    };
+    const id = this.difficulty || 'medium';
+    for (const button of document.querySelectorAll('[data-difficulty]')) {
+      button.textContent = labels[button.dataset.difficulty] || '';
+      button.classList.toggle('on', button.dataset.difficulty === id);
+    }
+    if (this.dom.menuDifficultyLabel) this.dom.menuDifficultyLabel.textContent = T.difficultyLabel;
+    if (this.dom.pickDifficultyLabel) this.dom.pickDifficultyLabel.textContent = T.difficultyLabel;
+    if (this.dom.menuDifficultyNote) this.dom.menuDifficultyNote.textContent = notes[id];
+    if (this.dom.pickDifficultyNote) this.dom.pickDifficultyNote.textContent = notes[id];
   }
 
   readCampaign() {
@@ -3421,6 +3514,7 @@ export class Game {
       return;
     }
     this.campaign = noteRegularWin(this.campaign);
+    if (info.gold) this.campaign = noteGoldCharge(this.campaign);
     this.saveCampaign();
     this.refreshGroundBlurb();
     if (this.campaign.bossDue) {
@@ -3446,8 +3540,11 @@ export class Game {
 
   openTrophy() {
     if (this.trophyGranted || !this.dom.trophy) return;
+    const spent = takeGoldCharge(this.campaign);
+    this.campaign = spent.state;
     const cup = drawTrophy(this.campaign);
-    const granted = grantTrophy(this.campaign, cup.id);
+    let granted = grantTrophy(this.campaign, cup.id);
+    if (spent.had) granted = grantTrophy(granted.state, cup.id);
     this.campaign = granted.state;
     this.saveCampaign();
     this.refreshGroundBlurb();
@@ -3459,10 +3556,14 @@ export class Game {
     let blurb = copy.blurb;
     if (!granted.grew) blurb = `${blurb} ${T.trophyKept}`;
     else if (granted.tier > 1) blurb = `${blurb} ${T.trophyStronger}`;
-    this.dom.trophyKicker.textContent = T.trophyKicker;
+    if (spent.had) blurb = `${blurb} ${T.groundGoldBlurb}`;
+    this.dom.trophyKicker.textContent = spent.had ? T.groundGold : T.trophyKicker;
     this.dom.trophyName.textContent = copy.name;
     this.dom.trophyBlurb.textContent = blurb;
-    if (this.dom.trophyCup) this.dom.trophyCup.dataset.cup = cup.id;
+    if (this.dom.trophyCup) {
+      this.dom.trophyCup.dataset.cup = cup.id;
+      this.dom.trophyCup.classList.toggle('gold', spent.had);
+    }
     this.dom.trophy.classList.remove('show');
     this.dom.trophy.hidden = false;
     requestAnimationFrame(() => {
@@ -3477,6 +3578,7 @@ export class Game {
     if (!this.dom?.trophy) return;
     this.dom.trophy.classList.remove('show');
     this.dom.trophy.hidden = true;
+    this.dom.trophyCup?.classList.remove('gold');
   }
 
   acceptTrophy() {

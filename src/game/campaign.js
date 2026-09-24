@@ -29,6 +29,7 @@ export function emptyCampaign() {
     sinceBoss: 0,
     bossDue: false,
     perks: emptyPerks(),
+    goldCharges: 0,
   };
 }
 
@@ -48,7 +49,25 @@ export function normalizeCampaign(raw) {
   base.bossDue = Boolean(raw.bossDue);
   const perks = raw.perks && typeof raw.perks === 'object' ? raw.perks : {};
   for (const id of PERK_IDS) base.perks[id] = clampTier(perks[id]);
+  const gold = Number(raw.goldCharges);
+  base.goldCharges = Number.isFinite(gold) ? Math.max(0, Math.min(9, Math.floor(gold))) : 0;
   return base;
+}
+
+/** Bank one gold cup earned by a streak, full force, and a balanced fight. */
+export function noteGoldCharge(state) {
+  const current = normalizeCampaign(state);
+  return { ...current, goldCharges: Math.min(9, current.goldCharges + 1) };
+}
+
+/** Spend one banked gold cup when the commander’s trophy is taken. */
+export function takeGoldCharge(state) {
+  const current = normalizeCampaign(state);
+  const had = current.goldCharges > 0;
+  return {
+    state: { ...current, goldCharges: had ? current.goldCharges - 1 : 0 },
+    had,
+  };
 }
 
 /** Count a regular ground victory. The third one schedules the boss. */
