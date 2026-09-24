@@ -309,6 +309,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.05; color: v
 .help ul { margin: 0; padding: 0 1.1rem 0 0; color: var(--ink); }
 .help li { margin: 3px 0; }
 .menu-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.menu-actions .difficulty-row { flex: 1 0 100%; }
 .menu-actions .world-open[data-world="forest"] { border-color: #7dffb2; }
 .menu-actions .world-open[data-world="desert"] { border-color: #ffb15a; }
 #hangar { margin-top: 12px; }
@@ -655,6 +656,10 @@ body.touch #hud button.tiny {
 
 /* Portrait phones: keep both edges in a slim strip and leave the center open. */
 @media (max-width: 560px) {
+  .ground-top { padding: 8px 10px 0; }
+  #ground-phase { font-size: 1.35rem; }
+  #ground-note, #ground-score, #ground-stars, .difficulty-note { font-size: 0.82rem; }
+  #ground-bark { font-size: 1.05rem; }
   #hud { padding: 8px 10px 0; gap: 8px; }
   .hud-ship { font-size: 0.95rem; }
   .stats strong { font-size: 1.2rem; }
@@ -731,6 +736,41 @@ body.touch #hud button.tiny {
 #ground-pick .overlay-card { pointer-events: auto; }
 .ground-card { text-align: right; }
 #ground-worlds { margin: 12px 0; }
+.difficulty-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.difficulty-row > span {
+  font-weight: 900;
+  font-size: 0.95rem;
+}
+.difficulty-picks { display: flex; gap: 6px; flex-wrap: wrap; }
+.difficulty-picks button {
+  flex: 1 1 72px;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background: rgba(8, 16, 28, 0.55);
+  color: var(--ink);
+  font-weight: 900;
+  cursor: pointer;
+}
+.difficulty-picks button.on {
+  border-color: #ffe08a;
+  background: #ffe08a;
+  color: #2a1c08;
+}
+.difficulty-note { margin: 0; color: var(--muted); font-size: 0.92rem; }
+#ground-score, #ground-stars {
+  margin: 0 0 4px;
+  font-weight: 900;
+  font-size: 1.02rem;
+}
+#ground-stars { color: #ffe08a; }
+#ground-score { color: #f4fbff; }
 .world-btn {
   display: flex;
   flex-direction: column;
@@ -758,6 +798,14 @@ body.touch #hud button.tiny {
 .world-btn[data-world="ice"] {
   border-color: #d7b4ea;
   background: linear-gradient(135deg, rgba(126, 168, 230, 0.72), rgba(48, 28, 64, 0.88));
+}
+.world-btn[data-world="haunt"] {
+  border-color: #d7a0ff;
+  background: linear-gradient(135deg, rgba(110, 48, 170, 0.78), rgba(18, 8, 36, 0.9));
+}
+.world-btn[data-world="sea"] {
+  border-color: #7ec8ff;
+  background: linear-gradient(135deg, rgba(26, 106, 154, 0.78), rgba(8, 28, 48, 0.9));
 }
 #ground-hud {
   position: absolute;
@@ -894,6 +942,10 @@ body.touch #hud button.tiny {
 .trophy-cup[data-cup="cannon"] .cup-bowl { background: linear-gradient(180deg, #fff8e4, #ffd27a 45%, #e0a030); }
 .trophy-cup[data-cup="banner"] .cup-bowl { background: linear-gradient(180deg, #fff0f6, #ffb0cc 45%, #ff6b9a); }
 .trophy-cup[data-cup="destroyer"] .cup-bowl { background: linear-gradient(180deg, #f2fffd, #8af6ee 45%, #1ad4c8); }
+.trophy-cup.gold .cup-bowl {
+  background: linear-gradient(180deg, #fffef2, #ffe14a 40%, #e0a020);
+  box-shadow: 0 0 28px rgba(255, 210, 80, 0.85), inset 0 -14px 0 rgba(110, 64, 8, 0.22);
+}
 #trophy-name {
   margin: 0;
   color: var(--amber);

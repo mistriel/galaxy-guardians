@@ -1,16 +1,14 @@
 import * as THREE from 'three';
 import { T } from './i18n.js';
+import { STAGE_WAVES, goldReady, groundDifficulty, scaleCount, stageWaveStep } from './groundTuning.js';
 
-/** Easy arcade timings. A full push resolves in about half a minute. */
-const PHASE_LEN = {
-  artillery: 9,
-  armor: 10,
-  infantry: 9,
-  special: 8,
-  resolve: 99,
+/** A beat stays up long enough to read, even if the army clears it early. */
+const PHASE_MIN = {
+  artillery: 4.5,
+  armor: 5,
+  infantry: 5,
+  special: 4.5,
 };
-
-const PHASE_ORDER = ['artillery', 'armor', 'infantry', 'special', 'resolve'];
 
 /** Toy commander. Hits are gated so the army cannot melt him in a second. */
 const BOSS_HP = 240;
@@ -77,6 +75,41 @@ export const GROUND_WORLDS = [
     special: 'crown',
     specialName: 'כתר הקרח',
   },
+  {
+    id: 'haunt',
+    name: 'יער מחושף',
+    blurb: 'יער סגול. הלוחמים שממול הם רוחות רפאים.',
+    sky: 0x241438,
+    skyTop: 0x0c0618,
+    skyHorizon: 0x3a2060,
+    fog: 0x2a1848,
+    cloud: 'rgba(176, 140, 220, 0.38)',
+    ground: 0x1c1230,
+    lane: 0x7a48b8,
+    accent: 0xc9a0ff,
+    prop: 0x4a2080,
+    glow: 0xe0b0ff,
+    enemy: 0xd070ff,
+    special: 'wisp',
+    specialName: 'מנורת הרוחות',
+  },
+  {
+    id: 'sea',
+    name: 'ים',
+    blurb: 'ים כחול, גלים, סירות ומגדלור.',
+    sky: 0x7ec8ff,
+    skyTop: 0x1a4a9a,
+    skyHorizon: 0xb7e4ff,
+    fog: 0x9fd4f0,
+    ground: 0x1a6a9a,
+    lane: 0xe6c07a,
+    accent: 0x7dffd4,
+    prop: 0xf4f7fb,
+    glow: 0xfff3a0,
+    enemy: 0xff5a3a,
+    special: 'lighthouse',
+    specialName: 'מגדלור',
+  },
 ];
 
 const FRIENDLY = 0xf4f7fb;
@@ -85,7 +118,7 @@ function hexCss(hex) {
   return `#${hex.toString(16).padStart(6, '0')}`;
 }
 
-function skyTexture(top, horizon, warm) {
+function skyTexture(top, horizon, warm, cloud = 'rgba(255, 252, 245, 0.62)') {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
   canvas.height = 512;
@@ -98,7 +131,7 @@ function skyTexture(top, horizon, warm) {
   paint.addColorStop(1, hexCss(warm));
   ctx.fillStyle = paint;
   ctx.fillRect(0, 0, 1024, 512);
-  ctx.fillStyle = 'rgba(255, 252, 245, 0.62)';
+  ctx.fillStyle = cloud;
   const clouds = [
     [120, 110, 110, 28], [340, 78, 140, 32], [560, 130, 90, 24],
     [760, 96, 120, 30], [920, 150, 80, 22], [250, 168, 70, 18],
@@ -662,6 +695,44 @@ function makeInfantry(accent, foe = false) {
   return root;
 }
 
+const ghostVeil = new THREE.MeshStandardMaterial({
+  color: 0xd8b4ff,
+  emissive: 0xb060ff,
+  emissiveIntensity: 0.9,
+  roughness: 0.4,
+  metalness: 0.04,
+  transparent: true,
+  opacity: 0.55,
+  depthWrite: false,
+});
+const ghostGlow = new THREE.MeshBasicMaterial({
+  color: 0xf0dcff,
+  transparent: true,
+  opacity: 0.74,
+  depthWrite: false,
+  fog: false,
+});
+
+/** Defender for יער מחושף. Same rifle and swing as a warrior, drawn as a glowing ghost. */
+function makeGhost() {
+  const root = makeInfantry(0xd070ff, true);
+  root.traverse((obj) => {
+    if (!obj.isMesh || !obj.material) return;
+    if (obj.material.transparent && obj.material.opacity === 0) return;
+    obj.material = obj.material.isMeshBasicMaterial ? ghostGlow : ghostVeil;
+    obj.castShadow = false;
+    obj.receiveShadow = false;
+    obj.userData.noShadow = true;
+  });
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), ghostGlow);
+  orb.position.set(0, 2.18, 0);
+  orb.userData.noShadow = true;
+  root.add(orb);
+  root.userData.wisp = orb;
+  root.userData.ghost = true;
+  return root;
+}
+
 function makeSpecial(kind, world) {
   const root = new THREE.Group();
   const glow = mat(world.glow, world.glow, 0.85);
@@ -679,6 +750,45 @@ function makeSpecial(kind, world) {
     drum.rotation.z = Math.PI / 2;
     addCyl(root, 1.45, 1.45, 0.28, glow, 0.7, 1.35, 0).rotation.z = Math.PI / 2;
     addCyl(root, 1.45, 1.45, 0.28, glow, -0.7, 1.35, 0).rotation.z = Math.PI / 2;
+  } else if (kind === 'wisp') {
+    const trunk = addCyl(root, 0.16, 0.28, 2.4, mat(0x2a1840, 0x120818, 0.2), 0, 1.2, 0);
+    trunk.rotation.z = 0.18;
+    const lamp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.55, 14, 10),
+      new THREE.MeshBasicMaterial({
+        color: world.glow,
+        transparent: true,
+        opacity: 0.82,
+        depthWrite: false,
+        fog: false,
+      }),
+    );
+    lamp.position.set(0.15, 2.55, 0);
+    lamp.userData.noShadow = true;
+    root.add(lamp);
+    root.userData.lamp = lamp;
+    for (let i = 0; i < 5; i += 1) {
+      const mote = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 8, 6),
+        new THREE.MeshBasicMaterial({
+          color: 0xf4e4ff,
+          transparent: true,
+          opacity: 0.7,
+          depthWrite: false,
+          fog: false,
+        }),
+      );
+      const angle = (i / 5) * Math.PI * 2;
+      mote.position.set(Math.cos(angle) * 0.7, 2.2 + (i % 2) * 0.35, Math.sin(angle) * 0.7);
+      mote.userData.noShadow = true;
+      root.add(mote);
+    }
+  } else if (kind === 'lighthouse') {
+    addCyl(root, 0.7, 0.9, 0.4, mat(0xe6c07a, 0xc49a58, 0.2), 0, 0.2, 0);
+    addCyl(root, 0.38, 0.48, 2.6, mat(0xf7f4ee, 0xd7d0c4, 0.15), 0, 1.6, 0);
+    const lamp = addCyl(root, 0.42, 0.42, 0.45, glow, 0, 3.15, 0);
+    root.userData.lamp = lamp;
+    addCyl(root, 0.55, 0.55, 0.18, accent, 0, 3.45, 0);
   } else {
     addBox(root, 2.4, 0.35, 3.2, accent, 0, 0.4, 0);
     for (let i = 0; i < 5; i += 1) {
@@ -754,6 +864,35 @@ function makeTree(world, i) {
       addCyl(root, 0.02, 0.14, 1.1, mat(0xfff6fb, 0xffd0ea, 0.85), 0.42, 1.2, 0.08).rotation.z = -0.32;
       blob(root, 0.16, mat(0xffffff, 0xffd0ea, 0.95), 0, 1.85, 0, 1);
     }
+  } else if (world.id === 'haunt') {
+    const bark = mat(0x2a1838, 0x100818, 0.15);
+    const leaf = mat(0x4a2080, 0xc45cff, 0.55);
+    const lite = mat(0x9a58d0, 0xe0b0ff, 0.7);
+    const wisp = mat(0xf0dcff, 0xe0b0ff, 0.95);
+    const h = 2.5 + (i % 3) * 0.35;
+    const trunk = addCyl(root, 0.16, 0.32, h, bark, 0, h * 0.48, 0);
+    trunk.rotation.z = i % 2 === 0 ? 0.22 : -0.18;
+    blob(root, 1.15, leaf, 0.1, h * 0.78, 0, 0.72);
+    blob(root, 0.78, lite, 0.55, h * 1.02, 0.18, 0.8);
+    blob(root, 0.7, leaf, -0.5, h * 1.08, -0.12, 0.76);
+    blob(root, 0.18, wisp, 0.2, h * 1.28, 0.05, 1);
+    blob(root, 0.12, wisp, -0.62, h * 0.55, 0.2, 1);
+  } else if (world.id === 'sea') {
+    const wood = mat(0x8a5a32, 0x3a2414, 0.15);
+    const sail = mat(0xf7fbff, 0xd7eaff, 0.35);
+    const buoy = mat(i % 2 ? 0xff5a3a : 0xfff3a0, 0xfff3a0, 0.45);
+    if (i % 2 === 0) {
+      addCyl(root, 0.08, 0.1, 1.6, wood, 0, 0.8, 0);
+      const cloth = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.15, 3), sail);
+      cloth.position.set(0.28, 1.35, 0);
+      cloth.rotation.z = 0.4;
+      root.add(cloth);
+      blob(root, 0.16, buoy, 0, 1.85, 0, 0.8);
+    } else {
+      addCyl(root, 0.1, 0.14, 0.9, wood, 0, 0.45, 0);
+      blob(root, 0.42, buoy, 0, 1.15, 0, 0.85);
+      blob(root, 0.16, mat(0xffffff, 0xd7eaff, 0.5), 0.22, 1.35, 0.1, 0.7);
+    }
   } else {
     const deep = mat(i % 2 ? 0x1f9a48 : 0x147a38, 0x0d4a28, 0.2);
     const lite = mat(0x8dffb8, 0x1f8f4a, 0.28);
@@ -773,6 +912,37 @@ function makeTree(world, i) {
 
 function makePlant(world, i) {
   const root = new THREE.Group();
+  if (world.id === 'haunt') {
+    const cap = mat(i % 2 ? 0xc45cff : 0x7a40c0, 0xe0b0ff, 0.75);
+    const stemMat = mat(0x3a2058, 0x180c28, 0.2);
+    addCyl(root, 0.06, 0.09, 0.28, stemMat, 0, 0.14, 0);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), cap);
+    head.scale.y = 0.55;
+    head.position.y = 0.34;
+    root.add(head);
+    const mote = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05, 6, 5),
+      new THREE.MeshBasicMaterial({
+        color: 0xf4e4ff,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+        fog: false,
+      }),
+    );
+    mote.position.y = 0.52;
+    mote.userData.noShadow = true;
+    root.add(mote);
+    return root;
+  }
+  if (world.id === 'sea') {
+    const shell = mat(i % 2 ? 0xfff3a0 : 0xff8a5a, 0xfff6d0, 0.45);
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), shell);
+    body.scale.set(1.3, 0.45, 0.9);
+    body.position.y = 0.08;
+    root.add(body);
+    return root;
+  }
   const petalColor = world.id === 'desert'
     ? (i % 2 ? 0xff8a5a : 0xffe08a)
     : world.id === 'ice'
@@ -819,6 +989,12 @@ function addGrass(root, world) {
   } else if (world.id === 'ice') {
     scatterBlades(root, world, 0xf7fbff, 240, 0.5);
     scatterBlades(root, world, 0xb7e4ff, 110, 0.9, 32, -4, 24);
+  } else if (world.id === 'haunt') {
+    scatterBlades(root, world, 0x3a2060, 220, 0.58);
+    scatterBlades(root, world, 0x8a50c8, 90, 0.85, 40, -6, 28);
+  } else if (world.id === 'sea') {
+    scatterBlades(root, world, 0x2ea87a, 140, 0.7, 70, -20, 50);
+    scatterBlades(root, world, 0xf7fbff, 80, 0.35, 36, -4, 24);
   } else {
     scatterBlades(root, world, 0x2ea85a, 260, 0.62);
     scatterBlades(root, world, 0x8ae07a, 120, 0.95, 34, -4, 26);
@@ -826,7 +1002,7 @@ function addGrass(root, world) {
 }
 
 function addHills(root, world) {
-  const color = world.id === 'forest' ? 0x2c8a4c : world.id === 'desert' ? 0xd08948 : 0xd7eaff;
+  const color = world.id === 'forest' ? 0x2c8a4c : world.id === 'desert' ? 0xd08948 : world.id === 'haunt' ? 0x2a1848 : world.id === 'sea' ? 0x2a8a55 : 0xd7eaff;
   const hillMat = mat(color, color, 0.04);
   hillMat.roughness = 1;
   const spots = [[-62, -78, 22], [70, -70, 18], [-16, -104, 26], [28, -98, 20], [-80, -12, 14], [82, 4, 13]];
@@ -840,6 +1016,43 @@ function addHills(root, world) {
 }
 
 function addSkyDress(root, world) {
+  if (world.id === 'haunt') {
+    const moon = new THREE.Mesh(
+      new THREE.SphereGeometry(5.2, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xd8c4ff, fog: false, depthWrite: false }),
+    );
+    moon.position.set(-28, 36, -70);
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(10, 14, 10),
+      new THREE.MeshBasicMaterial({
+        color: world.glow,
+        transparent: true,
+        opacity: 0.28,
+        fog: false,
+        depthWrite: false,
+      }),
+    );
+    halo.position.copy(moon.position);
+    root.add(moon, halo);
+    const mist = new THREE.MeshBasicMaterial({
+      color: 0xc9a0ff,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false,
+      fog: false,
+    });
+    const spots = [
+      [-24, 8, -18, 6], [18, 6, -30, 7], [-8, 5, -48, 6.4],
+      [30, 7, -12, 4.6], [-36, 9, -40, 6.8], [8, 4, -6, 4],
+    ];
+    for (const [x, y, z, s] of spots) {
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), mist);
+      puff.scale.set(s, s * 0.45, s);
+      puff.position.set(x, y, z);
+      root.add(puff);
+    }
+    return;
+  }
   const sunColor = world.id === 'ice' ? 0xfff0f6 : 0xfff3c4;
   const sun = new THREE.Mesh(
     new THREE.SphereGeometry(7.2, 16, 12),
@@ -887,7 +1100,11 @@ function addFlowers(root, world) {
     ? [0xfff1a8, 0xff8a5a, 0xffd0ea]
     : world.id === 'ice'
       ? [0xffd0ea, 0xffffff, 0xb7e4ff]
-      : [0xffd0ea, 0xfff1a8, 0xffffff];
+      : world.id === 'haunt'
+        ? [0xc45cff, 0xe0b0ff, 0x7a40c0]
+        : world.id === 'sea'
+          ? [0xfff3a0, 0xff8a5a, 0xf7fbff]
+          : [0xffd0ea, 0xfff1a8, 0xffffff];
   const geo = new THREE.SphereGeometry(0.13, 8, 6);
   for (const color of colors) {
     const mesh = new THREE.InstancedMesh(geo, mat(color, color, 0.55), 36);
@@ -916,6 +1133,28 @@ function makeProp(world, i) {
   } else if (world.id === 'desert') {
     addBox(root, 1.2 + (i % 3) * 0.3, 0.7 + (i % 2) * 0.5, 1.1, mat(world.prop, 0x4a2010, 0.2), 0, 0.5, 0);
     addBox(root, 0.7, 0.45, 0.6, mat(world.glow, world.glow, 0.25), 0.2, 1.05, 0.1);
+  } else if (world.id === 'haunt') {
+    const stone = addCyl(root, 0.28, 0.42, 0.7, mat(0x2a1840, world.glow, 0.25), 0, 0.35, 0);
+    stone.rotation.z = ((i % 5) - 2) * 0.08;
+    const lamp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.16, 8, 6),
+      new THREE.MeshBasicMaterial({
+        color: world.glow,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        fog: false,
+      }),
+    );
+    lamp.position.y = 0.85;
+    lamp.userData.noShadow = true;
+    root.add(lamp);
+  } else if (world.id === 'sea') {
+    const barrel = addCyl(root, 0.28, 0.32, 0.7, mat(0x8a5a32, 0x3a2414, 0.2), 0, 0.35, 0);
+    barrel.rotation.z = Math.PI / 2;
+    const buoy = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), mat(world.enemy, world.glow, 0.4));
+    buoy.position.set(0.55, 0.55, 0);
+    root.add(buoy);
   } else {
     const crystal = addCyl(root, 0.02, 0.45, 1.6 + (i % 3) * 0.4, mat(world.prop, world.glow, 0.55), 0, 0.9, 0);
     crystal.rotation.z = ((i % 5) - 2) * 0.12;
@@ -1035,6 +1274,8 @@ export class GroundBattle {
     this.deployNoteT = 0;
     this.aiming = false;
     this.grenadeCd = 0;
+    this.difficulty = groundDifficulty('medium');
+    this.resetBattleScore();
     const q = (id) => (typeof document === 'undefined' ? null : document.querySelector(id));
     this.dom = {
       phase: q('#ground-phase'),
@@ -1046,6 +1287,8 @@ export class GroundBattle {
       bark: q('#ground-bark'),
       holdLabel: q('#ground-hold-label'),
       captureLabel: q('#ground-capture-label'),
+      score: q('#ground-score'),
+      stars: q('#ground-stars'),
       soldierBtn: q('#ground-soldier'),
       tankBtn: q('#ground-tank'),
       destroyerBtn: q('#ground-destroyer'),
@@ -1066,14 +1309,16 @@ export class GroundBattle {
     this.marchLabel = opts.marchLabel || '';
     this.world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
     this.scene.background = new THREE.Color(this.world.skyHorizon);
-    this.scene.fog = new THREE.FogExp2(this.world.fog, 0.00215);
+    const haunt = this.world.id === 'haunt';
+    this.scene.fog = new THREE.FogExp2(this.world.fog, haunt ? 0.0042 : 0.00215);
     this.sun.castShadow = true;
     this.hemi.color.setHex(this.world.skyHorizon);
     this.hemi.groundColor.setHex(this.world.ground);
-    this.hemi.intensity = 1.05;
-    this.sun.color.setHex(this.world.id === 'ice' ? 0xfff6fb : 0xffe0a8);
-    this.sun.intensity = this.world.id === 'desert' ? 1.75 : 1.5;
-    this.fill.color.setHex(this.world.id === 'ice' ? 0xffd0ea : 0xffc2a8);
+    this.hemi.intensity = haunt ? 0.72 : 1.05;
+    this.sun.color.setHex(haunt ? 0xcbb0ff : this.world.id === 'ice' ? 0xfff6fb : 0xffe0a8);
+    this.sun.intensity = haunt ? 0.62 : this.world.id === 'desert' ? 1.75 : 1.5;
+    this.fill.color.setHex(haunt ? 0x8a4ad8 : this.world.id === 'ice' ? 0xffd0ea : 0xffc2a8);
+    this.fill.intensity = haunt ? 0.85 : 0.45;
     this.scene.remove(this.root);
     this.root = new THREE.Group();
     this.scene.add(this.root);
@@ -1083,6 +1328,8 @@ export class GroundBattle {
     this.barricades = [];
     this.tubes = [];
     this.phase = this.mode === 'boss' ? 'boss' : 'artillery';
+    this.wave = this.mode === 'boss' ? 0 : 1;
+    this.waveSquad = [];
     this.phaseT = 0;
     this.hold = 100;
     this.capture = 0;
@@ -1106,6 +1353,14 @@ export class GroundBattle {
     this.deployNote = '';
     this.deployNoteT = 0;
     this.grenadeCd = 0;
+    this.difficulty = groundDifficulty(opts.difficulty);
+    this.resetBattleScore();
+    this.playerGrace = 0;
+    this.playerOut = false;
+    this.livesLeft = this.difficulty.lives;
+    this.phaseLock = 0;
+    this.salvoLanded = false;
+    this.phaseMark = { hold: 100, capture: 0 };
     this.active = true;
     this.buildField();
     [-12, 0, 12].forEach((x, i) => this.spawn('artillery', x, 0.05 + i * 0.08, { speed: 0, laneFollow: 0.15, bob: 0, z: 10 }));
@@ -1119,12 +1374,22 @@ export class GroundBattle {
       gun: friendGuns[i],
     }));
     const foeGuns = ['cannon', 'machine', 'mortar', 'machine'];
-    [[-9.5, -14.2], [-3.2, -12.6], [3.4, -13.5], [9.6, -12.2]].forEach(([x, z], i) => this.spawn('foeCar', x, 0.1 + i * 0.06, {
+    const foeSlots = [[-9.5, -14.2], [-3.2, -12.6], [3.4, -13.5], [9.6, -12.2]];
+    const foeCount = this.difficulty.id === 'easy' ? 3 : foeSlots.length;
+    foeSlots.slice(0, foeCount).forEach(([x, z], i) => this.spawn('foeCar', x, 0.1 + i * 0.06, {
       z,
       speed: -2.1,
-      shotCd: 0.12 + i * 0.1,
+      shotCd: (0.12 + i * 0.1) * this.difficulty.cadence,
       gun: foeGuns[i],
     }));
+    if (this.difficulty.id === 'hard') {
+      this.spawn('foeCar', 0.4, 0.25, {
+        z: -16.4,
+        speed: -2.4,
+        shotCd: 0.18 * this.difficulty.cadence,
+        gun: 'cannon',
+      });
+    }
     for (let i = 0; i < 36; i += 1) {
       const col = (i % 12) - 5.5;
       const row = Math.floor(i / 12);
@@ -1134,12 +1399,13 @@ export class GroundBattle {
         shotCd: 0.05 + (i % 8) * 0.08,
       });
     }
-    for (let i = 0; i < 30; i += 1) {
+    const defenders = scaleCount(30, this.difficulty.spawn, 12);
+    for (let i = 0; i < defenders; i += 1) {
       const col = (i % 10) - 4.5;
       const row = Math.floor(i / 10);
       this.spawn('defender', col * 1.8, 0.02 * (i % 5), {
         z: -11.2 - row * 1.55,
-        shotCd: 0.08 + (i % 7) * 0.1,
+        shotCd: (0.08 + (i % 7) * 0.1) * this.difficulty.cadence,
       });
     }
     const extra = (this.perks.company || 0) * 8;
@@ -1173,7 +1439,7 @@ export class GroundBattle {
     const sky = new THREE.Mesh(
       new THREE.SphereGeometry(260, 28, 18),
       new THREE.MeshBasicMaterial({
-        map: skyTexture(world.skyTop, world.skyHorizon, world.fog),
+        map: skyTexture(world.skyTop, world.skyHorizon, world.fog, world.cloud),
         side: THREE.BackSide,
         fog: false,
         depthWrite: false,
@@ -1184,7 +1450,11 @@ export class GroundBattle {
       ? [0x3c9a55, 0x8dffb8, 0x1d6a38]
       : world.id === 'desert'
         ? [0xe2b06a, 0xffe0a8, 0xc45a3a]
-        : [0xf3f9ff, 0xffffff, 0xb7d4ee];
+        : world.id === 'haunt'
+          ? [0x1a1028, 0x6a3a9a, 0x120818]
+          : world.id === 'sea'
+            ? [0x1a6a9a, 0x7ec8ff, 0x0e3a66]
+            : [0xf3f9ff, 0xffffff, 0xb7d4ee];
     const groundMat = mat(0xffffff, world.ground, 0.03);
     groundMat.map = fieldTexture(meadow[0], meadow[1], meadow[2]);
     groundMat.roughness = 0.94;
@@ -1197,12 +1467,16 @@ export class GroundBattle {
       ? [0xd7b56a, 0xf3ddb0, 0xa67c45]
       : world.id === 'desert'
         ? [0xc98448, 0xe7b07a, 0x8a4a32]
-        : [0xd5e4f4, 0xffffff, 0xb7c8dc];
+        : world.id === 'haunt'
+          ? [0x4a2878, 0xc9a0ff, 0x2a1848]
+          : world.id === 'sea'
+            ? [0xe6c07a, 0xfff1c2, 0xc49a58]
+            : [0xd5e4f4, 0xffffff, 0xb7c8dc];
     const laneMat = mat(0xffffff, world.lane, 0.05);
     laneMat.map = fieldTexture(path[0], path[1], path[2]);
-    laneMat.map.repeat.set(1.4, 4);
+    laneMat.map.repeat.set(3.2, 5);
     laneMat.roughness = 0.9;
-    const lane = new THREE.Mesh(new THREE.PlaneGeometry(16, 120), laneMat);
+    const lane = new THREE.Mesh(new THREE.PlaneGeometry(36, 150), laneMat);
     lane.rotation.x = -Math.PI / 2;
     lane.position.y = 0.03;
     lane.position.z = -8;
@@ -1216,11 +1490,11 @@ export class GroundBattle {
     for (let i = 0; i < 18; i += 1) {
       const tree = makeTree(world, i);
       const side = i % 2 === 0 ? -1 : 1;
-      tree.position.set(side * (13 + (i % 5) * 5.2), 0, -46 + (i % 9) * 7);
+      tree.position.set(side * (22 + (i % 5) * 4.4), 0, -46 + (i % 9) * 7);
       tree.scale.setScalar(1.35 + (i % 4) * 0.28);
       this.root.add(tree);
     }
-    for (const [x, z, s, n] of [[-14, 5, 1.65, 1], [14, 4, 1.5, 2], [-13.5, -12, 1.85, 4], [13.2, -14, 1.7, 5]]) {
+    for (const [x, z, s, n] of [[-22, 5, 1.65, 1], [22, 4, 1.5, 2], [-23, -12, 1.85, 4], [22.4, -14, 1.7, 5]]) {
       const tree = makeTree(world, n);
       tree.position.set(x, 0, z);
       tree.scale.setScalar(s);
@@ -1229,7 +1503,7 @@ export class GroundBattle {
     for (let i = 0; i < 28; i += 1) {
       const plant = makePlant(world, i);
       const side = i % 2 === 0 ? -1 : 1;
-      plant.position.set(side * (5.4 + (i % 4) * 1.15), 0, 8 - i * 1.7);
+      plant.position.set(side * (16 + (i % 4) * 1.05), 0, 8 - i * 1.7);
       plant.scale.setScalar(1.2 + (i % 3) * 0.28);
       this.root.add(plant);
     }
@@ -1274,7 +1548,7 @@ export class GroundBattle {
     else if (kind === 'foeCar') mesh = makeGunCar(this.world.enemy, true, extra.gun || 'machine');
     else if (kind === 'infantry') mesh = makeInfantry(this.world.accent, false);
     else if (kind === 'player') mesh = makeInfantry(0x2a62f0, false);
-    else if (kind === 'defender') mesh = makeInfantry(this.world.enemy, true);
+    else if (kind === 'defender') mesh = this.world.id === 'haunt' ? makeGhost() : makeInfantry(this.world.enemy, true);
     else if (kind === 'destroyer') mesh = makeDestroyer();
     else if (kind === 'boss') mesh = makeBoss(this.world);
     else mesh = makeSpecial(kind, this.world);
@@ -1310,9 +1584,9 @@ export class GroundBattle {
       }
     });
     this.root.add(mesh);
-    const speeds = { artillery: 0, tank: 8, gunCar: 13, foeCar: -2.6, infantry: 12, defender: 0, lantern: 9, drum: 9, crown: 9, destroyer: 7, boss: -0.72 };
-    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, foeCar: 0.05, infantry: 0.08, defender: 0.04, lantern: 0.08, drum: 0.04, crown: 0.05, destroyer: 0.05, boss: 0.05 };
-    const follows = { artillery: 0.15, tank: 1, gunCar: 1, foeCar: 0.35, infantry: 1, defender: 0.15, lantern: 0.35, drum: 0.35, crown: 0.35, destroyer: 0.45, boss: 0.15 };
+    const speeds = { artillery: 0, tank: 8, gunCar: 13, foeCar: -2.6, infantry: 12, defender: 0, lantern: 9, drum: 9, crown: 9, wisp: 9, lighthouse: 9, destroyer: 7, boss: -0.72 };
+    const bobs = { artillery: 0, tank: 0.03, gunCar: 0.05, foeCar: 0.05, infantry: 0.08, defender: 0.04, lantern: 0.08, drum: 0.04, crown: 0.05, wisp: 0.08, lighthouse: 0.04, destroyer: 0.05, boss: 0.05 };
+    const follows = { artillery: 0.15, tank: 1, gunCar: 1, foeCar: 0.35, infantry: 1, defender: 0.15, lantern: 0.35, drum: 0.35, crown: 0.35, wisp: 0.35, lighthouse: 0.35, destroyer: 0.45, boss: 0.15 };
     const unit = {
       kind,
       mesh,
@@ -1324,12 +1598,14 @@ export class GroundBattle {
       speed: extra.speed ?? speeds[kind] ?? 8,
       bob: extra.bob ?? bobs[kind] ?? 0.04,
       laneFollow: extra.laneFollow ?? follows[kind] ?? 1,
-      special: kind === 'destroyer' || kind === 'boss' || kind === 'lantern' || kind === 'drum' || kind === 'crown',
+      special: kind === 'destroyer' || kind === 'boss' || kind === 'lantern' || kind === 'drum' || kind === 'crown' || kind === 'wisp' || kind === 'lighthouse',
       shotCd: extra.shotCd ?? 0.4 + Math.random() * 0.5,
       gun: extra.gun || mesh.userData.gun || 'machine',
       attackT: 0,
-      hp: kind === 'player' ? this.playerMaxHp() : kind === 'boss' ? BOSS_HP : kind === 'defender' ? 6 : kind === 'infantry' ? 6 : 0,
-      maxHp: kind === 'boss' ? BOSS_HP : kind === 'player' ? this.playerMaxHp() : 0,
+      hp: kind === 'player' ? this.playerMaxHp() : kind === 'boss' ? BOSS_HP : kind === 'defender' ? 6 : kind === 'infantry' ? 6 : kind === 'foeCar' ? (extra.gun === 'cannon' ? 10 : extra.gun === 'mortar' ? 8 : 7) : kind === 'tank' ? 22 : kind === 'gunCar' ? 14 : 0,
+      maxHp: kind === 'boss' ? BOSS_HP : kind === 'player' ? this.playerMaxHp() : kind === 'foeCar' ? (extra.gun === 'cannon' ? 10 : extra.gun === 'mortar' ? 8 : 7) : kind === 'tank' ? 22 : kind === 'gunCar' ? 14 : 0,
+      wrecked: false,
+      wreckT: 0,
       duel: null,
       down: false,
       downT: 0,
@@ -1346,6 +1622,13 @@ export class GroundBattle {
   beginPhase(id) {
     this.phase = id;
     this.phaseT = 0;
+    this.phaseLock = 0;
+    this.phaseMark = { hold: this.hold, capture: this.capture };
+    if (id !== 'resolve' && this.mode !== 'boss' && this.wave >= 5) {
+      this.spawnStageWave();
+      this.sfx.wave?.();
+      return;
+    }
     if (id === 'armor') {
       [-12, -2, 8].forEach((x, i) => this.spawn('tank', x, 0.15 + i * 0.45));
       ['machine', 'cannon', 'mortar'].forEach((gun, i) => this.spawn('gunCar', -8 + i * 8, 0.22 + i * 0.2, { gun }));
@@ -1358,10 +1641,14 @@ export class GroundBattle {
         const row = Math.floor(i / 8);
         this.spawn('infantry', col * 2.1, row * 0.12, { z: 12 + row * 1.8, speed: 5.4 });
       }
-      for (let i = 0; i < 18; i += 1) {
+      const wave = scaleCount(18, this.difficulty.spawn, 8);
+      for (let i = 0; i < wave; i += 1) {
         const col = (i % 9) - 4;
         const row = Math.floor(i / 9);
-        this.spawn('defender', col * 1.9, 0.06, { z: -16 - row * 1.4 });
+        this.spawn('defender', col * 1.9, 0.06, {
+          z: -16 - row * 1.4,
+          shotCd: 0.2 * this.difficulty.cadence,
+        });
       }
     } else if (id === 'special') {
       this.spawn('destroyer', 0, 0.18);
@@ -1369,9 +1656,18 @@ export class GroundBattle {
       this.splash(0, 6, 0x1ad4c8, 15.3);
       this.shake = Math.min(1.6, this.shake + 0.9);
       this.destroyerCd = 0.85;
+      this.phaseMark = { hold: this.hold, capture: this.capture };
       this.sfx.wave?.();
     } else if (id === 'resolve') {
-      if (!this.retreating) this.outcome = 'win';
+      if (!this.retreating) {
+        this.outcome = 'win';
+        this.gold = goldReady({
+          win: true,
+          fullForce: this.fullForce,
+          balanced: this.balanced,
+          bestStreak: this.bestStreak,
+        });
+      }
       this.sfx.wave?.();
       this.reportResolved();
     } else {
@@ -1386,11 +1682,17 @@ export class GroundBattle {
       win: this.outcome === 'win',
       boss: this.mode === 'boss',
       worldId: this.world.id,
+      score: this.score,
+      bestStreak: this.bestStreak,
+      fullForce: this.fullForce,
+      balanced: this.balanced,
+      gold: Boolean(this.gold),
     });
   }
 
   playerMaxHp() {
-    return 8 + (this.perks?.shield || 0) * 6;
+    const base = 8 + (this.perks?.shield || 0) * 6;
+    return Math.max(3, Math.round(base * (this.difficulty?.playerHp || 1)));
   }
 
   scaledCd(base, perk, gain) {
@@ -1403,9 +1705,33 @@ export class GroundBattle {
   }
 
   nextPhase() {
-    const index = PHASE_ORDER.indexOf(this.phase);
-    if (index < 0 || index >= PHASE_ORDER.length - 1) return;
-    this.beginPhase(PHASE_ORDER[index + 1]);
+    if (this.mode === 'boss' || this.phase === 'boss' || this.phase === 'resolve') return;
+    const step = stageWaveStep(this.wave);
+    if (step.done) {
+      this.beginPhase('resolve');
+      return;
+    }
+    this.wave = step.wave;
+    this.waveSquad = [];
+    if (this.wave === STAGE_WAVES) this.flashDeploy(T.groundLastWave);
+    this.beginPhase(step.beat);
+  }
+
+  /** Waves 5–10 are one squad. The next squad waits until this one is down. */
+  spawnStageWave() {
+    this.waveSquad = [];
+    const base = this.wave === STAGE_WAVES ? 8 : 6;
+    const count = scaleCount(base, this.difficulty?.spawn || 1, 4);
+    for (let i = 0; i < count; i += 1) {
+      const unit = this.spawn('defender', (i - (count - 1) / 2) * 1.7, 0.05, {
+        z: -13.5 - (i % 2) * 1.35,
+        shotCd: 0.22 * (this.difficulty?.cadence || 1),
+      });
+      this.waveSquad.push(unit);
+    }
+    if (this.wave === STAGE_WAVES && this.countKind('destroyer') < 1) {
+      this.spawn('destroyer', 0, 0.12);
+    }
   }
 
   retreat() {
@@ -1456,7 +1782,8 @@ export class GroundBattle {
         shotCd: 0.15 + i * 0.08,
       });
     }
-    this.flashDeploy(T.groundSoldierIn);
+    const crowned = this.noteDeploy('infantry');
+    this.flashDeploy(crowned ? T.groundFullForce : T.groundSoldierIn);
     this.sfx.ui?.();
     return true;
   }
@@ -1470,7 +1797,8 @@ export class GroundBattle {
       speed: 8.6,
       shotCd: 0.2,
     });
-    this.flashDeploy(T.groundTankIn);
+    const crowned = this.noteDeploy('tank');
+    this.flashDeploy(crowned ? T.groundFullForce : T.groundTankIn);
     this.sfx.wave?.();
     return true;
   }
@@ -1486,7 +1814,8 @@ export class GroundBattle {
     });
     this.splash(unit.x, unit.z, 0x1ad4c8, 11.9);
     this.shake = Math.min(1.6, this.shake + 0.7);
-    this.flashDeploy(T.groundDestroyerIn);
+    const crowned = this.noteDeploy('destroyer');
+    this.flashDeploy(crowned ? T.groundFullForce : T.groundDestroyerIn);
     this.sfx.wave?.();
     return true;
   }
@@ -1497,7 +1826,7 @@ export class GroundBattle {
 
   drivePlayer(dt, input) {
     const player = this.playerUnit();
-    if (!player || this.phase === 'resolve') return;
+    if (!player || player.down || this.phase === 'resolve') return;
     player.shotCd = Math.max(0, (player.shotCd || 0) - dt);
     const step = 11 * dt;
     let x = 0;
@@ -1558,7 +1887,9 @@ export class GroundBattle {
       silentTubes: true,
       team: 'friend',
       soldierHit: this.aiming ? 4.8 : 3.6,
+      troopDamage: 6,
       grenade: true,
+      role: 'soldier',
     });
     this.sfx.blip?.({ freq: 260, dur: 0.09, type: 'triangle', vol: 0.06, slide: 160 });
     return true;
@@ -1572,6 +1903,9 @@ export class GroundBattle {
     this.salvoCd = Math.max(0, this.salvoCd - dt);
     this.deployNoteT = Math.max(0, this.deployNoteT - dt);
     this.grenadeCd = Math.max(0, this.grenadeCd - dt);
+    this.streakT = Math.max(0, this.streakT - dt);
+    if (this.streakT <= 0) this.streak = 0;
+    this.playerGrace = Math.max(0, this.playerGrace - dt);
     this.drivePlayer(dt, input);
     this.lane = THREE.MathUtils.damp(this.lane, 0, 4, dt);
 
@@ -1589,7 +1923,15 @@ export class GroundBattle {
     }
     if (this.phase !== 'resolve' && this.phase !== 'boss') {
       this.phaseT += dt;
-      if (this.phaseT >= PHASE_LEN[this.phase]) this.nextPhase();
+      if (this.phaseLock > 0) {
+        this.phaseLock -= dt;
+        if (this.phaseLock <= 0) this.nextPhase();
+      } else if (this.phaseT >= (PHASE_MIN[this.phase] || 0) && this.beatEarned()) {
+        this.awardBeatStar();
+        this.flashDeploy(T.groundBeatClear);
+        this.sfx.ui?.();
+        this.phaseLock = 0.9;
+      }
     }
 
     this.pairSoldiers();
@@ -1637,7 +1979,9 @@ export class GroundBattle {
       arc: 0.85,
       silentTubes: true,
       team: unit.kind === 'defender' ? 'foe' : 'friend',
-      soldierHit: unit.kind === 'player' ? 1.8 : 0,
+      soldierHit: unit.kind === 'player' ? 1.8 : unit.kind === 'defender' ? this.defenderReach() : 0,
+      troopDamage: unit.kind === 'player' ? 1 : this.defenderChip(),
+      role: unit.kind === 'player' ? 'soldier' : undefined,
     });
     const flash = unit.mesh.userData.flash;
     if (flash) flash.material.opacity = 1;
@@ -1662,32 +2006,434 @@ export class GroundBattle {
       : unit.gun === 'mortar'
         ? 0xffb0e0
         : (unit.kind === 'foeCar' ? this.world.enemy : this.world.accent);
-    let to = new THREE.Vector3(
-      unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * gun.spread,
-      unit.gun === 'mortar' ? 0.4 : 0.95,
-      unit.z + forward * (gun.range + Math.random() * 4),
-    );
+    const prey = unit.kind === 'foeCar' ? this.armorPrey(unit) : this.friendArmor(unit);
+    let to = prey
+      ? new THREE.Vector3(prey.x + (Math.random() - 0.5) * gun.spread * 0.35, unit.gun === 'mortar' ? 0.6 : 0.9, prey.z)
+      : new THREE.Vector3(
+        unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * gun.spread,
+        unit.gun === 'mortar' ? 0.4 : 0.95,
+        unit.z + forward * (gun.range + Math.random() * 4),
+      );
     if (unit.kind !== 'foeCar') to = this.bossTarget(to);
+    const foe = unit.kind === 'foeCar';
+    const chip = foe
+      ? (unit.gun === 'machine' ? (this.difficulty.id === 'hard' ? 1 : 0) : 1)
+      : (unit.gun === 'machine' ? 0 : 1);
     this.launchShell({
       from,
       to,
       color,
       radius: gun.radius,
       dur: gun.dur,
-      holdHit: unit.kind === 'foeCar' ? 0 : gun.hold,
+      holdHit: foe ? 0 : gun.hold,
       splash: gun.splash,
       arc: gun.arc,
       silentTubes: true,
-      team: unit.kind === 'foeCar' ? 'foe' : 'friend',
-      soldierHit: unit.gun === 'machine' ? 0 : 2.1,
+      team: foe ? 'foe' : 'friend',
+      soldierHit: chip > 0 ? (unit.gun === 'mortar' ? 2.35 : 2.05) : 0,
+      troopDamage: chip > 0 ? Math.max(1, Math.round(chip)) : 0,
+      vehicleHit: unit.gun === 'machine' ? 0 : foe ? 2.4 : 3.2,
+      vehicleRadius: 3.1,
+      role: !foe && unit.gun !== 'machine' ? 'tank' : undefined,
     });
     const flash = unit.mesh.userData.flash;
     if (flash) flash.material.opacity = 1;
     const turret = unit.mesh.userData.turret;
-    if (turret) turret.rotation.x = gun.kick;
+    if (turret) {
+      turret.rotation.x = gun.kick;
+      if (prey) {
+        const dx = prey.x - unit.x;
+        const dz = prey.z - unit.z;
+        turret.rotation.y = Math.atan2(-dx, -dz) - unit.mesh.rotation.y;
+      }
+    }
     if (Math.random() < 0.45) {
       this.sfx.blip?.({ freq: unit.kind === 'foeCar' ? 160 : 240, dur: 0.06, type: 'square', vol: 0.04, slide: -30 });
     }
+  }
+
+  resetBattleScore() {
+    this.score = 0;
+    this.streak = 0;
+    this.streakT = 0;
+    this.bestStreak = 0;
+    this.sent = { infantry: false, tank: false, destroyer: false };
+    this.roleHits = { soldier: 0, tank: 0, destroyer: 0 };
+    this.fullForce = false;
+    this.balanced = false;
+    this.gold = false;
+    this.stars = { tank: false, soldier: false, destroyer: false };
+    this.playerGrace = 0;
+    this.playerOut = false;
+    this.livesLeft = 0;
+  }
+
+  addBattleScore(amount) {
+    if (!(amount > 0) || this.outcome === 'retreat') return;
+    if (this.streakT > 0) this.streak = Math.min(4, this.streak + 1);
+    else this.streak = 1;
+    this.streakT = 2.8;
+    if (this.streak > this.bestStreak) this.bestStreak = this.streak;
+    this.score += Math.round(amount * this.streak);
+  }
+
+  creditRole(role) {
+    if (!role || !this.roleHits) return;
+    this.roleHits[role] += 1;
+    if (this.balanced) return;
+    if (this.roleHits.soldier > 0 && this.roleHits.tank > 0 && this.roleHits.destroyer > 0) {
+      this.balanced = true;
+      this.addBattleScore(80);
+      this.flashDeploy(T.groundBalanced);
+    }
+  }
+
+  noteDeploy(kind) {
+    if (!this.sent || this.sent[kind]) return false;
+    this.sent[kind] = true;
+    if (this.fullForce) return false;
+    if (this.sent.infantry && this.sent.tank && this.sent.destroyer) {
+      this.fullForce = true;
+      this.addBattleScore(50);
+      return true;
+    }
+    return false;
+  }
+
+  barricadesPopped() {
+    let n = 0;
+    for (const block of this.barricades) if (block.popped) n += 1;
+    return n;
+  }
+
+  beatEarned() {
+    if (this.mode !== 'boss' && this.wave >= 5) {
+      return this.waveSquad.length > 0 && this.waveSquad.every((unit) => unit.down || unit.wrecked);
+    }
+    if (this.phase === 'artillery') return this.hold <= 68;
+    if (this.phase === 'armor') return this.barricadesPopped() >= 4;
+    if (this.phase === 'infantry') return this.capture >= 74;
+    if (this.phase === 'special') {
+      const mark = this.phaseMark || { hold: this.hold, capture: this.capture };
+      const lineClear = this.hold <= 18 || this.capture >= 92;
+      const pushed = this.hold <= mark.hold - 18 || this.capture >= Math.min(100, mark.capture + 12);
+      return lineClear || pushed || this.salvoLanded;
+    }
+    return false;
+  }
+
+  awardBeatStar() {
+    if (this.phase === 'armor') this.stars.tank = true;
+    else if (this.phase === 'infantry') this.stars.soldier = true;
+    else if (this.phase === 'special') this.stars.destroyer = true;
+  }
+
+  defenderChip() {
+    return this.difficulty?.id === 'hard' ? 1 : 0;
+  }
+
+  defenderReach() {
+    return this.difficulty?.id === 'hard' ? 1.7 : 0;
+  }
+
+  /** The blue soldier draws fire by stepping ahead of the friendly line. */
+  playerExposed() {
+    const player = this.playerUnit();
+    if (!player || player.down) return false;
+    const front = this.friendlyFront();
+    if (front == null) return true;
+    return player.z < front - 0.35;
+  }
+
+  reaches(unit, x, z, radius) {
+    let scale = unit.kind === 'player' ? (this.difficulty?.playerHit || 1) : 1;
+    if (unit.kind === 'player' && this.difficulty?.id === 'hard' && !this.playerExposed()) scale *= 0.42;
+    return Math.hypot(unit.x - x, unit.z - z) <= radius * scale;
+  }
+
+  tankWall(unit) {
+    let best = null;
+    let bestD = 48;
+    for (const block of this.barricades) {
+      if (block.popped) continue;
+      const dist = Math.hypot(block.x - unit.x, block.z - unit.z);
+      let claimed = false;
+      for (const other of this.units) {
+        if (other === unit || other.kind !== 'tank' || other.wrecked || other.delay > 0) continue;
+        if (other._aim?.kind === 'wall' && Math.abs((other._aim.x || 0) - block.x) < 0.5) {
+          if (Math.hypot(other.x - block.x, other.z - block.z) + 0.4 < dist) claimed = true;
+        }
+      }
+      if (claimed) continue;
+      if (dist < bestD) {
+        best = block;
+        bestD = dist;
+      }
+    }
+    if (best) return best;
+    let fallback = null;
+    let fallbackD = 48;
+    for (const block of this.barricades) {
+      if (block.popped) continue;
+      const dist = Math.hypot(block.x - unit.x, block.z - unit.z);
+      if (dist < fallbackD) {
+        fallback = block;
+        fallbackD = dist;
+      }
+    }
+    return fallback;
+  }
+
+  tankAim(unit) {
+    let bestCar = null;
+    let bestScore = 30;
+    for (const other of this.units) {
+      if (other.kind !== 'foeCar' || other.wrecked || other.delay > 0 || !other.mesh.visible) continue;
+      const dist = Math.hypot(other.x - unit.x, other.z - unit.z);
+      if (dist > 26) continue;
+      let score = dist;
+      if (other.hp < other.maxHp) score -= 3;
+      if (score < bestScore) {
+        bestCar = other;
+        bestScore = score;
+      }
+    }
+    const wallsDown = this.barricadesPopped() >= 4;
+    if (bestCar && (this.phase === 'armor' || wallsDown || bestScore < 15)) {
+      return { kind: 'armor', x: bestCar.x, z: bestCar.z, unit: bestCar };
+    }
+    if (unit.z > -18) {
+      const wall = this.tankWall(unit);
+      if (wall) return { kind: 'wall', x: wall.x, z: wall.z };
+    }
+    const troop = this.openEnemy(unit, 30) || this.nearestEnemy(unit, 30);
+    if (troop) return { kind: 'troop', x: troop.x, z: troop.z, unit: troop };
+    return { kind: 'push', x: unit.x * 0.35, z: -26 };
+  }
+
+  steerTank(unit, dt) {
+    if (unit.wrecked) return;
+    const aim = this.tankAim(unit);
+    unit._aim = aim;
+    unit.focus = aim?.unit && this.troopAlive(aim.unit) ? aim.unit : null;
+    let desired = aim ? aim.x : unit.x;
+    if ((unit._coverT || 0) > 0) {
+      unit._coverT -= dt;
+      desired = unit._coverX;
+    }
+    let spacing = 0;
+    for (const other of this.units) {
+      if (other === unit || other.kind !== 'tank' || other.wrecked || other.delay > 0) continue;
+      const dx = unit.x - other.x;
+      if (Math.abs(unit.z - other.z) < 3.6 && Math.abs(dx) < 2.7) {
+        spacing += Math.sign(dx || (unit.x >= 0 ? 1 : -1)) * 2.4;
+      }
+    }
+    unit.x = THREE.MathUtils.clamp(
+      unit.x + THREE.MathUtils.clamp(desired - unit.x, -1, 1) * 5.4 * dt + spacing * dt,
+      -16,
+      16,
+    );
+    const lining = aim && (aim.kind === 'armor' || aim.kind === 'wall') && Math.abs(desired - unit.x) > 1.5;
+    unit._slow = lining ? 0.62 : 1;
+  }
+
+  vehicleAlive(unit) {
+    return Boolean(unit) && !unit.wrecked && unit.delay <= 0 && (unit.kind === 'tank' || unit.kind === 'gunCar' || unit.kind === 'foeCar' || unit.kind === 'destroyer');
+  }
+
+  armorPrey(unit) {
+    let best = null;
+    let bestD = 24;
+    const player = this.playerUnit();
+    const pool = [];
+    for (const other of this.units) {
+      if (other.wrecked || other.delay > 0 || other.down) continue;
+      if (other.kind === 'tank' || other.kind === 'gunCar' || other.kind === 'destroyer') pool.push(other);
+    }
+    if (player && !player.down && player.delay <= 0) pool.push(player);
+    for (const other of pool) {
+      const dist = Math.hypot(other.x - unit.x, other.z - unit.z);
+      const hard = this.difficulty?.id === 'hard';
+      const exposed = other.kind === 'player' && this.playerExposed();
+      const bias = other.kind === 'tank'
+        ? -1.2
+        : other.kind === 'player'
+          ? (hard && exposed ? -0.85 : hard ? 4.5 : 0.5)
+          : other.kind === 'destroyer'
+            ? -0.3
+            : 0.8;
+      if (dist + bias < bestD) {
+        best = other;
+        bestD = dist + bias;
+      }
+    }
+    return best;
+  }
+
+  friendArmor(unit) {
+    let best = null;
+    let bestD = 22;
+    for (const other of this.units) {
+      if (other.kind !== 'foeCar' || other.wrecked || other.delay > 0) continue;
+      const dist = Math.hypot(other.x - unit.x, other.z - unit.z);
+      if (dist < bestD) {
+        best = other;
+        bestD = dist;
+      }
+    }
+    return best;
+  }
+
+  steerFoeCar(unit, dt) {
+    if (unit.wrecked) return;
+    const prey = this.armorPrey(unit);
+    if (!prey) return;
+    unit.x = THREE.MathUtils.clamp(
+      unit.x + THREE.MathUtils.clamp(prey.x - unit.x, -1, 1) * 1.7 * dt,
+      -16,
+      16,
+    );
+  }
+
+  destroyerSpot() {
+    const boss = this.bossUnit();
+    if (this.mode === 'boss' && boss && !boss.down) {
+      return { x: boss.x, z: Math.min(-4, boss.z + 8.5), kind: 'boss' };
+    }
+    let sx = 0;
+    let sz = 0;
+    let n = 0;
+    for (const foe of this.units) {
+      if (!this.troopAlive(foe) || foe.kind !== 'defender') continue;
+      sx += foe.x;
+      sz += foe.z;
+      n += 1;
+    }
+    if (n >= 3) return { x: THREE.MathUtils.clamp(sx / n, -12, 12), z: sz / n + 7.5, kind: 'crowd' };
+    for (const block of this.barricades) {
+      if (!block.popped) return { x: block.x, z: block.z + 6, kind: 'wall' };
+    }
+    return { x: 0, z: -16, kind: 'push' };
+  }
+
+  steerDestroyer(unit, dt) {
+    const spot = this.destroyerSpot();
+    unit._aim = spot;
+    let spacing = 0;
+    for (const other of this.units) {
+      if (other === unit || other.kind !== 'destroyer' || other.delay > 0) continue;
+      const dx = unit.x - other.x;
+      if (Math.abs(dx) < 4.2 && Math.abs(unit.z - other.z) < 4) spacing += Math.sign(dx || 1) * 1.8;
+    }
+    unit.x = THREE.MathUtils.clamp(
+      unit.x + THREE.MathUtils.clamp(spot.x - unit.x, -1, 1) * 3.6 * dt + spacing * dt,
+      -14,
+      14,
+    );
+    unit._slow = unit.z - spot.z > 3 ? 1 : 0.4;
+    const dx = spot.x - unit.x;
+    unit.mesh.rotation.y = THREE.MathUtils.clamp(-dx * 0.05, -0.35, 0.35);
+  }
+
+  threatAlong(from, dir, reach) {
+    let best = null;
+    let bestScore = reach;
+    const consider = (x, z, kind, bias = 0) => {
+      const dx = x - from.x;
+      const dz = z - from.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 1.1 || dist > reach) return;
+      const dot = (dx / dist) * dir.x + (dz / dist) * dir.z;
+      if (dot < 0.62) return;
+      const score = dist - bias;
+      if (score < bestScore) {
+        best = { x, z, kind };
+        bestScore = score;
+      }
+    };
+    const boss = this.bossUnit();
+    if (this.mode === 'boss' && boss && !boss.down) consider(boss.x, boss.z, 'boss', 6);
+    for (const other of this.units) {
+      if (other.kind === 'foeCar' && !other.wrecked && other.delay <= 0 && other.mesh.visible) {
+        consider(other.x, other.z, 'armor', 3.5);
+      }
+      if (this.troopAlive(other) && other.kind === 'defender') consider(other.x, other.z, 'troop', 0);
+    }
+    for (const block of this.barricades) {
+      if (!block.popped) consider(block.x, block.z, 'wall', 1.2);
+    }
+    return best;
+  }
+
+  salvoWorth(unit) {
+    const boss = this.bossUnit();
+    if (this.mode === 'boss' && boss && !boss.down && Math.hypot(boss.x - unit.x, boss.z - unit.z) < 16) return true;
+    let troops = 0;
+    let cars = 0;
+    for (const other of this.units) {
+      const dist = Math.hypot(other.x - unit.x, other.z - unit.z);
+      if (dist > 14) continue;
+      if (this.troopAlive(other) && other.kind === 'defender') troops += 1;
+      if (other.kind === 'foeCar' && !other.wrecked && other.delay <= 0) cars += 1;
+    }
+    return troops >= 6 || cars >= 2;
+  }
+
+  hurtVehicles(x, z, amount, team, radius, role) {
+    let best = null;
+    let bestD = radius;
+    for (const unit of this.units) {
+      if (!this.vehicleAlive(unit) || unit.kind === 'destroyer') continue;
+      if (team === 'friend' && unit.kind !== 'foeCar') continue;
+      if (team === 'foe' && unit.kind === 'foeCar') continue;
+      if (team !== 'foe' && team !== 'friend') continue;
+      const dist = Math.hypot(unit.x - x, unit.z - z);
+      if (dist < bestD) {
+        best = unit;
+        bestD = dist;
+      }
+    }
+    if (!best) return;
+    const dealt = team === 'foe' ? amount * (this.difficulty?.foeDamage || 1) : amount;
+    best.hp -= dealt;
+    if (best.kind === 'tank' && team === 'foe') {
+      const flank = best.x >= 0 ? 1 : -1;
+      best._coverX = THREE.MathUtils.clamp(best.x + flank * 5.5, -15, 15);
+      best._coverT = 0.85;
+    }
+    if (best.hp > 0) return;
+    best.wrecked = true;
+    best.wreckT = 0;
+    best.speed = 0;
+    this.splash(best.x, best.z, team === 'foe' ? this.world.enemy : 0xffd56a, 6);
+    if (best.kind === 'foeCar') {
+      this.addBattleScore(40);
+      this.hold = Math.max(0, this.hold - 4);
+      this.capture = Math.min(100, this.capture + 3);
+      if (role) this.creditRole(role);
+    }
+  }
+
+  openEnemy(unit, range) {
+    let best = null;
+    let bestScore = range * 2;
+    for (const other of this.units) {
+      if (!this.troopAlive(other) || other.kind !== 'defender') continue;
+      const dist = Math.hypot(unit.x - other.x, unit.z - other.z);
+      if (dist > range) continue;
+      let crowd = other.duel ? 2 : 0;
+      for (const mate of this.units) {
+        if (mate === unit || !this.troopAlive(mate) || mate.kind === 'defender') continue;
+        if (mate.focus === other || mate.duel === other) crowd += 1;
+      }
+      const score = dist + crowd * 3.2 + Math.abs(unit.x - other.x) * 0.35;
+      if (score < bestScore) {
+        best = other;
+        bestScore = score;
+      }
+    }
+    return best;
   }
 
   updatePhase(dt) {
@@ -1708,8 +2454,8 @@ export class GroundBattle {
       this.capture = Math.min(100, this.capture + 7 * this.captureRate() * dt);
       this.hold = Math.max(0, this.hold - 1.4 * dt);
     } else if (this.phase === 'special') {
-      this.capture = Math.min(100, this.capture + 10 * this.captureRate() * dt);
-      this.hold = Math.max(0, this.hold - 14 * dt);
+      this.capture = Math.min(100, this.capture + 3.5 * this.captureRate() * dt);
+      this.hold = Math.max(0, this.hold - 3.5 * dt);
     } else if (this.phase === 'boss') {
       this.shellCd -= dt;
       if (this.shellCd <= 0) {
@@ -1759,6 +2505,10 @@ export class GroundBattle {
       arc: spec.arc ?? 9,
       team: spec.team || null,
       soldierHit: spec.soldierHit || 0,
+      troopDamage: spec.troopDamage || 0,
+      vehicleHit: spec.vehicleHit || 0,
+      vehicleRadius: spec.vehicleRadius || 0,
+      role: spec.role || null,
       grenade: Boolean(spec.grenade),
       bits: spec.bits,
       shake: spec.shake,
@@ -1799,23 +2549,34 @@ export class GroundBattle {
       const share = (nuclear ? 2.2 : Math.max(0.45, localR * 4)) / weight;
       const travel = nuclear ? 15 : localR >= 0.1 ? 12 : 9;
       const impact = new THREE.Vector3(from.x + dir.x * travel, 0.45, from.z + dir.z * travel);
-      const deltaY = impact.y - from.y;
+      const threat = this.threatAlong(from, dir, travel + 8);
+      const deltaY = (threat ? 0.45 : impact.y) - from.y;
       const arc = Math.max(0.2, (travel * dir.y - deltaY) / Math.PI);
-      // Each barrel still lobs along its bore. Front guns also hunt the commander.
-      const to = dir.z < -0.35 ? this.bossTarget(impact, 1) : impact;
+      // Each barrel still lobs along its bore. A threat in that arc is preferred.
+      // Front guns with an empty lane still hunt the commander.
+      const aimed = threat
+        ? new THREE.Vector3(threat.x, threat.kind === 'boss' ? 1.5 : 0.45, threat.z)
+        : impact;
+      const to = !threat && dir.z < -0.35 ? this.bossTarget(aimed, 0.85) : aimed;
+      const connected = Boolean(threat) || dir.z < -0.35;
+      const heavy = nuclear || localR >= 0.1;
       this.launchShell({
         from: from.clone(),
         to,
         color: nuclear ? 0xff7a1c : 0x7af6ee,
         radius: THREE.MathUtils.clamp(localR * scale * 0.32, 0.12, nuclear ? 0.62 : 0.4),
         dur: THREE.MathUtils.clamp(0.32 + travel * 0.015, 0.34, 0.72),
-        holdHit: DESTROYER_HOLD_BUDGET * share,
-        splash: nuclear ? 5.5 : localR >= 0.1 ? 3.2 : 1.6,
+        holdHit: DESTROYER_HOLD_BUDGET * share * (connected ? 1 : 0.35),
+        splash: nuclear ? 5.5 : heavy ? 3.2 : 1.6,
         arc,
         silentTubes: true,
         team: 'friend',
-        soldierHit: nuclear ? 2.5 : localR >= 0.1 ? 1.75 : 0,
-        bits: nuclear ? 3 : localR >= 0.1 ? 2 : 1,
+        soldierHit: connected ? (nuclear ? 3.2 : heavy ? 2.4 : 1.6) : 0,
+        troopDamage: connected ? (nuclear ? 3 : heavy ? 2 : 1) : 0,
+        vehicleHit: threat?.kind === 'armor' || nuclear ? (nuclear ? 3.4 : 1.8) : 0,
+        vehicleRadius: nuclear ? 4.2 : 2.8,
+        role: 'destroyer',
+        bits: nuclear ? 3 : heavy ? 2 : 1,
         shake: nuclear ? 0.06 : 0.02,
         quiet: !nuclear,
       });
@@ -1834,18 +2595,24 @@ export class GroundBattle {
   }
 
   /** One press: a missile leaves every compass barrel at once. */
-  salvo() {
+  salvo(opts = {}) {
     if (!this.active || this.phase === 'resolve' || this.retreating) return false;
     if (this.salvoCd > 0) return false;
     const units = this.readyDestroyers();
     if (!units.length) {
-      this.flashDeploy(T.groundSalvoNeed);
-      this.sfx.ui?.();
+      if (!opts.auto) {
+        this.flashDeploy(T.groundSalvoNeed);
+        this.sfx.ui?.();
+      }
       return false;
     }
-    this.salvoCd = 3.4;
+    this.salvoCd = opts.auto ? 4.8 : 3.4;
+    if (opts.auto) {
+      for (const unit of units) unit.autoSalvo = true;
+    }
     for (const unit of units) this.fireSalvo(unit);
-    this.flashDeploy(T.groundSalvoIn);
+    this.salvoLanded = true;
+    this.flashDeploy(opts.auto ? T.groundSalvoAuto : T.groundSalvoIn);
     this.shake = Math.min(1.6, this.shake + 0.55);
     this.sfx.blip?.({ freq: 96, dur: 0.2, type: 'sawtooth', vol: 0.07, slide: -50 });
     this.sfx.noise?.(0.22, 0.24, 220);
@@ -1863,8 +2630,11 @@ export class GroundBattle {
       mount.userData.muzzle.getWorldDirection(dir);
       if (dir.lengthSq() < 1e-8) dir.set(0, 0, -1);
       else dir.normalize();
-      const travel = 18;
-      const to = new THREE.Vector3(from.x + dir.x * travel, 0.55, from.z + dir.z * travel);
+      const travel = 20;
+      const threat = this.threatAlong(from, dir, 26);
+      const to = threat
+        ? new THREE.Vector3(threat.x, 0.55, threat.z)
+        : new THREE.Vector3(from.x + dir.x * travel, 0.55, from.z + dir.z * travel);
       const deltaY = to.y - from.y;
       const arc = Math.max(0.35, (travel * dir.y - deltaY) / Math.PI);
       const missile = makeSalvoMissile();
@@ -1877,15 +2647,18 @@ export class GroundBattle {
         to,
         color: 0xff4ad8,
         dur: 0.95,
-        holdHit: 1.35,
-        splash: 13,
+        holdHit: 2.4,
+        splash: 18,
         arc,
         silentTubes: true,
         team: 'friend',
-        area: 4.6,
-        areaDamage: 2,
-        bits: 6,
-        shake: index === 0 ? 0.22 : 0.04,
+        area: 6.4,
+        areaDamage: 6,
+        vehicleHit: 9,
+        vehicleRadius: 6.2,
+        role: 'destroyer',
+        bits: 8,
+        shake: index === 0 ? 0.28 : 0.05,
         quiet: index !== 0,
       });
       const flash = mount.userData.flash;
@@ -1927,9 +2700,12 @@ export class GroundBattle {
         material.opacity = Math.max(0, material.opacity - dt * 4.8);
       }
       if (this.phase === 'resolve' || this.outcome === 'retreat' || unit.age < 0.7) continue;
+      if (!unit.autoSalvo && unit.age > 1.35 && this.salvoCd <= 0 && this.salvoWorth(unit)) {
+        this.salvo({ auto: true });
+      }
       unit.shotCd -= dt;
       if (unit.shotCd > 0) continue;
-      unit.shotCd = 0.85;
+      unit.shotCd = 1.2;
       this.fireDestroyer(unit);
     }
   }
@@ -1969,8 +2745,13 @@ export class GroundBattle {
         this.blastSoldiers(shell.to.x, shell.to.z, shell.soldierHit || 3.6, shell.team);
       } else {
         this.splash(shell.to.x, shell.to.z, shell.color ?? this.world.glow, shell.splash ?? 7, shell.bits ?? 5);
-        if (shell.area) this.hurtSoldiersArea(shell.to.x, shell.to.z, shell.area, shell.team, shell.areaDamage || 2);
-        else if (shell.team && shell.soldierHit) this.hurtSoldiers(shell.to.x, shell.to.z, shell.soldierHit, shell.team);
+        if (shell.area) this.hurtSoldiersArea(shell.to.x, shell.to.z, shell.area, shell.team, shell.areaDamage || 2, shell.role);
+        else if (shell.team && shell.soldierHit) {
+          this.hurtSoldiers(shell.to.x, shell.to.z, shell.soldierHit, shell.team, shell.troopDamage || 1, shell.role);
+        }
+      }
+      if (shell.vehicleHit) {
+        this.hurtVehicles(shell.to.x, shell.to.z, shell.vehicleHit, shell.team, shell.vehicleRadius || 3, shell.role);
       }
       if (this.mode === 'boss' && shell.team !== 'foe') {
         if (shell.grenade) {
@@ -2015,6 +2796,15 @@ export class GroundBattle {
     return this.isTroop(unit) && !unit.down && unit.delay <= 0;
   }
 
+  friendlyFront() {
+    let front = null;
+    for (const unit of this.units) {
+      if (!this.troopAlive(unit) || unit.kind !== 'infantry') continue;
+      if (front == null || unit.z < front) front = unit.z;
+    }
+    return front;
+  }
+
   nearestEnemy(unit, range) {
     const wantDefender = unit.kind !== 'defender';
     let best = null;
@@ -2028,6 +2818,11 @@ export class GroundBattle {
       if (dist > range) continue;
       let score = dist + dx * 0.85;
       if (other.duel && other.duel !== unit) score += 5;
+      // Warriors shoot the line. The player draws fire by stepping out ahead of it.
+      if (other.kind === 'player' && unit.kind === 'defender') {
+        const front = this.friendlyFront();
+        if (front == null || other.z > front - 0.35) score += 9;
+      }
       if (score < bestScore) {
         best = other;
         bestScore = score;
@@ -2087,7 +2882,9 @@ export class GroundBattle {
       unit.focus = unit.duel;
       return;
     }
-    const foe = this.nearestEnemy(unit, unit.kind === 'defender' ? 16 : 28);
+    const foe = unit.kind === 'defender'
+      ? this.nearestEnemy(unit, 16)
+      : (this.openEnemy(unit, 28) || this.nearestEnemy(unit, 28));
     unit.focus = foe;
     if (unit.kind === 'player') return;
     if (!foe) {
@@ -2109,9 +2906,10 @@ export class GroundBattle {
     const closing = unit.kind === 'defender' ? foe.z - unit.z : unit.z - foe.z;
     unit.x += THREE.MathUtils.clamp(dx, -1, 1) * (unit.kind === 'defender' ? 2.5 : 3.6) * dt;
     if (unit.kind === 'defender') {
-      if (closing > 0.45 && closing < 12) unit._step = 2.3;
-    } else if (closing < 5.5 && Math.abs(dx) > 1.05) unit._slow = 0.22;
-    else if (closing < 2.5) unit._slow = 0.08;
+      const press = this.difficulty?.id === 'hard' ? 1.28 : this.difficulty?.id === 'easy' ? 0.82 : 1;
+      if (closing > 0.45 && closing < 12) unit._step = 2.3 * press;
+    } else if (closing < 5.5 && Math.abs(dx) > 1.05) unit._slow = 0.72;
+    else if (closing < 2.2) unit._slow = 0.4;
   }
 
   separateTroops() {
@@ -2146,21 +2944,28 @@ export class GroundBattle {
     attacker.attackT = 0.32;
     victim.stagger = 0.24;
     this.clashSpark((a.x + b.x) * 0.5, (a.z + b.z) * 0.5, attacker.kind === 'defender' ? this.world.enemy : this.world.accent);
-    this.strike(victim, 1);
+    const foeHit = attacker.kind === 'defender';
+    this.strike(victim, 1, { foe: foeHit, role: foeHit ? null : 'soldier' });
     if (Math.random() < 0.4) {
       this.sfx.blip?.({ freq: 150 + Math.random() * 70, dur: 0.05, type: 'square', vol: 0.03, slide: -24 });
     }
   }
 
-  strike(unit, amount) {
+  strike(unit, amount, meta = {}) {
     if (!this.troopAlive(unit)) return;
-    unit.hp -= amount;
+    let dealt = amount;
+    if (unit.kind === 'player' && meta.foe) {
+      if (this.playerGrace > 0) return;
+      dealt *= this.difficulty?.foeDamage || 1;
+      this.playerGrace = this.difficulty?.grace || 0;
+    }
+    unit.hp -= dealt;
     unit.stagger = Math.max(unit.stagger || 0, 0.16);
     if (unit.hp > 0) return;
-    this.knockOut(unit);
+    this.knockOut(unit, meta);
   }
 
-  knockOut(unit) {
+  knockOut(unit, meta = {}) {
     if (!unit || unit.down || !this.isTroop(unit)) return;
     unit.down = true;
     unit.downT = 0;
@@ -2171,7 +2976,15 @@ export class GroundBattle {
     const foe = unit.kind === 'defender';
     if (foe) {
       this.hold = Math.max(0, this.hold - 0.85);
-      this.capture = Math.min(100, this.capture + 0.65);
+      this.capture = Math.min(100, this.capture + 1);
+      this.addBattleScore(10);
+      if (meta.role) this.creditRole(meta.role);
+    } else if (unit.kind === 'player' && (this.difficulty?.lives || 0) > 0) {
+      this.livesLeft -= 1;
+      if (this.livesLeft <= 0) {
+        this.playerOut = true;
+        this.flashDeploy(T.groundLivesOut);
+      }
     } else if (unit.kind !== 'player') {
       this.hold = Math.min(100, this.hold + 0.4);
       this.capture = Math.max(0, this.capture - 0.25);
@@ -2214,7 +3027,7 @@ export class GroundBattle {
       const fade = unit.downT > 1.4 ? Math.max(0, 1 - (unit.downT - 1.4) / 1.1) : 1;
       for (const star of unit.stars.children) star.material.opacity = fade;
     }
-    if (unit.kind === 'player' && unit.downT > 1.15) {
+    if (unit.kind === 'player' && unit.downT > 1.15 && !this.playerOut) {
       unit.down = false;
       unit.hp = this.playerMaxHp();
       unit.downT = 0;
@@ -2225,13 +3038,15 @@ export class GroundBattle {
     }
   }
 
-  hurtSoldiers(x, z, radius, team) {
+  hurtSoldiers(x, z, radius, team, damage = 1, role = null) {
+    const foeScale = team === 'foe' ? (this.difficulty?.playerHit || 1) : 1;
     let best = null;
-    let bestD = radius;
+    let bestD = radius * Math.max(1, foeScale);
     for (const unit of this.units) {
       if (!this.troopAlive(unit)) continue;
       if (team === 'friend' && unit.kind !== 'defender') continue;
       if (team === 'foe' && unit.kind === 'defender') continue;
+      if (!this.reaches(unit, x, z, radius)) continue;
       const dist = Math.hypot(unit.x - x, unit.z - z);
       if (dist < bestD) {
         best = unit;
@@ -2239,29 +3054,29 @@ export class GroundBattle {
       }
     }
     if (best) {
-      this.strike(best, 1);
+      this.strike(best, damage, { foe: team === 'foe', role: team === 'friend' ? role : null });
       if (this.mode === 'boss' && team === 'foe') this.voiceLine('foe', 'hit');
     }
   }
 
-  blastSoldiers(x, z, radius, team) {
+  blastSoldiers(x, z, radius, team, role = 'soldier') {
     for (const unit of this.units) {
       if (!this.troopAlive(unit)) continue;
       if (team === 'friend' && unit.kind !== 'defender') continue;
       if (team === 'foe' && unit.kind === 'defender') continue;
-      if (Math.hypot(unit.x - x, unit.z - z) > radius) continue;
-      this.strike(unit, 6);
+      if (!this.reaches(unit, x, z, radius)) continue;
+      this.strike(unit, 6, { foe: team === 'foe', role: team === 'friend' ? role : null });
       this.clashSpark(unit.x, unit.z, 0xffd27a);
     }
   }
 
-  hurtSoldiersArea(x, z, radius, team, amount) {
+  hurtSoldiersArea(x, z, radius, team, amount, role = null) {
     for (const unit of this.units) {
       if (!this.troopAlive(unit)) continue;
       if (team === 'friend' && unit.kind !== 'defender') continue;
       if (team === 'foe' && unit.kind === 'defender') continue;
-      if (Math.hypot(unit.x - x, unit.z - z) > radius) continue;
-      this.strike(unit, amount);
+      if (!this.reaches(unit, x, z, radius)) continue;
+      this.strike(unit, amount, { foe: team === 'foe', role: team === 'friend' ? role : null });
     }
   }
 
@@ -2307,28 +3122,68 @@ export class GroundBattle {
       foe.z -= 0.55;
       foe.stagger = 0.28;
       this.clashSpark(foe.x, foe.z, unit.kind === 'destroyer' ? 0x7af6ee : 0xffd56a);
-      this.strike(foe, unit.kind === 'destroyer' ? 2 : 1);
+      this.strike(foe, unit.kind === 'destroyer' ? 2 : 1, {
+        role: unit.kind === 'destroyer' ? 'destroyer' : 'tank',
+      });
     }
     this.bumpBoss(unit);
   }
 
   fireTank(unit) {
-    const foe = unit.focus && this.troopAlive(unit.focus) ? unit.focus : this.nearestEnemy(unit, 26);
-    this.launchShell({
-      from: new THREE.Vector3(unit.mesh.position.x, 1.45, unit.mesh.position.z - 1.1),
-      to: this.bossTarget(foe
-        ? new THREE.Vector3(foe.x, 0.7, foe.z)
-        : new THREE.Vector3(unit.x + (Math.random() - 0.5) * 3, 0.45, unit.z - 12)),
-      color: 0xffd56a,
-      radius: 0.28,
-      dur: 0.4,
-      holdHit: 0.32,
-      splash: 3.1,
-      arc: 1.15,
-      silentTubes: true,
-      team: 'friend',
-      soldierHit: 2.3,
-    });
+    const aim = unit._aim;
+    const from = new THREE.Vector3(unit.mesh.position.x, 1.45, unit.mesh.position.z - 1.1);
+    if (aim?.kind === 'armor' && aim.unit && !aim.unit.wrecked) {
+      this.launchShell({
+        from,
+        to: new THREE.Vector3(aim.unit.x, 0.8, aim.unit.z),
+        color: 0xffd56a,
+        radius: 0.32,
+        dur: 0.36,
+        holdHit: 0.45,
+        splash: 4.2,
+        arc: 0.7,
+        silentTubes: true,
+        team: 'friend',
+        soldierHit: 1.6,
+        troopDamage: 1,
+        vehicleHit: 4.6,
+        vehicleRadius: 2.8,
+        role: 'tank',
+      });
+    } else if (aim?.kind === 'wall') {
+      this.launchShell({
+        from,
+        to: new THREE.Vector3(aim.x, 0.55, aim.z),
+        color: 0xffd56a,
+        radius: 0.3,
+        dur: 0.38,
+        holdHit: 0.2,
+        splash: 3.6,
+        arc: 1.05,
+        silentTubes: true,
+        team: 'friend',
+        role: 'tank',
+      });
+    } else {
+      const foe = aim?.unit && this.troopAlive(aim.unit) ? aim.unit : this.nearestEnemy(unit, 26);
+      this.launchShell({
+        from,
+        to: this.bossTarget(foe
+          ? new THREE.Vector3(foe.x, 0.7, foe.z)
+          : new THREE.Vector3(unit.x + (Math.random() - 0.5) * 3, 0.45, unit.z - 12)),
+        color: 0xffd56a,
+        radius: 0.28,
+        dur: 0.4,
+        holdHit: 0.32,
+        splash: 3.4,
+        arc: 1.15,
+        silentTubes: true,
+        team: 'friend',
+        soldierHit: 2.6,
+        troopDamage: 3,
+        role: 'tank',
+      });
+    }
     if (Math.random() < 0.5) {
       this.sfx.blip?.({ freq: 180, dur: 0.07, type: 'square', vol: 0.04, slide: -50 });
     }
@@ -2345,6 +3200,14 @@ export class GroundBattle {
       }
       unit.mesh.visible = true;
       unit.age += dt;
+      if (unit.wrecked) {
+        unit.wreckT += dt;
+        const sink = Math.min(0.45, unit.wreckT * 0.18);
+        unit.mesh.position.set(unit.x, Math.max(-0.15, 0.2 - sink), unit.z);
+        unit.mesh.rotation.z = unit.kind === 'foeCar' ? 0.55 : -0.4;
+        unit.mesh.scale.setScalar(unit.kind === 'tank' ? 1.25 : 1.15);
+        continue;
+      }
       if (unit.stagger > 0) unit.stagger -= dt;
       if (unit.down) {
         if (unit.kind === 'boss') this.updateBossDown(unit, dt);
@@ -2352,6 +3215,9 @@ export class GroundBattle {
         continue;
       }
       this.steerTroop(unit, dt);
+      if (unit.kind === 'tank') this.steerTank(unit, dt);
+      if (unit.kind === 'destroyer') this.steerDestroyer(unit, dt);
+      if (unit.kind === 'foeCar') this.steerFoeCar(unit, dt);
       const intro = Math.min(1, unit.age / (unit.special ? 0.7 : 0.4));
       const pop = unit.kind === 'boss' ? 3.35 : unit.kind === 'player' ? 2.8 : unit.kind === 'destroyer' ? DESTROYER_POP : unit.special ? 2.5 : unit.kind === 'tank' ? 1.25 : (unit.kind === 'gunCar' || unit.kind === 'foeCar') ? 1.15 : unit.kind === 'artillery' ? 1.15 : (unit.kind === 'infantry' || unit.kind === 'defender') ? 2.5 : 0.85;
       unit.mesh.scale.setScalar(pop * (0.2 + 0.8 * intro) * (unit.stagger > 0.1 ? 1.08 : 1));
@@ -2382,6 +3248,7 @@ export class GroundBattle {
       const drop = unit.special ? (1 - intro) * 14 : (1 - intro) * 0.8;
       const hop = unit.duel ? Math.abs(Math.sin(unit.age * 16)) * 0.14 : 0;
       unit.mesh.position.set(unit.x + this.lane * unit.laneFollow, yBob + drop + hop, unit.z);
+      if (unit.kind === 'tank' && unit._aim) faceNegZ(unit.mesh, unit._aim.x, unit._aim.z);
       if (this.isTroop(unit)) {
         const focus = unit.duel || unit.focus;
         if (focus && !focus.down) faceNegZ(unit.mesh, focus.x, focus.z);
@@ -2393,12 +3260,23 @@ export class GroundBattle {
       const swing = unit.mesh.userData.swing;
       const flash = unit.mesh.userData.flash;
       if (flash) flash.material.opacity = Math.max(0, flash.material.opacity - dt * 5);
+      const wisp = unit.mesh.userData.wisp;
+      if (wisp) {
+        const pulse = 0.75 + Math.sin(unit.age * 6) * 0.25;
+        wisp.scale.setScalar(pulse);
+        wisp.position.y = 2.15 + Math.sin(unit.age * 3) * 0.08;
+      }
+      if ((unit.kind === 'wisp' || unit.kind === 'lighthouse') && unit.mesh.userData.lamp) {
+        const pulse = 0.82 + Math.sin(unit.age * 3.2) * 0.18;
+        unit.mesh.userData.lamp.scale.setScalar(pulse);
+      }
       const car = unit.kind === 'gunCar' || unit.kind === 'foeCar';
       if (car && this.outcome !== 'retreat' && unit.age > 0.3) {
         unit.shotCd -= dt;
         if (unit.shotCd <= 0) {
           const gun = CAR_GUNS[unit.gun] || CAR_GUNS.machine;
-          unit.shotCd = gun.cd + (Math.abs(unit.x) % 0.12);
+          const pace = unit.kind === 'foeCar' ? this.difficulty.cadence : 1;
+          unit.shotCd = (gun.cd + (Math.abs(unit.x) % 0.12)) * pace;
           this.fireCar(unit);
         }
         const turret = unit.mesh.userData.turret;
@@ -2409,10 +3287,10 @@ export class GroundBattle {
         }
       }
       if (unit.kind === 'tank' && this.outcome !== 'retreat' && unit.age > 0.35) {
-        unit.focus = this.nearestEnemy(unit, 26);
         unit.shotCd -= dt;
         if (unit.shotCd <= 0) {
-          unit.shotCd = 1.55;
+          const aimingArmor = unit._aim?.kind === 'armor';
+          unit.shotCd = aimingArmor ? 0.95 : 1.15;
           this.fireTank(unit);
         }
         this.rollThrough(unit);
@@ -2431,7 +3309,8 @@ export class GroundBattle {
         if (dist > 6.5) {
           unit.shotCd -= dt;
           if (unit.shotCd <= 0) {
-            unit.shotCd = (unit.kind === 'defender' ? 1.55 : 0.9) + (Math.abs(unit.x) % 0.35);
+            const pace = unit.kind === 'defender' ? this.difficulty.cadence : 1;
+            unit.shotCd = ((unit.kind === 'defender' ? 1.55 : 0.9) + (Math.abs(unit.x) % 0.35)) * pace;
             unit.attackT = 0.34;
             this.fireRifle(unit);
           }
@@ -2465,9 +3344,11 @@ export class GroundBattle {
           swing.chest.position.y = swing.chest.userData.baseY + Math.sin(unit.age * 1.7) * (moving ? 0.012 : 0.028);
         }
       }
-      if (unit.kind === 'infantry' && unit.z < -40 && !unit.scored && !fallingBack && !unit.down) {
+      if (unit.kind === 'infantry' && unit.z < -32 && !unit.scored && !fallingBack && !unit.down) {
         unit.scored = true;
         this.capture = Math.min(100, this.capture + 3.5);
+        this.addBattleScore(8);
+        this.creditRole('soldier');
       }
       if (unit.kind === 'destroyer' && !unit.boomed && unit.age >= 0.62 && !fallingBack) {
         unit.boomed = true;
@@ -2492,6 +3373,10 @@ export class GroundBattle {
       this.root.remove(block.mesh);
       this.hold = Math.max(0, this.hold - (unit.kind === 'destroyer' ? 10 : 6));
       this.capture = Math.min(100, this.capture + 4);
+      if (unit.kind === 'tank' || unit.kind === 'destroyer' || unit.kind === 'gunCar') {
+        this.addBattleScore(unit.kind === 'destroyer' ? 20 : 15);
+        this.creditRole(unit.kind === 'destroyer' ? 'destroyer' : 'tank');
+      }
       this.shake = Math.min(1, this.shake + 0.28);
     }
   }
@@ -2636,7 +3521,7 @@ export class GroundBattle {
     if (this.phase === 'resolve' || this.outcome === 'retreat') return;
     unit.shotCd -= dt;
     if (unit.shotCd > 0) return;
-    unit.shotCd = 1.4;
+    unit.shotCd = 1.4 * (this.difficulty?.cadence || 1);
     this.fireBoss(unit);
   }
 
@@ -2659,6 +3544,7 @@ export class GroundBattle {
       silentTubes: true,
       team: 'foe',
       soldierHit: 2.6,
+      troopDamage: 1,
     });
     this.sfx.enemyShot?.();
   }
@@ -2737,6 +3623,30 @@ export class GroundBattle {
     this.camera.lookAt(this.look);
   }
 
+  goalNote() {
+    const hold = Math.max(0, Math.round(this.hold));
+    const capture = Math.min(100, Math.round(this.capture));
+    if (this.mode !== 'boss' && this.wave >= 5 && this.phase !== 'resolve') {
+      const left = this.waveSquad.filter((unit) => !unit.down && !unit.wrecked).length;
+      const last = this.wave === STAGE_WAVES ? T.groundLastWave : T.groundGoalWave;
+      return `${last} · ${left}`;
+    }
+    if (this.phase === 'artillery') return `${T.groundGoalArtillery} · ${hold}`;
+    if (this.phase === 'armor') return `${T.groundGoalArmor} · ${this.barricadesPopped()}/4`;
+    if (this.phase === 'infantry') return `${T.groundGoalInfantry} · ${capture}`;
+    if (this.phase === 'special') return T.groundGoalSpecial;
+    if (this.phase === 'boss') return T.bossNote;
+    if (this.phase === 'resolve') {
+      if (this.outcome === 'retreat') return T.groundRetreatNote;
+      if (this.mode === 'boss') return T.bossWinNote;
+      const streak = this.bestStreak >= 2 ? `${T.groundStreak} ×${this.bestStreak}` : '';
+      const stage = this.wave >= STAGE_WAVES ? T.groundStageClear : '';
+      const gold = this.gold ? `${T.groundGold} · ${T.groundGoldWait}` : '';
+      return [T.groundWinNote, stage, `${T.groundScore} ${this.score}`, streak, gold].filter(Boolean).join(' · ');
+    }
+    return '';
+  }
+
   phaseLabel() {
     if (this.phase === 'resolve') return this.outcome === 'retreat' ? T.groundRetreat : T.groundWin;
     return {
@@ -2753,11 +3663,12 @@ export class GroundBattle {
     if (!dom.phase) return;
     const bossFight = this.mode === 'boss' && this.phase === 'boss';
     dom.world.textContent = this.mode === 'boss' ? `${T.bossName} · ${world.name}` : world.name;
+    const waveTag = this.mode === 'boss' ? '' : `${T.wave} ${Math.max(1, this.wave)} ${T.groundWaveOf} · `;
     dom.phase.textContent = this.phase === 'boss'
       ? `${T.bossPhase} · ${T.bossName}`
       : this.phase === 'special'
-        ? `${T.groundSpecial} · ${T.groundDestroyer}`
-        : this.phaseLabel();
+        ? `${waveTag}${T.groundSpecial} · ${T.groundDestroyer}`
+        : `${waveTag}${this.phaseLabel()}`;
     if (bossFight) {
       const boss = this.bossUnit();
       const ratio = boss && boss.maxHp ? Math.max(0, boss.hp) / boss.maxHp : 0;
@@ -2777,19 +3688,23 @@ export class GroundBattle {
       dom.bark.dataset.side = this.barkSide || '';
       dom.bark.textContent = this.barkT > 0 ? this.bark : '';
     }
+    if (dom.score) {
+      const streak = this.streak > 1 ? ` · ${T.groundStreak} ×${this.streak}` : '';
+      const lives = (this.difficulty?.lives || 0) > 0
+        ? ` · ${T.groundLives} ${Math.max(0, this.livesLeft)}`
+        : '';
+      const force = this.fullForce ? ` · ${T.groundFullForceShort}` : '';
+      dom.score.textContent = `${T.groundScore} ${this.score}${streak}${lives}${force}`;
+    }
+    if (dom.stars) {
+      if (bossFight) dom.stars.textContent = '';
+      else {
+        const mark = (on) => (on ? '★' : '☆');
+        dom.stars.textContent = `${T.groundTank} ${mark(this.stars?.tank)}   ${T.groundSoldier} ${mark(this.stars?.soldier)}   ${T.groundDeployDestroyer} ${mark(this.stars?.destroyer)}`;
+      }
+    }
     if (dom.note) {
-      dom.note.textContent = this.deployNoteT > 0 ? this.deployNote : {
-        artillery: T.groundArtilleryNote,
-        armor: T.groundArmorNote,
-        infantry: T.groundInfantryNote,
-        special: T.groundDestroyerNote,
-        boss: T.bossNote,
-        resolve: this.outcome === 'retreat'
-          ? T.groundRetreatNote
-          : this.mode === 'boss'
-            ? T.bossWinNote
-            : T.groundWinNote,
-      }[this.phase] || '';
+      dom.note.textContent = this.deployNoteT > 0 ? this.deployNote : this.goalNote();
     }
     const locked = !this.active || this.phase === 'resolve';
     if (dom.soldierBtn) dom.soldierBtn.disabled = locked || this.deployCd.infantry > 0 || this.countKind('infantry') >= 88;
