@@ -3,26 +3,30 @@ import assert from 'node:assert/strict';
 import { STAGE_WAVES, equalForceCounts, goldReady, groundDifficulty, scaleCount, stageWaveStep } from './groundTuning.js';
 import { emptyCampaign, normalizeCampaign, noteForceMarch, noteGoldCharge, takeGoldCharge } from './campaign.js';
 
-test('medium matches the baseline multipliers', () => {
+test('medium eases the player without going trivial', () => {
   const medium = groundDifficulty('medium');
-  assert.equal(medium.foeDamage, 1);
-  assert.equal(medium.playerHp, 1);
-  assert.equal(medium.spawn, 1);
-  assert.equal(medium.cadence, 1);
-  assert.equal(medium.playerHit, 1);
-  assert.equal(medium.grace, 0);
-  assert.equal(medium.lives, 0);
+  assert.equal(medium.foeDamage, 0.82);
+  assert.equal(medium.playerHp, 1.35);
+  assert.equal(medium.spawn, 0.88);
+  assert.equal(medium.cadence, 1.16);
+  assert.equal(medium.playerHit, 0.78);
+  assert.equal(medium.grace, 0.22);
+  assert.equal(medium.lives, 1);
+  assert.ok(medium.foeDamage > 0.6);
+  assert.ok(medium.spawn > 0.75);
 });
 
 test('easy is gentler and hard is stricter', () => {
   const easy = groundDifficulty('easy');
+  const medium = groundDifficulty('medium');
   const hard = groundDifficulty('hard');
-  assert.ok(easy.foeDamage < 1);
-  assert.ok(easy.playerHp > 1);
-  assert.ok(easy.spawn < 1);
-  assert.ok(easy.cadence > 1);
-  assert.ok(easy.playerHit < 1);
-  assert.ok(easy.grace > 0);
+  assert.ok(easy.foeDamage < medium.foeDamage && medium.foeDamage < 1);
+  assert.ok(easy.playerHp > medium.playerHp && medium.playerHp > 1);
+  assert.ok(easy.spawn < medium.spawn && medium.spawn < 1);
+  assert.ok(easy.cadence > medium.cadence && medium.cadence > 1);
+  assert.ok(easy.playerHit < medium.playerHit && medium.playerHit < 1);
+  assert.ok(easy.grace > medium.grace && medium.grace > 0);
+  assert.ok(easy.lives > medium.lives && medium.lives >= 1);
   assert.ok(hard.foeDamage > 1);
   assert.ok(hard.playerHp < 1);
   assert.ok(hard.spawn > 1);

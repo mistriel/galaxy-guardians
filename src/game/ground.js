@@ -1995,7 +1995,9 @@ export class GroundBattle {
     const color = unit.kind === 'defender' ? this.world.enemy : this.world.accent;
     const foe = unit.focus && this.troopAlive(unit.focus) ? unit.focus : this.nearestEnemy(unit, 22);
     const aimed = Boolean(foe);
-    const jitter = aimed ? (Math.random() - 0.5) * 0.28 : (Math.random() - 0.5) * 1.6;
+    const jitter = unit.kind === 'player'
+      ? (aimed ? (Math.random() - 0.5) * 0.1 : (Math.random() - 0.5) * 0.55)
+      : (aimed ? (Math.random() - 0.5) * 0.28 : (Math.random() - 0.5) * 1.6);
     let to = new THREE.Vector3(
       foe ? foe.x + jitter : unit.x + this.lane * unit.laneFollow + (Math.random() - 0.5) * 2.2,
       1.05,
@@ -2014,7 +2016,7 @@ export class GroundBattle {
       arc: aimed ? 0.45 : 0.85,
       silentTubes: true,
       team: unit.kind === 'defender' ? 'foe' : 'friend',
-      soldierHit: unit.kind === 'player' ? 2.15 : unit.kind === 'defender' ? this.defenderReach() : 2.45,
+      soldierHit: unit.kind === 'player' ? 2.6 : unit.kind === 'defender' ? this.defenderReach() : 2.45,
       troopDamage: unit.kind === 'player' ? 2 : unit.kind === 'defender' ? this.defenderChip() : 1,
       role: friendShot ? 'soldier' : undefined,
     });
