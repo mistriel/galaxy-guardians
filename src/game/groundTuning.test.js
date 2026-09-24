@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { STAGE_WAVES, goldReady, groundDifficulty, scaleCount, stageWaveStep } from './groundTuning.js';
-import { emptyCampaign, normalizeCampaign, noteGoldCharge, takeGoldCharge } from './campaign.js';
+import { STAGE_WAVES, equalForceCounts, goldReady, groundDifficulty, scaleCount, stageWaveStep } from './groundTuning.js';
+import { emptyCampaign, normalizeCampaign, noteForceMarch, noteGoldCharge, takeGoldCharge } from './campaign.js';
 
 test('medium matches the baseline multipliers', () => {
   const medium = groundDifficulty('medium');
@@ -65,6 +65,69 @@ test('ground stage stops at wave 10', () => {
   assert.equal(last.beat, null);
   assert.equal(stageWaveStep(11).done, true);
   assert.equal(stageWaveStep(11).wave, 10);
+});
+
+test('equal force matches soldiers and tanks', () => {
+  assert.deepEqual(equalForceCounts({ soldiers: 36, tanks: 4 }), { soldiers: 36, vehicles: 4 });
+  assert.equal(equalForceCounts({ soldiers: 2, tanks: 0 }).soldiers, 8);
+  assert.equal(equalForceCounts({}).vehicles, 1);
+});
+
+test('full force queues an equal fight, and that win banks a gold cup', () => {
+  const armed = noteForceMarch(emptyCampaign(), { win: true, fullForce: true });
+  assert.equal(armed.equalNext, true);
+  assert.equal(armed.progressStreak, 1);
+  assert.equal(armed.goldBadges, 0);
+  assert.equal(armed.bossDue, false);
+  const gold = noteForceMarch(armed, { win: true, balancedMatch: true });
+  assert.equal(gold.equalNext, false);
+  assert.equal(gold.progressStreak, 2);
+  assert.equal(gold.goldBadges, 1);
+  assert.equal(gold.goldCharges, 1);
+  assert.equal(gold.sinceBoss, 2);
+});
+
+test('winning the equal fight with every force queues another equal fight', () => {
+  const armed = noteForceMarch(emptyCampaign(), { win: true, fullForce: true });
+  const again = noteForceMarch(armed, { win: true, balancedMatch: true, fullForce: true });
+  assert.equal(again.goldBadges, 1);
+  assert.equal(again.equalNext, true);
+  assert.equal(again.progressStreak, 2);
+});
+
+test('a plain win or a retreat clears the path and keeps earned cups', () => {
+  const armed = noteForceMarch(emptyCampaign(), { win: true, fullForce: true });
+  const held = noteForceMarch(armed, { win: true, balancedMatch: true });
+  const plain = noteForceMarch(held, { win: true });
+  assert.equal(plain.progressStreak, 0);
+  assert.equal(plain.equalNext, false);
+  assert.equal(plain.goldBadges, 1);
+  const fled = noteForceMarch(held, { win: false });
+  assert.equal(fled.progressStreak, 0);
+  assert.equal(fled.equalNext, false);
+  assert.equal(fled.goldBadges, 1);
+});
+
+test('a boss win keeps the equal fight for the next regular battle', () => {
+  const armed = noteForceMarch({ ...emptyCampaign(), sinceBoss: 2 }, { win: true, fullForce: true });
+  assert.equal(armed.bossDue, true);
+  assert.equal(armed.equalNext, true);
+  const afterBoss = noteForceMarch(armed, { win: true, boss: true });
+  assert.equal(afterBoss.bossDue, false);
+  assert.equal(afterBoss.equalNext, true);
+  assert.equal(afterBoss.progressStreak, 1);
+  assert.equal(afterBoss.goldBadges, 0);
+});
+
+test('an in-fight gold cup still banks one charge', () => {
+  const banked = noteForceMarch(emptyCampaign(), {
+    win: true,
+    fullForce: true,
+    gold: true,
+  });
+  assert.equal(banked.goldCharges, 1);
+  assert.equal(banked.goldBadges, 0);
+  assert.equal(banked.equalNext, true);
 });
 
 test('gold charges save and spend one at a time', () => {

@@ -30,6 +30,9 @@ export function emptyCampaign() {
     bossDue: false,
     perks: emptyPerks(),
     goldCharges: 0,
+    equalNext: false,
+    progressStreak: 0,
+    goldBadges: 0,
   };
 }
 
@@ -51,7 +54,53 @@ export function normalizeCampaign(raw) {
   for (const id of PERK_IDS) base.perks[id] = clampTier(perks[id]);
   const gold = Number(raw.goldCharges);
   base.goldCharges = Number.isFinite(gold) ? Math.max(0, Math.min(9, Math.floor(gold))) : 0;
+  base.equalNext = Boolean(raw.equalNext);
+  const streak = Number(raw.progressStreak);
+  base.progressStreak = Number.isFinite(streak) ? Math.max(0, Math.min(9, Math.floor(streak))) : 0;
+  const badges = Number(raw.goldBadges);
+  base.goldBadges = Number.isFinite(badges) ? Math.max(0, Math.min(9, Math.floor(badges))) : 0;
   return base;
+}
+
+/**
+ * Full force, then an equal fight, then a gold cup.
+ * A win with every deploy button queues equal-strength enemies next.
+ * Winning that match banks a visible gold trophy. A retreat clears the path.
+ * Boss wins keep the path so the equal fight waits until the next regular battle.
+ */
+export function noteForceMarch(state, info = {}) {
+  const current = normalizeCampaign(state);
+  if (info.boss) {
+    if (!info.win) return { ...current, equalNext: false, progressStreak: 0 };
+    return { ...current, bossDue: false, sinceBoss: 0 };
+  }
+  if (!info.win) return { ...current, equalNext: false, progressStreak: 0 };
+  const marched = noteRegularWin(current);
+  const full = Boolean(info.fullForce);
+  const equalWin = Boolean(info.balancedMatch);
+  let streak = current.progressStreak || 0;
+  let badges = current.goldBadges || 0;
+  let charges = marched.goldCharges || 0;
+  let equalNext = false;
+  if (equalWin) {
+    streak = Math.max(2, streak + 1);
+    badges = Math.min(9, badges + 1);
+    charges = Math.min(9, charges + 1);
+  }
+  if (full) {
+    equalNext = true;
+    if (!equalWin) streak = 1;
+  } else if (!equalWin) {
+    streak = 0;
+  }
+  if (info.gold && !equalWin) charges = Math.min(9, charges + 1);
+  return {
+    ...marched,
+    equalNext,
+    progressStreak: streak,
+    goldBadges: badges,
+    goldCharges: charges,
+  };
 }
 
 /** Bank one gold cup earned by a streak, full force, and a balanced fight. */

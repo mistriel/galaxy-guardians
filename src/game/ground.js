@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { T } from './i18n.js';
-import { STAGE_WAVES, goldReady, groundDifficulty, scaleCount, stageWaveStep } from './groundTuning.js';
+import { STAGE_WAVES, equalForceCounts, goldReady, groundDifficulty, scaleCount, stageWaveStep } from './groundTuning.js';
 
 /** A beat stays up long enough to read, even if the army clears it early. */
 const PHASE_MIN = {
@@ -1255,6 +1255,11 @@ export class GroundBattle {
     this.reported = false;
     this.onResolved = null;
     this.marchLabel = '';
+    this.balancedMatch = false;
+    this.progressStreak = 0;
+    this.goldBadges = 0;
+    this.equalNext = false;
+    this.goldJustEarned = false;
     this.bossHitCd = 0;
     this.voiceClock = 0;
     this.voiceNext = { friend: 0, foe: 0 };
@@ -1289,6 +1294,8 @@ export class GroundBattle {
       captureLabel: q('#ground-capture-label'),
       score: q('#ground-score'),
       scorePop: q('#ground-score-pop'),
+      progress: q('#ground-progress'),
+      progressText: q('#ground-progress-text'),
       stars: q('#ground-stars'),
       soldierBtn: q('#ground-soldier'),
       tankBtn: q('#ground-tank'),
@@ -1355,6 +1362,11 @@ export class GroundBattle {
     this.deployNoteT = 0;
     this.grenadeCd = 0;
     this.difficulty = groundDifficulty(opts.difficulty);
+    this.balancedMatch = Boolean(opts.balancedMatch) && this.mode !== 'boss';
+    this.progressStreak = Math.max(0, opts.progressStreak || 0);
+    this.goldBadges = Math.max(0, opts.goldBadges || 0);
+    this.equalNext = Boolean(opts.equalNext);
+    this.goldJustEarned = false;
     this.resetBattleScore();
     this.playerGrace = 0;
     this.playerOut = false;
@@ -1374,23 +1386,6 @@ export class GroundBattle {
       shotCd: 0.08 + i * 0.1,
       gun: friendGuns[i],
     }));
-    const foeGuns = ['cannon', 'machine', 'mortar', 'machine'];
-    const foeSlots = [[-9.5, -14.2], [-3.2, -12.6], [3.4, -13.5], [9.6, -12.2]];
-    const foeCount = this.difficulty.id === 'easy' ? 3 : foeSlots.length;
-    foeSlots.slice(0, foeCount).forEach(([x, z], i) => this.spawn('foeCar', x, 0.1 + i * 0.06, {
-      z,
-      speed: -2.1,
-      shotCd: (0.12 + i * 0.1) * this.difficulty.cadence,
-      gun: foeGuns[i],
-    }));
-    if (this.difficulty.id === 'hard') {
-      this.spawn('foeCar', 0.4, 0.25, {
-        z: -16.4,
-        speed: -2.4,
-        shotCd: 0.18 * this.difficulty.cadence,
-        gun: 'cannon',
-      });
-    }
     for (let i = 0; i < 36; i += 1) {
       const col = (i % 12) - 5.5;
       const row = Math.floor(i / 12);
@@ -1398,15 +1393,6 @@ export class GroundBattle {
         z: 0.2 + row * 2.05,
         speed: 2.6,
         shotCd: 0.05 + (i % 8) * 0.08,
-      });
-    }
-    const defenders = scaleCount(30, this.difficulty.spawn, 12);
-    for (let i = 0; i < defenders; i += 1) {
-      const col = (i % 10) - 4.5;
-      const row = Math.floor(i / 10);
-      this.spawn('defender', col * 1.8, 0.02 * (i % 5), {
-        z: -11.2 - row * 1.55,
-        shotCd: (0.08 + (i % 7) * 0.1) * this.difficulty.cadence,
       });
     }
     const extra = (this.perks.company || 0) * 8;
@@ -1417,6 +1403,42 @@ export class GroundBattle {
         z: 8.2 + row * 1.45,
         speed: 4.4,
         shotCd: 0.18 + (i % 4) * 0.05,
+      });
+    }
+    const friendSoldiers = this.units.filter((unit) => unit.kind === 'infantry').length;
+    const friendTanks = this.units.filter((unit) => unit.kind === 'tank').length;
+    const matched = this.balancedMatch ? equalForceCounts({ soldiers: friendSoldiers, tanks: friendTanks }) : null;
+    const foeGuns = ['cannon', 'machine', 'mortar', 'machine'];
+    const foeSlots = matched
+      ? Array.from({ length: matched.vehicles }, (_, i) => {
+        const cols = Math.min(matched.vehicles, 4);
+        const col = (i % cols) - (cols - 1) / 2;
+        const row = Math.floor(i / cols);
+        return [col * 4.2, -12.4 - row * 3.2];
+      })
+      : [[-9.5, -14.2], [-3.2, -12.6], [3.4, -13.5], [9.6, -12.2]];
+    const foeCount = matched ? matched.vehicles : (this.difficulty.id === 'easy' ? 3 : foeSlots.length);
+    foeSlots.slice(0, foeCount).forEach(([x, z], i) => this.spawn('foeCar', x, 0.1 + i * 0.06, {
+      z,
+      speed: -2.1,
+      shotCd: (0.12 + i * 0.1) * this.difficulty.cadence,
+      gun: foeGuns[i % foeGuns.length],
+    }));
+    if (!matched && this.difficulty.id === 'hard') {
+      this.spawn('foeCar', 0.4, 0.25, {
+        z: -16.4,
+        speed: -2.4,
+        shotCd: 0.18 * this.difficulty.cadence,
+        gun: 'cannon',
+      });
+    }
+    const defenders = matched ? matched.soldiers : scaleCount(30, this.difficulty.spawn, 12);
+    for (let i = 0; i < defenders; i += 1) {
+      const col = (i % 10) - 4.5;
+      const row = Math.floor(i / 10);
+      this.spawn('defender', col * 1.8, 0.02 * (i % 5), {
+        z: -11.2 - row * 1.55,
+        shotCd: (0.08 + (i % 7) * 0.1) * this.difficulty.cadence,
       });
     }
     if (this.mode === 'boss') {
@@ -1687,6 +1709,7 @@ export class GroundBattle {
       bestStreak: this.bestStreak,
       fullForce: this.fullForce,
       balanced: this.balanced,
+      balancedMatch: Boolean(this.balancedMatch),
       gold: Boolean(this.gold),
     });
   }
@@ -1722,7 +1745,7 @@ export class GroundBattle {
   spawnStageWave() {
     this.waveSquad = [];
     const base = this.wave === STAGE_WAVES ? 8 : 6;
-    const count = scaleCount(base, this.difficulty?.spawn || 1, 4);
+    const count = this.balancedMatch ? base : scaleCount(base, this.difficulty?.spawn || 1, 4);
     for (let i = 0; i < count; i += 1) {
       const unit = this.spawn('defender', (i - (count - 1) / 2) * 1.7, 0.05, {
         z: -13.5 - (i % 2) * 1.35,
@@ -3693,6 +3716,15 @@ export class GroundBattle {
     this.camera.lookAt(this.look);
   }
 
+  progressLabel() {
+    const parts = [];
+    if ((this.progressStreak || 0) > 0) parts.push(`${T.groundStreak} ${this.progressStreak}`);
+    if (this.balancedMatch && this.phase !== 'resolve') parts.push(T.groundEqualNow);
+    if (this.phase === 'resolve' && this.outcome === 'win' && this.equalNext) parts.push(T.groundEqualNext);
+    if ((this.goldBadges || 0) > 0 || this.goldJustEarned) parts.push(T.groundGold);
+    return parts.join(' · ');
+  }
+
   goalNote() {
     const hold = Math.max(0, Math.round(this.hold));
     const capture = Math.min(100, Math.round(this.capture));
@@ -3711,8 +3743,13 @@ export class GroundBattle {
       if (this.mode === 'boss') return T.bossWinNote;
       const streak = this.bestStreak >= 2 ? `${T.groundStreak} ×${this.bestStreak}` : '';
       const stage = this.wave >= STAGE_WAVES ? T.groundStageClear : '';
-      const gold = this.gold ? `${T.groundGold} · ${T.groundGoldWait}` : '';
-      return [T.groundWinNote, stage, `${T.groundScore} ${this.score}`, streak, gold].filter(Boolean).join(' · ');
+      const gold = this.goldJustEarned
+        ? T.groundGold
+        : this.gold
+          ? `${T.groundGold} · ${T.groundGoldWait}`
+          : '';
+      const next = this.equalNext ? T.groundEqualNext : '';
+      return [T.groundWinNote, stage, `${T.groundScore} ${this.score}`, streak, gold, next].filter(Boolean).join(' · ');
     }
     return '';
   }
@@ -3766,6 +3803,13 @@ export class GroundBattle {
       const force = this.fullForce ? ` · ${T.groundFullForceShort}` : '';
       dom.score.textContent = `${T.groundScore} ${this.score}${streak}${lives}${force}`;
       dom.score.classList.toggle('bump', (this.scorePulse || 0) > 0);
+    }
+    if (dom.progress) {
+      const text = this.progressLabel();
+      dom.progress.hidden = !text;
+      dom.progress.classList.toggle('has-cup', (this.goldBadges || 0) > 0);
+      dom.progress.classList.toggle('earned', Boolean(this.goldJustEarned));
+      if (dom.progressText) dom.progressText.textContent = text;
     }
     if (dom.scorePop) {
       const chips = (this.floaters || []).filter((item) => item.life > 0);

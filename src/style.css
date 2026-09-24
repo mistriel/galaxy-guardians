@@ -661,6 +661,7 @@ body.touch #hud button.tiny {
   #ground-note, #ground-stars, .difficulty-note { font-size: 0.82rem; }
   #ground-score { font-size: 1.2rem; }
   #ground-score-pop { font-size: 1.05rem; }
+  .ground-progress { font-size: 0.95rem; }
   #ground-bark { font-size: 1.05rem; }
   #hud { padding: 8px 10px 0; gap: 8px; }
   .hud-ship { font-size: 0.95rem; }
@@ -792,6 +793,41 @@ body.touch #hud button.tiny {
   opacity: 1;
   animation: score-pop 0.42s ease;
 }
+.ground-progress[hidden] { display: none; }
+.ground-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  min-height: 1.4rem;
+  font-weight: 900;
+  font-size: 1.15rem;
+  color: #ffe08a;
+}
+.ground-progress .gold-badge-cup { display: none; }
+.ground-progress.has-cup .gold-badge-cup {
+  display: inline-block;
+  position: relative;
+  width: 18px;
+  height: 16px;
+  flex: 0 0 auto;
+  border-radius: 3px 3px 9px 9px;
+  background: linear-gradient(180deg, #fff6c8, #f0c14a 46%, #a8740c);
+  box-shadow: 0 2px 0 #5a3a08, inset 0 -3px 0 rgba(90, 50, 8, 0.28);
+}
+.ground-progress.has-cup .gold-badge-cup::before,
+.ground-progress.has-cup .gold-badge-cup::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  width: 5px;
+  height: 8px;
+  border: 2px solid #e2b84a;
+  border-radius: 6px;
+}
+.ground-progress.has-cup .gold-badge-cup::before { left: -6px; border-right: 0; }
+.ground-progress.has-cup .gold-badge-cup::after { right: -6px; border-left: 0; }
+.ground-progress.earned .gold-badge-cup { animation: score-pop 0.42s ease; }
 @keyframes score-pop {
   0% { transform: translateY(8px) scale(0.82); opacity: 0; }
   45% { transform: translateY(0) scale(1.14); opacity: 1; }

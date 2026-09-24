@@ -202,6 +202,8 @@ export const T = {
   groundGold: 'גביע זהב',
   groundGoldWait: 'גביע הזהב מחכה אחרי שומר החומה',
   groundGoldBlurb: 'הגביע הגיע זהב: רצף, כוח מלא, וכל תפקיד תרם.',
+  groundEqualNow: 'קרב מאוזן',
+  groundEqualNext: 'הקרב הבא מאוזן',
   groundLives: 'חיים',
   groundLivesOut: 'נגמרו החיים. הכוח ממשיך בלעדיכם',
   groundSalvoAuto: 'מטח על הגוש — הטילים יוצאים',

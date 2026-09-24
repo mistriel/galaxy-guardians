@@ -39,6 +39,16 @@ export function groundDifficulty(id) {
   return PROFILES[id] || PROFILES.medium;
 }
 
+/**
+ * Equal-strength reply to a full-force win.
+ * One enemy soldier per friendly soldier, one enemy car per friendly tank.
+ */
+export function equalForceCounts(friends = {}) {
+  const soldiers = Math.max(8, Math.round(Number(friends.soldiers) || 0));
+  const vehicles = Math.max(1, Math.round(Number(friends.tanks) || 0));
+  return { soldiers, vehicles };
+}
+
 /** How many of a scripted squad to place. Medium keeps the authored count. */
 export function scaleCount(base, spawn, min = 1) {
   const n = Number(base) || 0;

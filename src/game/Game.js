@@ -27,8 +27,7 @@ import {
   emptyCampaign,
   grantTrophy,
   normalizeCampaign,
-  noteGoldCharge,
-  noteRegularWin,
+  noteForceMarch,
   takeGoldCharge,
 } from './campaign.js';
 import { GROUND_WORLDS, GroundBattle } from './ground.js';
@@ -255,6 +254,7 @@ export class Game {
       groundPick: document.querySelector('#ground-pick'),
       groundTitle: document.querySelector('#ground-title'),
       groundBlurb: document.querySelector('#ground-blurb'),
+      progressPick: document.querySelector('#ground-progress-pick'),
       groundWorlds: document.querySelector('#ground-worlds'),
       menuDifficultyLabel: document.querySelector('#menu-difficulty-label'),
       menuDifficultyNote: document.querySelector('#menu-difficulty-note'),
@@ -3420,11 +3420,17 @@ export class Game {
     this.aimView = false;
     this.ground.aiming = false;
     const world = GROUND_WORLDS.find((item) => item.id === worldId) || GROUND_WORLDS[0];
+    const equalFight = !boss && Boolean(this.campaign?.equalNext);
+    const march = boss ? T.bossPhase : this.marchText();
     this.ground.start(worldId, {
       boss,
       perks: this.campaign?.perks,
-      marchLabel: boss ? T.bossPhase : this.marchText(),
+      marchLabel: equalFight ? `${march} · ${T.groundEqualNow}` : march,
       difficulty: this.difficulty,
+      balancedMatch: equalFight,
+      progressStreak: this.campaign?.progressStreak || 0,
+      goldBadges: this.campaign?.goldBadges || 0,
+      equalNext: Boolean(this.campaign?.equalNext),
     });
     this.fadeWorld(boss ? `${T.bossWelcome} · ${world.name}` : `${T.groundWelcome} ${world.name}`);
     this.syncVisibility();
@@ -3441,6 +3447,29 @@ export class Game {
     this.dom.groundBlurb.textContent = this.campaign?.bossDue
       ? `${T.groundBlurb} ${T.bossDueBlurb}`
       : `${T.groundBlurb} ${this.marchText()}.`;
+    this.paintProgress(this.dom.progressPick);
+  }
+
+  paintProgress(el) {
+    if (!el) return;
+    const campaign = this.campaign || emptyCampaign();
+    const parts = [];
+    if ((campaign.progressStreak || 0) > 0) parts.push(`${T.groundStreak} ${campaign.progressStreak}`);
+    if (campaign.equalNext && !campaign.bossDue) parts.push(T.groundEqualNext);
+    if ((campaign.goldBadges || 0) > 0) parts.push(T.groundGold);
+    el.hidden = parts.length === 0;
+    el.classList.toggle('has-cup', (campaign.goldBadges || 0) > 0);
+    const text = el.querySelector('.progress-text');
+    if (text) text.textContent = parts.join(' · ');
+  }
+
+  pushProgress(beforeBadges) {
+    if (!this.ground) return;
+    this.ground.progressStreak = this.campaign?.progressStreak || 0;
+    this.ground.goldBadges = this.campaign?.goldBadges || 0;
+    this.ground.equalNext = Boolean(this.campaign?.equalNext);
+    this.ground.goldJustEarned = (this.campaign?.goldBadges || 0) > (beforeBadges || 0);
+    this.ground.syncHud();
   }
 
   readDifficulty() {
@@ -3504,25 +3533,30 @@ export class Game {
   }
 
   onGroundResolved(info) {
-    if (!info?.win) return;
-    if (info.boss) {
-      this.campaign = { ...this.campaign, bossDue: false, sinceBoss: 0 };
+    const beforeBadges = this.campaign?.goldBadges || 0;
+    if (info?.boss) {
+      this.campaign = noteForceMarch(this.campaign, info);
       this.saveCampaign();
       this.refreshGroundBlurb();
-      this.trophyGranted = false;
-      this.trophyAt = 1.15;
+      this.pushProgress(beforeBadges);
+      if (info.win) {
+        this.trophyGranted = false;
+        this.trophyAt = 1.15;
+      }
       return;
     }
-    this.campaign = noteRegularWin(this.campaign);
-    if (info.gold) this.campaign = noteGoldCharge(this.campaign);
+    this.campaign = noteForceMarch(this.campaign, info || {});
     this.saveCampaign();
     this.refreshGroundBlurb();
-    if (this.campaign.bossDue) {
-      this.ground.marchLabel = T.bossArriving;
-      this.pendingBoss = { worldId: info.worldId, at: 2.5 };
-    } else {
-      this.ground.marchLabel = `${T.groundWins} ${this.campaign.sinceBoss} ${T.groundMarchOf}`;
+    if (info?.win && this.ground) {
+      if (this.campaign.bossDue) {
+        this.ground.marchLabel = T.bossArriving;
+        this.pendingBoss = { worldId: info.worldId, at: 2.5 };
+      } else {
+        this.ground.marchLabel = `${T.groundWins} ${this.campaign.sinceBoss} ${T.groundMarchOf}`;
+      }
     }
+    this.pushProgress(beforeBadges);
   }
 
   tickGroundShow(dt) {
