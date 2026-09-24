@@ -15,10 +15,13 @@ import {
   POOLS,
   POWER,
   SHIPS,
+  SPACE_CAMERA,
   TOWERS,
   WEAPONS,
   WAVE_BONUS,
   WORLD,
+  playerTriggerDown,
+  recoverPlayerVitals,
   waveSpec,
 } from './balance.js';
 import { Sfx } from './audio.js';
@@ -106,7 +109,7 @@ export class Game {
     this.canvas = canvas;
     this.sfx = new Sfx();
     this.keys = new Set();
-    this.pointer = { x: 0, y: 0, ready: false, armed: false, fire: false };
+    this.pointer = { x: 0, y: 0, ready: false, armed: false, fire: false, buttons: 0 };
     const narrow = window.matchMedia('(max-width: 900px)').matches;
     this.coarse = window.matchMedia('(pointer: coarse)').matches
       || ((navigator.maxTouchPoints || 0) > 0 && narrow);
@@ -150,6 +153,7 @@ export class Game {
     this.structures = 0;
     this.fireCd = 0;
     this.fireLock = 0;
+    this.allyVolley = 0;
     this.missileCd = 0;
     this.giantCd = 0;
     this.heavyIndex = 0;
@@ -616,19 +620,22 @@ export class Game {
       const ny = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2;
       this.pointer.x = THREE.MathUtils.clamp(nx, -1, 1);
       this.pointer.y = THREE.MathUtils.clamp(ny, -1, 1);
+      this.pointer.buttons = event.buttons;
+      if ((event.buttons & 1) === 0) this.pointer.fire = false;
       this.pointer.ready = true;
       if (!this.pointer.armed && Math.abs(this.pointer.x) < 0.22 && Math.abs(this.pointer.y) < 0.22) {
         this.pointer.armed = true;
       }
     });
     window.addEventListener('pointerdown', (event) => {
-      if (this.state === 'ground' || this.state === 'ground-pick') return;
+      if (this.state !== 'play') return;
       if (event.button === 2) {
         this.launchMissile();
         return;
       }
       if (this.coarse || event.button !== 0) return;
       if (event.target instanceof Element && event.target.closest('button, #touch')) return;
+      this.pointer.buttons = event.buttons || 1;
       this.pointer.fire = true;
       this.shoot();
     });
@@ -665,7 +672,10 @@ export class Game {
       return;
     }
     if (this.boostPointer === event.pointerId) this.releaseBoost();
-    if (!this.coarse && this.firePointer == null) this.pointer.fire = false;
+    if (!this.coarse && this.firePointer == null) {
+      this.pointer.buttons = event.buttons;
+      this.pointer.fire = false;
+    }
   }
 
   bindJoy(stick, root) {
@@ -1465,7 +1475,10 @@ export class Game {
       ny = this.aim.y;
       this.aimNudge();
       const stickMag = Math.min(1, Math.hypot(nx, ny));
-      const gain = (this.aimView ? 0.84 : 0.62) * (1 - Math.min(1, stickMag * 1.15));
+      // Holding ירי must not steer the nose onto a target. The nudge is for lining up, not for hunting.
+      const gain = this.firePointer != null
+        ? 0
+        : (this.aimView ? 0.84 : 0.62) * (1 - Math.min(1, stickMag * 1.15));
       nx = THREE.MathUtils.clamp(nx + this.nudgeX * gain, -1, 1);
       ny = THREE.MathUtils.clamp(ny + this.nudgeY * gain, -1, 1);
       axis = touchAxis;
@@ -1528,11 +1541,24 @@ export class Game {
     this.missileCd = Math.max(0, this.missileCd - dt);
     this.giantCd = Math.max(0, this.giantCd - dt);
     for (const id of HEAVY_ORDER) this.heavyCd[id] = Math.max(0, this.heavyCd[id] - dt);
-    if (this.pointer.fire || this.keys.has('Space')) this.shoot();
+    // The hull guns stay cold unless Space, the ירי button, or the left mouse button is held.
+    const mouseHeld = !this.coarse && this.pointer.fire && (this.pointer.buttons & 1) !== 0;
+    if (playerTriggerDown({
+      space: this.keys.has('Space'),
+      fireButton: this.firePointer != null,
+      mouseHeld,
+    })) this.shoot();
+    else if (!this.coarse && this.firePointer == null) this.pointer.fire = false;
 
-    if (this.time - this.lastHit > PLAYER.shieldDelay && this.shield < PLAYER.shield && this.invuln <= 0) {
-      this.shield = Math.min(PLAYER.shield, this.shield + PLAYER.shieldRegen * dt);
-    }
+    const recovered = recoverPlayerVitals({
+      hull: this.hull,
+      shield: this.shield,
+      sinceHit: this.time - this.lastHit,
+      invuln: this.invuln,
+      dt,
+    });
+    this.hull = recovered.hull;
+    this.shield = recovered.shield;
     this.invuln = Math.max(0, this.invuln - dt);
     this.player.mesh.visible = this.invuln <= 0 || Math.floor(this.time * 18) % 2 === 0;
 
@@ -2483,10 +2509,10 @@ export class Game {
     const rushing = this.boosting && this.state === 'play';
     const rush = rushing ? this.speed / PLAYER.boost : 0;
     const aiming = this.aimView && this.state === 'play' && !rushing;
-    // Pulled back so more of the sector stays in frame. The speed rush opens a wider region.
-    const back = rushing ? 30 + rush * 16 : aiming ? 24 : 30;
-    const rise = rushing ? 10 + rush * 3.2 : aiming ? 8.4 : 10.2;
-    const lookAhead = rushing ? 54 + rush * 16 : aiming ? 70 : 52;
+    const cam = SPACE_CAMERA;
+    const back = rushing ? cam.boostBack + rush * cam.boostBackRush : aiming ? cam.aimBack : cam.back;
+    const rise = rushing ? cam.boostRise + rush * cam.boostRiseRush : aiming ? cam.aimRise : cam.rise;
+    const lookAhead = rushing ? cam.boostLook + rush * cam.boostLookRush : aiming ? cam.aimLook : cam.lookAhead;
     this.camDesired.copy(this.player.mesh.position).addScaledVector(this.nose, -back).addScaledVector(this.upV, rise);
     const blend = 1 - Math.exp(-3.5 * dt);
     this.camera.position.lerp(this.camDesired, blend);
@@ -2499,7 +2525,7 @@ export class Game {
       this.shakeAmp = Math.max(0, this.shakeAmp - dt * 1.7);
     }
     this.fovKick = Math.max(0, this.fovKick - dt * 3.1);
-    const fov = rushing ? 122 + this.fovKick * 16 : aiming ? 76 : 82;
+    const fov = rushing ? cam.boostFov + this.fovKick * 16 : aiming ? cam.aimFov : cam.fov;
     this.dampFov(fov, this.fovKick > 0.05 ? 0.34 : 0.18);
   }
 
@@ -2709,6 +2735,7 @@ export class Game {
 
   updateFleet(dt) {
     if (!this.carriers) return;
+    this.allyVolley = Math.max(0, this.allyVolley - dt);
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
     this.rightV.set(1, 0, 0).applyQuaternion(this.player.mesh.quaternion);
     this.upV.set(0, 1, 0).applyQuaternion(this.player.mesh.quaternion);
@@ -2768,8 +2795,9 @@ export class Game {
       if (aim) {
         ally.mesh.lookAt(aim);
         ally.mesh.scale.setScalar(ALLY.visualScale);
-        if (ally.fireCd <= 0 && best < 190 * 190) {
+        if (ally.fireCd <= 0 && this.allyVolley <= 0 && best < 190 * 190) {
           ally.fireCd = ALLY.fireEvery;
+          this.allyVolley = ALLY.supportGap;
           const origin = pos.clone();
           const dir = aim.clone().sub(origin);
           if (dir.lengthSq() > 0.01) {
@@ -3277,6 +3305,7 @@ export class Game {
     this.time = 0;
     this.fireCd = 0;
     this.fireLock = 0.45;
+    this.allyVolley = ALLY.supportOpen;
     this.missileCd = 0;
     this.giantCd = 0;
     this.heavyIndex = 0;

@@ -71,7 +71,7 @@ Because the default base is `/galaxy-guardians/`, that host must serve the files
 | Steer | Mouse (crosshair stays at screen center) or arrow keys |
 | Speed rush / brake | Hold `W`, Shift, or the מהירות על־חלל button / `S` |
 | Strafe | `A` / `D` |
-| Lasers | Space, left click, or the red ירי button. Small bright tracers |
+| Lasers | Space, left click, or the red ירי button. Hold to fire. The ship does not shoot on its own. Small bright tracers |
 | Giant missile | Gold טיל ענק button or `Q` |
 | Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Narrower hairline dart, body radius 0.010 aft and 0.006 at the nose, fin span about 0.043, scale 1, speed 900, 32s flight, range 28800, then an energy mushroom. No contact fuse |
 | Factions | Blues are triangles (your army). Reds are circles that loiter on rings in their sector so you can shoot them. The menu says כחולים: משולשים · אדומים: עיגולים |
