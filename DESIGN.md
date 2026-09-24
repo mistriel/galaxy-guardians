@@ -51,7 +51,7 @@ The menu heading **בחרו ספינה** offers שומרת, נץ, and עוגן w
 
 ## Controls
 
-Third-person chase camera. A fixed crosshair sits at the center of the screen; shots travel along the nose, through that crosshair.
+Third-person chase camera. A fixed crosshair sits at the center of the screen; shots travel along the nose, through that crosshair. Cruise view is vertical FOV 96 with the camera about 32 units back (aim view is FOV 88), wider than the old FOV 82 / 30-back chase, so more of the sector stays in frame. The ship stays large enough to read on a phone. The speed rush still opens to about FOV 122.
 
 | Action | Input |
 | --- | --- |
@@ -60,12 +60,12 @@ Third-person chase camera. A fixed crosshair sits at the center of the screen; s
 | Cruise | Hands off the throttle (24 u/s) |
 | Brake | `S` (8 u/s, never a full stop) |
 | Strafe | `A` / `D` (20 u/s) |
-| Shoot | Space, left click, or the red ירי button. Small cinematic tracers |
+| Shoot | Space, left click, or the red ירי button, and only while that control is held. The ship does not fire on its own. Small cinematic tracers |
 | Giant missile | Gold טיל ענק button or `Q`. Fat body, scale 3.4, blooms after 1.7s (about 270 units). Blast 150. Cooldown 3s. Does not touch allies |
 | Nuclear missile | Orange טילים גרעיניים button, `F`, or right click. Hairline dart, 32s flight, about 28800 units, then an energy mushroom. No contact fuse. Cooldown 4s |
 | Phone move | Left joystick. Horizontal strafes. Up holds מהירות על־חלל, down brakes. Brake wins if both |
 | Phone aim | Right joystick. Touch yaw rate is 68% of the mouse rate. The stick value is not passed through the mouse deadzone |
-| Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center. Full stick still overrides it. Touch yaw rate is about 68% of the mouse rate |
+| Aim assist | On a phone, a soft nudge pulls the nose toward a target ahead while the stick is near center and ירי is not held. Full stick still overrides it. Holding fire leaves the nose where you pointed it. Touch yaw rate is about 68% of the mouse rate |
 | Pause | `Esc` or `P`, or the השהיה button |
 | Mute | `M`, the HUD קול button, or the same button on the menu |
 | Restart | משימה חדשה, Enter, or `R` on the game-over / pause panel |
@@ -78,9 +78,8 @@ The play space is a closed sphere of radius **430** that feels open. Stars and d
 
 | Stat | Value |
 | --- | --- |
-| Hull (חיים) | 100 |
-| Shield (מגן) | 80 |
-| Shield regen | 16 per second, after 2.5s without a hit |
+| Hull (חיים) | 160. Refills at 30 per second after 1.6s without a hit |
+| Shield (מגן) | 140. Refills at 28 per second after 1.4s without a hit |
 | Invulnerability after a hit | 0.7s (ship blinks) |
 | Collision radius | 4.6 |
 | Shot damage | 36 |
@@ -90,7 +89,7 @@ The play space is a closed sphere of radius **430** that feels open. Stars and d
 | Fire interval | 0.15s (0.075s with rapid fire) |
 | Missile | Speed 900. Lifetime 32s, so it travels 28800 units before it blooms. Body radius 0.010 aft and 0.006 at the nose, nose cone radius 0.007, collar radius 0.012, fin thickness 0.004 and fin span about 0.043, plume radius 0.009, scale 1. No contact fuse and no arena-edge fuse. Blast radius 29200 still clears the sector it crossed. Cooldown 4s |
 
-Shields soak damage first. Hull is 160 and shield is 140, and the shield starts refilling after 1.4 seconds. A translucent bubble shows remaining shield. Holding מהירות על־חלל jumps the ship to 4200, opens the view to about FOV 122, and fills the view with white streaks and points rushing inward. A glow still wraps the hull. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
+Shields soak damage first. Hull is 160 and shield is 140. After a hit, the shield starts refilling at 28 per second once 1.4 seconds pass without another hit, and the hull follows at 30 per second after 1.6 seconds. Neither jumps back to full. The חיים and מגן bars are the same meters. A translucent bubble shows remaining shield. Holding מהירות על־חלל jumps the ship to 4200, opens the view to about FOV 122, and fills the view with white streaks and points rushing inward. A glow still wraps the hull. A normal shot deals 36, so the softer glints, crates, and flare silos break in one hit. Slabs and Judge Vorak still take a sustained volley, and Vorak waits until wave 5.
 
 Primary fire is a small movie tracer: girth 1.5 and stretch 5.8 on the 0.34×3.4 bolt, so it reads as a bright streak rather than a slab. Damage stays 36.
 
@@ -104,7 +103,7 @@ A separate heavy cycle sits beside those two. **E** or the חימוש button fir
 
 Two factions fill the sector. Blues are triangles and fight with שומרת: 44 fighters at scale 2.5, plus a giant blue triangle carrier (נושאת מטוסים) that keeps launching them. Reds are circles: every enemy hull is a sphere with a ring, and נושאת האויב is a giant red circle that launches one volley of 8 circles as its own threat, after the wave's squads are finished, not on top of them. The Hebrew menu states it as כחולים: משולשים and אדומים: עיגולים. שומרת stays the all-blue ring-wing dart at scale 3.
 
-Waves are a list of threats, one squad of eight at a time. The next squad arrives only after that squad is gone. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is still 32 red circles, released as separate squads rather than all at once. There is no climb after wave 6: the banner says הגזרה נקייה and no further threat arrives. Pool caps still hold a second wave (nib 56, glint 36, howler 18, slab 8, vorak 2). Ally shots are blue and share the enemy bolt pool, which is 180. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
+Waves are a list of threats, one squad of eight at a time. The next squad arrives only after that squad is gone. Each squad picks a fixed point ahead of שומרת and orbits that point on a distance band. They do not dive through the player or circle around behind him. The first wave is still 32 red circles, released as separate squads rather than all at once. There is no climb after wave 6: the banner says הגזרה נקייה and no further threat arrives. Pool caps still hold a second wave (nib 56, glint 36, howler 18, slab 8, vorak 2). Ally shots are blue and share the enemy bolt pool, which is 180. The escort still aims and fires on its own, but the whole wing shares one gun slot (one shot about every 1.15s, and the first shot waits 1.6s at the start of a sortie) so that barrage does not read as שומרת firing by herself. Contact damage only happens if the player flies into a circle. It still respects the invulnerability window.
 
 | Id | Hebrew | HP | Loiter | Score | Behavior |
 | --- | --- | --- | --- | --- | --- |

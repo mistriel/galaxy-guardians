@@ -14,6 +14,9 @@ export const PLAYER = {
   shield: 140,
   shieldRegen: 28,
   shieldDelay: 1.4,
+  /** Hull creeps back after a short quiet beat. Slower than a full heal in one breath. */
+  hullRegen: 30,
+  hullDelay: 1.6,
   invuln: 1.05,
   visualScale: 3,
   radius: 6.2,
@@ -32,6 +35,50 @@ export const PLAYER = {
   boltGirth: 1.5,
   boltStretch: 5.8,
 };
+
+/**
+ * Space chase camera. Cruise is wider than the old FOV 82 / 30-back view
+ * so more of the sector fits, without pulling so far that the ship turns into a speck.
+ */
+export const SPACE_CAMERA = {
+  fov: 96,
+  aimFov: 88,
+  boostFov: 122,
+  back: 32,
+  aimBack: 26,
+  boostBack: 34,
+  boostBackRush: 16,
+  rise: 11,
+  aimRise: 9.2,
+  boostRise: 10.4,
+  boostRiseRush: 3.2,
+  lookAhead: 56,
+  aimLook: 72,
+  boostLook: 56,
+  boostLookRush: 16,
+};
+
+/**
+ * Player lasers only while a fire control is actually held.
+ * Wingmen are not this check — they keep their own guns.
+ */
+export function playerTriggerDown({ space = false, fireButton = false, mouseHeld = false } = {}) {
+  return Boolean(space || fireButton || mouseHeld);
+}
+
+/** Shield, then hull, refill only after their grace and only up to max. */
+export function recoverPlayerVitals({ hull, shield, sinceHit, invuln, dt }) {
+  let nextHull = hull;
+  let nextShield = shield;
+  const safe = invuln <= 0 && dt > 0;
+  if (safe && sinceHit > PLAYER.shieldDelay && nextShield < PLAYER.shield) {
+    nextShield = Math.min(PLAYER.shield, nextShield + PLAYER.shieldRegen * dt);
+  }
+  if (safe && sinceHit > PLAYER.hullDelay && nextHull < PLAYER.hull) {
+    nextHull = Math.min(PLAYER.hull, nextHull + PLAYER.hullRegen * dt);
+  }
+  return { hull: nextHull, shield: nextShield };
+}
 
 /** Hangar catalog. Shomeret and the thick laser are free. */
 export const SHIPS = {
@@ -170,6 +217,10 @@ export const ALLY = {
   radius: 2.3,
   visualScale: 2.5,
   fireEvery: 0.55,
+  /** One escort shot at a time, so their fire does not read as the player's cannon. */
+  supportGap: 1.15,
+  /** Opening quiet so a new sortie does not start with a laser already in flight. */
+  supportOpen: 1.6,
   shotDamage: 22,
   color: 0x2f6dff,
 };
