@@ -18,7 +18,8 @@ export const PLAYER = {
   visualScale: 3,
   radius: 6.2,
   cruise: 24,
-  boost: 420,
+  /** Arcade lightspeed. The closed curve still turns a radial rush around. */
+  boost: 4200,
   brake: 8,
   strafe: 20,
   turn: 1.75,

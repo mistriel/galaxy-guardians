@@ -266,6 +266,133 @@ export function updateSpeedTunnel(group, camera, dt, { active, reduceMotion }) {
   }
 }
 
+const HYPER_AXIS = new THREE.Vector3(0, 0, 1);
+const HYPER_DIR = new THREE.Vector3();
+
+function seedHyper(data, rim) {
+  data.ang = Math.random() * Math.PI * 2;
+  data.span = rim ? 1.02 + Math.random() * 0.42 : 0.06 + Math.random() * 1.12;
+  data.depth = 30 + Math.random() * 52;
+  data.pace = 0.42 + Math.random() * 1.45;
+  data.girth = 0.62 + Math.random() * 1.15;
+  data.stretch = 0.5 + Math.random() * 1.2;
+}
+
+/**
+ * Classic jump tunnel in camera space. White points and streaks spawn at the
+ * edges of the view and rush inward. Shown only while the space-flight boost is held.
+ */
+export function createHyperspace(streakCount = 168, pointCount = 220) {
+  const group = new THREE.Group();
+  group.name = 'hyperspace';
+  group.frustumCulled = false;
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const streaks = [];
+  for (let i = 0; i < streakCount; i += 1) {
+    const mat = new THREE.MeshBasicMaterial({
+      color: i % 7 === 0 ? 0xf4f8ff : 0xffffff,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+      fog: false,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 12;
+    mesh.visible = false;
+    const data = {};
+    seedHyper(data, false);
+    mesh.userData = data;
+    group.add(mesh);
+    streaks.push(mesh);
+  }
+  const positions = new Float32Array(pointCount * 3);
+  const pointGeo = new THREE.BufferGeometry();
+  pointGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const points = new THREE.Points(pointGeo, new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 5.2,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: false,
+    fog: false,
+    toneMapped: false,
+    sizeAttenuation: false,
+  }));
+  points.frustumCulled = false;
+  points.renderOrder = 12;
+  points.visible = false;
+  const dots = [];
+  for (let i = 0; i < pointCount; i += 1) {
+    const data = {};
+    seedHyper(data, false);
+    dots.push(data);
+  }
+  group.add(points);
+  group.userData.streaks = streaks;
+  group.userData.points = points;
+  group.userData.dots = dots;
+  group.userData.positions = positions;
+  group.userData.rush = 0;
+  return group;
+}
+
+export function updateHyperspace(group, camera, dt, { active, reduceMotion }) {
+  if (!group) return;
+  group.position.copy(camera.position);
+  group.quaternion.copy(camera.quaternion);
+  const rush = THREE.MathUtils.damp(group.userData.rush, active ? 1 : 0, active ? 18 : 7, dt);
+  group.userData.rush = rush;
+  const show = rush > 0.035;
+  const cap = reduceMotion ? 0.22 : 0.9;
+  const inward = (1.35 + rush * (reduceMotion ? 1.6 : 3.6)) * dt;
+
+  for (const mesh of group.userData.streaks) {
+    const data = mesh.userData;
+    if (!show) {
+      mesh.visible = false;
+      continue;
+    }
+    data.span -= inward * data.pace;
+    if (data.span < 0.035) seedHyper(data, true);
+    const radius = data.depth * data.span * 1.25;
+    const c = Math.cos(data.ang);
+    const s = Math.sin(data.ang);
+    mesh.position.set(c * radius, s * radius, -data.depth);
+    HYPER_DIR.set(-c, -s, 0.06).normalize();
+    mesh.quaternion.setFromUnitVectors(HYPER_AXIS, HYPER_DIR);
+    const len = data.depth * data.stretch * (reduceMotion ? 0.08 : 0.1 + rush * 0.2);
+    const thick = data.depth * 0.0065 * data.girth;
+    mesh.scale.set(thick, thick, Math.max(thick * 2, len));
+    const fade = Math.sin(Math.min(1, data.span / 1.12) * Math.PI);
+    mesh.material.opacity = rush * cap * fade;
+    mesh.visible = fade > 0.04;
+  }
+
+  const dots = group.userData.dots;
+  const positions = group.userData.positions;
+  for (let i = 0; i < dots.length; i += 1) {
+    const data = dots[i];
+    if (show) {
+      data.span -= inward * 1.15 * data.pace;
+      if (data.span < 0.03) seedHyper(data, true);
+    }
+    const radius = data.depth * data.span * 1.25;
+    const i3 = i * 3;
+    positions[i3] = Math.cos(data.ang) * radius;
+    positions[i3 + 1] = Math.sin(data.ang) * radius;
+    positions[i3 + 2] = -data.depth;
+  }
+  group.userData.points.geometry.attributes.position.needsUpdate = true;
+  group.userData.points.material.opacity = show ? rush * (reduceMotion ? 0.3 : 0.95) : 0;
+  group.userData.points.visible = show;
+}
+
 /** Streaks and a soft glow locked to the ship so the rush covers the whole hull. */
 export function createHullRush(count = 56) {
   const group = new THREE.Group();

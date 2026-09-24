@@ -55,11 +55,13 @@ import {
   createRings,
   createSparks,
   createHullRush,
+  createHyperspace,
   createSpeedTunnel,
   createStarfield,
   makeSoftTexture,
   spawnRing,
   updateHullRush,
+  updateHyperspace,
   updateRings,
   updateSparks,
   updateSpeedTunnel,
@@ -161,6 +163,7 @@ export class Game {
     this.speed = 0;
     this.boosting = false;
     this.braking = false;
+    this.fovKick = 0;
     this.shakeAmp = 0;
     this.edge = 0;
     this.popups = [];
@@ -340,7 +343,8 @@ export class Game {
     this.rings = createRings(this.scene, POOLS.rings);
     this.speedTunnel = createSpeedTunnel();
     this.hullRush = createHullRush();
-    this.scene.add(this.speedTunnel, this.hullRush);
+    this.hyperspace = createHyperspace();
+    this.scene.add(this.speedTunnel, this.hullRush, this.hyperspace);
 
     this.shipMeshes = {
       shomeret: createPlayerShip(this.soft),
@@ -1483,13 +1487,15 @@ export class Game {
       || this.keys.has('ShiftRight');
     if (this.boosting && !wasBoosting && this.state === 'play') {
       this.sfx.whoosh();
+      this.fovKick = 1;
+      if (!this.reduceMotion) this.addShake(0.14);
       spawnRing(this.rings, this.player.mesh.position, 0xe8f4ff, { life: 0.32, scale: 2.4, grow: 78 });
     }
     this.braking = this.keys.has('KeyS') || this.stickBrake;
     let targetSpeed = PLAYER.cruise;
     if (this.boosting) targetSpeed = PLAYER.boost;
     if (this.braking) targetSpeed = PLAYER.brake;
-    const accel = this.boosting ? 16 : 2.6;
+    const accel = this.boosting ? 38 : 2.6;
     this.speed = THREE.MathUtils.damp(this.speed, targetSpeed, accel, dt);
 
     this.nose.set(0, 0, -1).applyQuaternion(this.player.mesh.quaternion);
@@ -2406,8 +2412,12 @@ export class Game {
     if (dist > WORLD.soft) {
       const t = THREE.MathUtils.smoothstep(dist, WORLD.soft, WORLD.bounds);
       this.inward.copy(pos).multiplyScalar(-1 / Math.max(dist, 0.001));
-      pos.addScaledVector(this.inward, (14 + t * t * 340) * dt);
-      this.speed = Math.max(PLAYER.brake, this.speed - t * t * 190 * dt);
+      // The curve was tuned when boost was 420. Scale the catch with speed so a
+      // lightspeed rush still eases home instead of rattling the safety shell.
+      const surge = Math.max(1, this.speed / 420);
+      const pull = 14 + t * t * (340 * surge + this.speed * 0.42);
+      pos.addScaledVector(this.inward, pull * dt);
+      this.speed = Math.max(PLAYER.brake, this.speed - t * t * 190 * surge * dt);
       if (t > 0.62) this.edge = Math.max(this.edge, 1.15);
     }
     if (pos.length() > WORLD.bounds) pos.setLength(WORLD.bounds * 0.992);
@@ -2442,8 +2452,9 @@ export class Game {
       this.camera.position.y += (Math.random() - 0.5) * mag * 0.7;
       this.shakeAmp = Math.max(0, this.shakeAmp - dt * 1.7);
     }
-    const fov = rushing ? 116 : aiming ? 76 : 82;
-    this.dampFov(fov);
+    this.fovKick = Math.max(0, this.fovKick - dt * 3.1);
+    const fov = rushing ? 122 + this.fovKick * 16 : aiming ? 76 : 82;
+    this.dampFov(fov, this.fovKick > 0.05 ? 0.34 : 0.18);
   }
 
   updateSpeedTunnel(dt) {
@@ -2456,11 +2467,15 @@ export class Game {
       active,
       reduceMotion: this.reduceMotion,
     });
+    updateHyperspace(this.hyperspace, this.camera, dt, {
+      active,
+      reduceMotion: this.reduceMotion,
+    });
   }
 
-  dampFov(target) {
+  dampFov(target, rate = 0.18) {
     const before = this.camera.fov;
-    this.camera.fov += (target - this.camera.fov) * 0.18;
+    this.camera.fov += (target - this.camera.fov) * rate;
     if (Math.abs(this.camera.fov - before) > 0.01) this.camera.updateProjectionMatrix();
   }
 
@@ -3237,6 +3252,7 @@ export class Game {
     this.speed = next === 'play' ? PLAYER.cruise : 0;
     this.boosting = false;
     this.braking = false;
+    this.fovKick = 0;
     this.pointer.ready = next !== 'play';
     this.pointer.armed = false;
     this.releaseStick(true);
